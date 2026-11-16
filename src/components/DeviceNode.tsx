@@ -365,7 +365,13 @@ function DeviceNodeComponent({ id, data, selected }: NodeProps<DeviceNodeType>) 
     // doesn't block device placement (RF re-measures this as ~1px)
     return (
       <div style={{ width: 1, height: 1, overflow: "hidden", opacity: 0, pointerEvents: "none" }}>
-        {data.ports.map((p) => {
+        {data.ports.map((p, index) => {
+          if (data.deviceType === "adapter-cable") {
+            const side = index === 0 ? Position.Left : Position.Right;
+            return <Handle key={p.id} type={index === 0 ? "target" : "source"}
+              id={`${p.id}-${index === 0 ? "in" : "out"}`} position={side}
+              style={{ opacity: 0 }} />;
+          }
           if (p.direction === "bidirectional") {
             return (
               <span key={p.id}>
@@ -406,17 +412,15 @@ function DeviceNodeComponent({ id, data, selected }: NodeProps<DeviceNodeType>) 
     const right = data.ports.find(p => p !== left && p.direction === "output") ?? data.ports.find(p => p !== left);
     const plug = (port: Port | undefined, side: "left" | "right") => {
       if (!port) return null;
-      const position = side === "left" ? Position.Left : Position.Right;
-      const style = {
-        top: "50%", width: 13, height: 13,
-        background: "var(--color-accent, #ef4444)",
-        border: "2px solid var(--color-border)",
-      };
+      const isInput = side === "left";
+      const position = isInput ? Position.Left : Position.Right;
       return <span key={port.id}>
-        <Handle type="target" id={`${port.id}-in`} position={position}
-          style={{ ...style, top: "38%", zIndex: 3 }} />
-        <Handle type="source" id={`${port.id}-out`} position={position}
-          style={{ ...style, top: "62%", zIndex: 4 }} />
+        <Handle type={isInput ? "target" : "source"}
+          id={`${port.id}-${isInput ? "in" : "out"}`}
+          position={position}
+          style={{ top: "50%", width: 13, height: 13,
+            background: "var(--color-accent, #ef4444)",
+            border: "2px solid var(--color-border)" }} />
         <span style={{
           position: "absolute", top: 52, [side]: 4, fontSize: 10,
           whiteSpace: "nowrap", pointerEvents: "none",
