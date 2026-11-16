@@ -166,6 +166,7 @@ function ReportPreviewDialog({
 }: ReportPreviewDialogProps) {
   const storedLayout = useSchematicStore((s) => s.reportLayouts[reportKey]) as ReportLayout | undefined;
   const setReportLayout = useSchematicStore((s) => s.setReportLayout);
+  const setReportHiddenColumns = useSchematicStore((s) => s.setReportHiddenColumns);
   const globalHeaderLayout = useSchematicStore((s) => s.globalReportHeaderLayout);
   const globalFooterLayout = useSchematicStore((s) => s.globalReportFooterLayout);
   const setGlobalReportHeaderLayout = useSchematicStore((s) => s.setGlobalReportHeaderLayout);
@@ -209,6 +210,18 @@ function ReportPreviewDialog({
 
   const toggleColumn = useCallback(
     (tableId: string, colKey: string) => {
+      // Patch Panel print columns must persist in the schematic, not just in the
+      // short-lived preview. Its next preview mirrors the report tab, which reads
+      // reportHiddenColumns.patchPanel. Update that same preference here.
+      if (mirrorScreen && tableId === "patchPanelSchedule") {
+        const currentTable = layout.tables.find((t) => t.id === tableId);
+        if (!currentTable) return;
+        const hidden = new Set(currentTable.columns.filter((c) => !c.visible).map((c) => c.key));
+        if (hidden.has(colKey)) hidden.delete(colKey);
+        else hidden.add(colKey);
+        if (hidden.size === currentTable.columns.length) return;
+        setReportHiddenColumns("patchPanel", [...hidden]);
+      }
       setLayout((prev) => ({
         ...prev,
         tables: prev.tables.map((t) =>
@@ -223,7 +236,7 @@ function ReportPreviewDialog({
         ),
       }));
     },
-    [],
+    [layout.tables, mirrorScreen, setReportHiddenColumns],
   );
 
   // Header layout state
@@ -469,8 +482,8 @@ function ReportPreviewDialog({
                 </div>
                 {mirrorScreen && (
                   <p className="mt-1.5 text-[10px] leading-snug text-[var(--color-text-muted)]">
-                    Columns, sort and grouping mirror the report tab. Changes here apply to
-                    this export; use the tab&rsquo;s Columns menu to keep them.
+                    Columns, sort and grouping mirror the report tab. Changes here are saved with the schematic and apply to
+                    future exports.
                   </p>
                 )}
                 {tableDef.groupByOptions.length > 1 && (
