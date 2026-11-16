@@ -7812,6 +7812,15 @@ export const useSchematicStore = create<SchematicState>((set, get) => ({
 
     // --- Adapter visibility: compute hidden adapters and virtual edges ---
     const hiddenAdapterNodeIds = resolveHiddenAdapterIds(state.nodes, state.hideAdapters);
+    // A connected adapter cable is routed as one ordinary connection between
+    // its two host devices. The physical device remains in the schematic data
+    // (and therefore in the cable pack list), but is hidden from the canvas.
+    for (const node of state.nodes) {
+      if (node.type !== "device" || node.data.deviceType !== "adapter-cable") continue;
+      const inbound = visibleEdges.find(e => e.target === node.id && e.source !== node.id);
+      const outbound = visibleEdges.find(e => e.source === node.id && e.target !== node.id);
+      if (inbound && outbound) hiddenAdapterNodeIds.add(node.id);
+    }
     const hiddenVirtualEdgeIds = new Set<string>();
     const virtualEdgeGradients: Record<string, { sourceColor: string; targetColor: string }> = {};
     // Map from virtual edge ID back to the hidden partner edge ID
