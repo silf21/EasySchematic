@@ -17,6 +17,7 @@ export const DEVICE_TYPE_TO_CATEGORY: Record<string, string> = {
   "converter": "Processing",
   "scaler": "Processing",
   "adapter": "Processing",
+  "adapter-cable": "Cable Accessories",
   "frame-sync": "Processing",
   "multiviewer": "Processing",
   "capture-card": "Processing",
