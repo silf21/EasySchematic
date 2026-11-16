@@ -258,6 +258,8 @@ export interface DeviceData {
   ports: Port[];
   /** Physical length of an adapter-cable device, e.g. "2 m". */
   adapterCableLength?: string;
+  /** Independently movable cable ends in local schematic coordinates. */
+  adapterCableEnds?: { left: { x: number; y: number }; right: { x: number; y: number } };
   /** Device exists in the project (BOQ, pack list, racks, patch view) but is not rendered
    *  on the schematic canvas and is excluded from routing/overlap. v1: patch panels only,
    *  created from the Patch Panels page. Paired with node.hidden = true (React Flow). */
