@@ -273,6 +273,13 @@ export default function EdgeContextMenu() {
     setEditingLabel("multicable");
   }, [menu]);
 
+  const setCableSupplier = useCallback(() => {
+    if (!menu) return;
+    const edge = useSchematicStore.getState().edges.find(e => e.id === menu.edgeId);
+    setLabelValue(edge?.data?.supplier ?? "");
+    setEditingLabel("supplier");
+  }, [menu]);
+
   const setCableLength = useCallback(() => {
     if (!menu) return;
     const store = useSchematicStore.getState();
@@ -305,6 +312,7 @@ export default function EdgeContextMenu() {
       : editingLabel === "source" ? "sourceLabel"
       : editingLabel === "target" ? "targetLabel"
       : editingLabel === "length" ? "cableLength"
+      : editingLabel === "supplier" ? "supplier"
       : "label";
     store.patchEdgeData(menu.edgeId, { [field]: labelValue.trim() || undefined });
     useSchematicStore.setState({ edgeContextMenu: null });
@@ -554,6 +562,7 @@ export default function EdgeContextMenu() {
             : editingLabel === "source" ? "Source-end Label"
             : editingLabel === "target" ? "Target-end Label"
             : editingLabel === "length" ? "Cable Length"
+            : editingLabel === "supplier" ? "Supplier"
             : "Midpoint Label"}
         </div>
         <input
@@ -626,6 +635,7 @@ export default function EdgeContextMenu() {
       {!isDirectAttach && (
         <MenuItem label="Set Cable Length..." onClick={setCableLength} />
       )}
+      {!isDirectAttach && <MenuItem label="Set Supplier..." onClick={setCableSupplier} />}
       <MenuItem
         label={isCableIdHidden ? "Show Cable ID" : "Hide Cable ID"}
         onClick={toggleHideCableId}
