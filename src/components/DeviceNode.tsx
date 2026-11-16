@@ -1,5 +1,5 @@
 import { memo, useMemo, useCallback } from "react";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { Handle, NodeResizer, Position, type NodeProps } from "@xyflow/react";
 import type { DeviceNode as DeviceNodeType, Port } from "../types";
 import { portSide } from "../types";
 import { useSchematicStore } from "../store";
@@ -360,16 +360,16 @@ function DeviceNodeComponent({ id, data, selected }: NodeProps<DeviceNodeType>) 
     );
   };
 
-  // Adapter cables are real, fully editable devices with two real React Flow ports.
-  // Their visual form is a cable, not a device card. Double-click opens the same
-  // device editor as any other node; drag/select behavior stays native.
+  // A physical adapter cable remains a configurable device, but its visual body
+  // can be resized freely. React Flow handles at either end are real connection
+  // endpoints: drag from one onto a compatible port to attach it.
   if (data.deviceType === "adapter-cable") {
     const left = data.ports.find((p) => p.direction === "input" || p.flipped) ?? data.ports[0];
     const right = data.ports.find((p) => p !== left && p.direction === "output") ?? data.ports.find((p) => p !== left);
-    const renderCableHandle = (p: (typeof data.ports)[number] | undefined, side: "left" | "right") => {
+    const renderCableHandle = (p: Port | undefined, side: "left" | "right") => {
       if (!p) return null;
       const position = side === "left" ? Position.Left : Position.Right;
-      const baseStyle = { top: "50%", background: "var(--color-accent, #ef4444)", border: "2px solid var(--color-border)" };
+      const baseStyle = { top: "50%", background: "var(--color-accent, #ef4444)", border: "2px solid var(--color-border)", width: 12, height: 12 };
       if (p.direction === "bidirectional") return <span key={p.id}>
         <Handle type="target" id={`${p.id}-in`} position={position} style={baseStyle} />
         <Handle type="source" id={`${p.id}-out`} position={position} style={baseStyle} />
@@ -377,19 +377,24 @@ function DeviceNodeComponent({ id, data, selected }: NodeProps<DeviceNodeType>) 
       return <Handle key={p.id} type={p.direction === "input" ? "target" : "source"} id={p.id} position={position} style={baseStyle} />;
     };
     return (
-      <div onDoubleClick={() => setEditingNodeId(id)} title="Double-click to edit adapter cable"
-        className="relative nodrag-false" style={{ width: 208, height: 64, color: "var(--color-text)", cursor: "grab" }}>
-        <div style={{ position: "absolute", left: 0, right: 0, top: 32, borderTop: "3px solid var(--color-accent, #ef4444)" }} />
-        <div style={{ position: "absolute", top: 1, left: 20, right: 20, textAlign: "center", fontSize: 11,
-          background: "var(--color-surface)", border: selected ? "1px solid #3b82f6" : "1px solid var(--color-border)",
-          borderRadius: 4, padding: "3px 5px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {displayLabel(data.label)}{data.adapterCableLength ? ` · ${data.adapterCableLength}` : ""}
+      <>
+        <NodeResizer isVisible={!!selected} minWidth={90} minHeight={42}
+          lineStyle={{ borderColor: "var(--color-border)" }}
+          handleStyle={{ width: 9, height: 9, borderRadius: 3, backgroundColor: "var(--color-border)" }} />
+        <div onDoubleClick={() => setEditingNodeId(id)} title="Drag an endpoint onto another port; select to resize the adapter cable"
+          className="relative" style={{ width: "100%", height: "100%", minWidth: 90, minHeight: 42, color: "var(--color-text)", cursor: "grab" }}>
+          <div style={{ position: "absolute", left: 0, right: 0, top: "50%", borderTop: "3px solid var(--color-accent, #ef4444)" }} />
+          <div style={{ position: "absolute", top: "calc(50% - 32px)", left: "15%", right: "15%", textAlign: "center", fontSize: 11,
+            background: "var(--color-surface)", border: selected ? "1px solid #3b82f6" : "1px solid var(--color-border)",
+            borderRadius: 4, padding: "3px 5px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {displayLabel(data.label)}{data.adapterCableLength ? ` · ${data.adapterCableLength}` : ""}
+          </div>
+          <div style={{ position: "absolute", left: 4, top: "calc(50% + 8px)", fontSize: 10, background: "var(--color-surface)", padding: "0 3px" }}>{left?.label ?? ""}</div>
+          <div style={{ position: "absolute", right: 4, top: "calc(50% + 8px)", fontSize: 10, background: "var(--color-surface)", padding: "0 3px" }}>{right?.label ?? ""}</div>
+          {renderCableHandle(left, "left")}
+          {renderCableHandle(right, "right")}
         </div>
-        <div style={{ position: "absolute", left: 3, bottom: 1, fontSize: 10, background: "var(--color-surface)", padding: "0 3px" }}>{left?.label ?? ""}</div>
-        <div style={{ position: "absolute", right: 3, bottom: 1, fontSize: 10, background: "var(--color-surface)", padding: "0 3px" }}>{right?.label ?? ""}</div>
-        {renderCableHandle(left, "left")}
-        {renderCableHandle(right, "right")}
-      </div>
+      </>
     );
   }
 
