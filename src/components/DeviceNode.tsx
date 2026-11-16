@@ -396,6 +396,43 @@ function DeviceNodeComponent({ id, data, selected }: NodeProps<DeviceNodeType>) 
     );
   };
 
+  if (isHiddenAdapter) {
+    // Render 1x1 invisible placeholder — keeps React Flow handle refs valid but
+    // doesn't block device placement (RF re-measures this as ~1px)
+    return (
+      <div style={{ width: 1, height: 1, overflow: "hidden", opacity: 0, pointerEvents: "none" }}>
+        {data.ports.map((p) => {
+          if (p.direction === "bidirectional") {
+            return (
+              <span key={p.id}>
+                <Handle type="target" position={Position.Left} id={`${p.id}-in`} style={{ opacity: 0 }} />
+                <Handle type="source" position={Position.Right} id={`${p.id}-out`} style={{ opacity: 0 }} />
+              </span>
+            );
+          }
+          if (p.direction === "passthrough") {
+            return (
+              <span key={p.id}>
+                <Handle type="source" position={Position.Left} id={`${p.id}-rear`} style={{ opacity: 0 }} />
+                <Handle type="source" position={Position.Right} id={`${p.id}-front`} style={{ opacity: 0 }} />
+              </span>
+            );
+          }
+          const side = portSide(p);
+          return (
+            <Handle
+              key={p.id}
+              type={p.direction === "input" ? "target" : "source"}
+              position={side === "left" ? Position.Left : Position.Right}
+              id={p.id}
+              style={{ opacity: 0 }}
+            />
+          );
+        })}
+      </div>
+    );
+  }
+
   // Each cable endpoint has an independent draggable position. Connection handles
   // follow those positions, while the adapter remains a single device in the BOM.
   if (data.deviceType === "adapter-cable") {
@@ -436,43 +473,6 @@ function DeviceNodeComponent({ id, data, selected }: NodeProps<DeviceNodeType>) 
       </div>
       {endpoint(left, "left")}{endpoint(right, "right")}
     </div>;
-  }
-
-  if (isHiddenAdapter) {
-    // Render 1x1 invisible placeholder — keeps React Flow handle refs valid but
-    // doesn't block device placement (RF re-measures this as ~1px)
-    return (
-      <div style={{ width: 1, height: 1, overflow: "hidden", opacity: 0, pointerEvents: "none" }}>
-        {data.ports.map((p) => {
-          if (p.direction === "bidirectional") {
-            return (
-              <span key={p.id}>
-                <Handle type="target" position={Position.Left} id={`${p.id}-in`} style={{ opacity: 0 }} />
-                <Handle type="source" position={Position.Right} id={`${p.id}-out`} style={{ opacity: 0 }} />
-              </span>
-            );
-          }
-          if (p.direction === "passthrough") {
-            return (
-              <span key={p.id}>
-                <Handle type="source" position={Position.Left} id={`${p.id}-rear`} style={{ opacity: 0 }} />
-                <Handle type="source" position={Position.Right} id={`${p.id}-front`} style={{ opacity: 0 }} />
-              </span>
-            );
-          }
-          const side = portSide(p);
-          return (
-            <Handle
-              key={p.id}
-              type={p.direction === "input" ? "target" : "source"}
-              position={side === "left" ? Position.Left : Position.Right}
-              id={p.id}
-              style={{ opacity: 0 }}
-            />
-          );
-        })}
-      </div>
-    );
   }
 
   /** Footer aux block — rows below the port area. Grid-rounded (16-multiple) so device
