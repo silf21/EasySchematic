@@ -93,6 +93,7 @@ export interface PackListDevice {
   room: string;
   count: number;
   manufacturer: string;
+  supplier: string;
   modelNumber: string;
   cards: PackListDeviceCard[];
   powerDrawW: number;
@@ -181,7 +182,7 @@ export function mergeCablesByType(summary: PackListSummaryRow[]): PackListSummar
 export function mergeDevicesByModel(devices: PackListDevice[]): PackListDevice[] {
   const map = new Map<string, PackListDevice>();
   for (const d of devices) {
-    const key = `${d.manufacturer}|${d.modelNumber}|${d.model}`;
+    const key = `${d.supplier}|${d.manufacturer}|${d.modelNumber}|${d.model}`;
     const existing = map.get(key);
     if (existing) {
       existing.count += d.count;
@@ -321,7 +322,7 @@ export function computePackList(
     const note = (data.note ?? "").trim();
     const isSpare = data.isSpare === true;
 
-    const key = `${model}|${room}`;
+    const key = `${model}|${room}|${data.supplier ?? ""}`;
     const existing = deviceMap.get(key);
     if (existing) {
       existing.count++;
@@ -335,6 +336,7 @@ export function computePackList(
         room,
         count: 1,
         manufacturer: data.manufacturer ?? "",
+        supplier: data.supplier ?? "",
         modelNumber: data.modelNumber ?? "",
         cards: [],
         powerDrawW: data.powerDrawW ?? 0,
@@ -623,13 +625,13 @@ export function buildPackListCsv(
 
   // Device List
   lines.push("DEVICE LIST");
-  lines.push(csvRow(["Qty", "Device", "Manufacturer", "Model #", "Type", "Room", "Unit Cost", "Extended Cost", "Serial #", "Spare", "Note"]));
+  lines.push(csvRow(["Qty", "Device", "Manufacturer", "Supplier", "Model #", "Type", "Room", "Unit Cost", "Extended Cost", "Serial #", "Spare", "Note"]));
   let deviceTotal = 0;
   for (const d of data.devices) {
     const extCost = d.unitCost > 0 ? d.unitCost * d.count : 0;
     deviceTotal += extCost;
     lines.push(csvRow([
-      `${d.count}`, d.model, d.manufacturer, d.modelNumber, d.deviceType, d.room,
+      `${d.count}`, d.model, d.manufacturer, d.supplier, d.modelNumber, d.deviceType, d.room,
       d.unitCost > 0 ? d.unitCost.toFixed(2) : "",
       extCost > 0 ? extCost.toFixed(2) : "",
       d.serialNumbers.join(", "),
@@ -775,6 +777,7 @@ export function getPackListTableData(
       count: `${d.count}x`,
       model: d.model,
       manufacturer: d.manufacturer,
+      supplier: d.supplier,
       modelNumber: d.modelNumber,
       deviceType: d.deviceType,
       room: d.room,
