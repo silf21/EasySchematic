@@ -256,6 +256,8 @@ export interface DeviceData {
   hostname?: string;
   deviceType: string;
   ports: Port[];
+  /** Physical length of an adapter-cable device, e.g. "2 m". */
+  adapterCableLength?: string;
   /** Device exists in the project (BOQ, pack list, racks, patch view) but is not rendered
    *  on the schematic canvas and is excluded from routing/overlap. v1: patch panels only,
    *  created from the Patch Panels page. Paired with node.hidden = true (React Flow). */
