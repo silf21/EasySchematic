@@ -1708,6 +1708,30 @@ function validateConnection(
 
   if (!sourcePort || !targetPort) return false;
 
+  // Adapter-cable endpoints are physical plugs, not directional equipment I/O.
+  // Either end can be attached to a source or destination device. The adapter
+  // itself still owns two real ports and remains a single pack-list item.
+  const sourceAdapterCable = nodes.some(n => n.id === connection.source && n.type === "device" && n.data.deviceType === "adapter-cable");
+  const targetAdapterCable = nodes.some(n => n.id === connection.target && n.type === "device" && n.data.deviceType === "adapter-cable");
+  if (sourceAdapterCable || targetAdapterCable) {
+    if (connection.source === connection.target) return false;
+    if (!areConnectorsCompatible(sourcePort.connectorType, targetPort.connectorType)) return false;
+    if (sourcePort.signalType !== targetPort.signalType
+      && !areSignalPairsCompatible(sourcePort.signalType, targetPort.signalType)) return false;
+    // Each physical plug may only be attached once, regardless of which React
+    // Flow handle direction was used to start the connection.
+    const occupied = (nodeId: string, handleId: string | null | undefined) => {
+      const base = (handleId ?? "").replace(/-(in|out)$/, "");
+      return edges.some(e => e.id !== excludeEdgeId && (
+        (e.source === nodeId && (e.sourceHandle ?? "").replace(/-(in|out)$/, "") === base) ||
+        (e.target === nodeId && (e.targetHandle ?? "").replace(/-(in|out)$/, "") === base)
+      ));
+    };
+    if (sourceAdapterCable && occupied(connection.source, connection.sourceHandle)) return false;
+    if (targetAdapterCable && occupied(connection.target, connection.targetHandle)) return false;
+    return true;
+  }
+
   // ── Passthrough port handling ────────────────────────────────────────
   const srcIsPassthrough = sourcePort.direction === "passthrough";
   const tgtIsPassthrough = targetPort.direction === "passthrough";
