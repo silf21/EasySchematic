@@ -11,10 +11,12 @@ const cacheDir = path.join(os.tmpdir(), 'vite-easyschematic')
 
 const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'))
 
-let gitHash = 'unknown'
-try {
-  gitHash = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim()
-} catch { /* not a git repo or git not available */ }
+let gitHash = process.env.BUILD_COMMIT || 'unknown'
+if (!process.env.BUILD_COMMIT) {
+  try {
+    gitHash = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim()
+  } catch { /* not a git repo or git not available */ }
+}
 
 export default defineConfig({
   // Resolve TypeScript sources before .js so stale emitted .js shadows can't silently win.
