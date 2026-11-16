@@ -278,7 +278,7 @@ export function computePackList(
   for (const n of nodes) {
     if (n.type !== "device") continue;
     const data = n.data as DeviceData;
-    if (data.isVenueProvided || data.deviceType === "cable-junction") continue;
+    if (data.isVenueProvided) continue;
     const model = transformLabelNow(data.model ?? data.baseLabel ?? data.label);
     const room = getRoomLabel(nodes, n.parentId);
 
@@ -568,7 +568,7 @@ export function computeDocumentSummary(
 ): string {
   const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
   const devices = nodes.filter(
-    (n) => n.type === "device" && !(n.data as DeviceData).isCableAccessory && (n.data as DeviceData).deviceType !== "cable-junction",
+    (n) => n.type === "device" && !(n.data as DeviceData).isCableAccessory,
   ).length;
   const rooms = nodes.filter((n) => n.type === "room").length;
   // A stubbed connection is two legs sharing a linkedConnectionId; the target-side
