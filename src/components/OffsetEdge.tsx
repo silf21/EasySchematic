@@ -183,7 +183,7 @@ function OffsetEdgeComponent({
     if (!node || !state.hiddenAdapterNodeIds.has(adapterId)) return "";
     const other = state.edges.find(e => e.id !== id && e.source === adapterId);
     if (!other) return "";
-    const ports = node.data.ports;
+    const ports = node.data.ports as { id: string; label?: string }[];
     return JSON.stringify({ label: node.data.label, length: node.data.adapterCableLength ?? "",
       sourcePort: ports.find(p => p.id === (edge.targetHandle ?? "").replace(/-(in|out)$/, ""))?.label ?? ports[0]?.label ?? "",
       targetPort: ports.find(p => p.id === (other.sourceHandle ?? "").replace(/-(in|out)$/, ""))?.label ?? ports[1]?.label ?? "" });
