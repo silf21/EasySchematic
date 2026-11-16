@@ -32,6 +32,8 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          build-args: |
+            BUILD_COMMIT=${{ github.sha }}
           push: true
           tags: ghcr.io/silf21/easyschematic:patch-bay-dev
           platforms: linux/amd64
