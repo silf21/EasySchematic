@@ -223,7 +223,7 @@ export default function EdgeContextMenu() {
     useSchematicStore.setState({ edgeContextMenu: null });
   }, [menu]);
 
-  const [editingLabel, setEditingLabel] = useState<false | "label" | "multicable" | "source" | "target" | "length">(false);
+  const [editingLabel, setEditingLabel] = useState<false | "label" | "multicable" | "source" | "target" | "length" | "adapterCable" | "adapterSource" | "adapterTarget">(false);
   const [labelValue, setLabelValue] = useState("");
 
   // When opened directly into length-edit mode (double-click on the length label,
@@ -297,9 +297,34 @@ export default function EdgeContextMenu() {
     setEditingLabel("target");
   }, [menu]);
 
+  const editAdapterCable = useCallback((field: "adapterCable" | "adapterSource" | "adapterTarget") => {
+    if (!menu) return;
+    const edge = useSchematicStore.getState().edges.find((e) => e.id === menu.edgeId);
+    const adapter = edge?.data?.adapterCable;
+    setLabelValue(field === "adapterCable" ? adapter?.label ?? "" : field === "adapterSource" ? adapter?.sourcePort ?? "" : adapter?.targetPort ?? "");
+    setEditingLabel(field);
+  }, [menu]);
+
+  const removeAdapterCable = useCallback(() => {
+    if (!menu) return;
+    useSchematicStore.getState().patchEdgeData(menu.edgeId, { adapterCable: undefined });
+    useSchematicStore.setState({ edgeContextMenu: null });
+  }, [menu]);
+
   const commitLabel = useCallback(() => {
     if (!menu) return;
     const store = useSchematicStore.getState();
+    if (editingLabel === "adapterCable" || editingLabel === "adapterSource" || editingLabel === "adapterTarget") {
+      const edge = store.edges.find((e) => e.id === menu.edgeId);
+      const current = edge?.data?.adapterCable ?? { label: "Adapter Cable", sourcePort: "", targetPort: "" };
+      const adapterCable = { ...current,
+        [editingLabel === "adapterCable" ? "label" : editingLabel === "adapterSource" ? "sourcePort" : "targetPort"]: labelValue.trim(),
+      };
+      store.patchEdgeData(menu.edgeId, { adapterCable });
+      useSchematicStore.setState({ edgeContextMenu: null });
+      setEditingLabel(false);
+      return;
+    }
     const field =
       editingLabel === "multicable" ? "multicableLabel"
       : editingLabel === "source" ? "sourceLabel"
@@ -562,6 +587,9 @@ export default function EdgeContextMenu() {
             : editingLabel === "source" ? "Source-end Label"
             : editingLabel === "target" ? "Target-end Label"
             : editingLabel === "length" ? "Cable Length"
+            : editingLabel === "adapterCable" ? "Adapter Cable Name"
+            : editingLabel === "adapterSource" ? "Adapter Source Port"
+            : editingLabel === "adapterTarget" ? "Adapter Target Port"
             : "Midpoint Label"}
         </div>
         <input
@@ -625,6 +653,14 @@ export default function EdgeContextMenu() {
         </>
       )}
       <div className="h-px bg-gray-200 my-1" />
+      <MenuItem label={edge?.data?.adapterCable ? "Edit Adapter Cable Name..." : "Add Adapter Cable..."} onClick={() => editAdapterCable("adapterCable")} />
+      {edge?.data?.adapterCable && (
+        <>
+          <MenuItem label="Set Adapter Source Port..." onClick={() => editAdapterCable("adapterSource")} />
+          <MenuItem label="Set Adapter Target Port..." onClick={() => editAdapterCable("adapterTarget")} />
+          <MenuItem label="Remove Adapter Cable" onClick={removeAdapterCable} />
+        </>
+      )}
       <MenuItem label="Set Source-end Label..." onClick={setSourceEndLabel} />
       <MenuItem label="Set Midpoint Label..." onClick={setConnectionLabel} />
       <MenuItem label="Set Target-end Label..." onClick={setTargetEndLabel} />
