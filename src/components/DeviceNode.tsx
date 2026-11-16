@@ -403,6 +403,24 @@ function DeviceNodeComponent({ id, data, selected }: NodeProps<DeviceNodeType>) 
     );
   }
 
+  // A cable junction is a logical mating point, not another physical device.
+  // Its two real handles let the standard connection router treat each cable
+  // segment independently, including reconnecting and removing either cable.
+  if (data.deviceType === "cable-junction") {
+    return <div title="Cable junction · double-click to edit connectors"
+      onDoubleClick={() => setEditingNodeId(id)}
+      style={{ position: "relative", width: 24, height: 24, borderRadius: "50%",
+        background: "var(--color-surface)", border: "2px solid var(--color-border)",
+        boxSizing: "border-box", display: "grid", placeItems: "center",
+        fontSize: 12, color: "var(--color-text)" }}>
+      <Handle type="target" id={data.ports[0]?.id ?? "input"}
+        position={Position.Left} style={{ top: "50%", width: 12, height: 12 }} />
+      <span>↔</span>
+      <Handle type="source" id={data.ports[1]?.id ?? "output"}
+        position={Position.Right} style={{ top: "50%", width: 12, height: 12 }} />
+    </div>;
+  }
+
   // An adapter cable is a physical device in the model, but NEVER draws its
   // own cable path. React Flow's native connections and the existing hidden-
   // adapter virtual-edge router own all cable geometry and reconnection.
