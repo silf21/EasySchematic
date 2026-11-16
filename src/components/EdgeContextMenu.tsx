@@ -223,7 +223,7 @@ export default function EdgeContextMenu() {
     useSchematicStore.setState({ edgeContextMenu: null });
   }, [menu]);
 
-  const [editingLabel, setEditingLabel] = useState<false | "label" | "multicable" | "source" | "target" | "length" | "adapterCable" | "adapterSource" | "adapterTarget">(false);
+  const [editingLabel, setEditingLabel] = useState<false | "label" | "multicable" | "source" | "target" | "length" | "adapterCable" | "adapterSource" | "adapterTarget" | "supplier">(false);
   const [labelValue, setLabelValue] = useState("");
 
   // When opened directly into length-edit mode (double-click on the length label,
@@ -271,6 +271,13 @@ export default function EdgeContextMenu() {
     const edge = store.edges.find((e) => e.id === menu.edgeId);
     setLabelValue((edge?.data?.multicableLabel as string) ?? "");
     setEditingLabel("multicable");
+  }, [menu]);
+
+  const setCableSupplier = useCallback(() => {
+    if (!menu) return;
+    const edge = useSchematicStore.getState().edges.find(e => e.id === menu.edgeId);
+    setLabelValue(edge?.data?.supplier ?? "");
+    setEditingLabel("supplier");
   }, [menu]);
 
   const setCableLength = useCallback(() => {
@@ -330,6 +337,7 @@ export default function EdgeContextMenu() {
       : editingLabel === "source" ? "sourceLabel"
       : editingLabel === "target" ? "targetLabel"
       : editingLabel === "length" ? "cableLength"
+      : editingLabel === "supplier" ? "supplier"
       : "label";
     store.patchEdgeData(menu.edgeId, { [field]: labelValue.trim() || undefined });
     useSchematicStore.setState({ edgeContextMenu: null });
@@ -587,6 +595,7 @@ export default function EdgeContextMenu() {
             : editingLabel === "source" ? "Source-end Label"
             : editingLabel === "target" ? "Target-end Label"
             : editingLabel === "length" ? "Cable Length"
+            : editingLabel === "supplier" ? "Supplier"
             : editingLabel === "adapterCable" ? "Adapter Cable Name"
             : editingLabel === "adapterSource" ? "Adapter Source Port"
             : editingLabel === "adapterTarget" ? "Adapter Target Port"
@@ -670,6 +679,7 @@ export default function EdgeContextMenu() {
       {!isDirectAttach && (
         <MenuItem label="Set Cable Length..." onClick={setCableLength} />
       )}
+      {!isDirectAttach && <MenuItem label="Set Supplier..." onClick={setCableSupplier} />}
       <MenuItem
         label={isCableIdHidden ? "Show Cable ID" : "Hide Cable ID"}
         onClick={toggleHideCableId}
