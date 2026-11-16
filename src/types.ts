@@ -272,6 +272,8 @@ export interface DeviceData {
   templateId?: string;
   templateVersion?: number;
   manufacturer?: string;
+  /** Supplier for this device instance; independent from its manufacturer/template. */
+  supplier?: string;
   modelNumber?: string;
   /** Manufacturer spec sheet / product page URL — inherited from the source template but editable per-device */
   referenceUrl?: string;
@@ -504,6 +506,8 @@ export interface PatchSegmentOverride {
 }
 
 export interface ConnectionData {
+  /** Supplier for this physical cable connection, independent of endpoint devices. */
+  supplier?: string;
   [key: string]: unknown;
   signalType: SignalType;
   manualWaypoints?: { x: number; y: number }[];
