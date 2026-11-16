@@ -413,6 +413,10 @@ export function computePackList(
       const effectiveTargetEdge = linkedPartner.get(e.id) ?? e;
       const srcNode = nodes.find((n) => n.id === e.source);
       const tgtNode = nodes.find((n) => n.id === effectiveTargetEdge.target);
+      // The two legs of an adapter-cable are plug attachments, not separate
+      // physical cables. Its device instance is counted exactly once below.
+      if ((srcNode?.type === "device" && srcNode.data.deviceType === "adapter-cable") ||
+          (tgtNode?.type === "device" && tgtNode.data.deviceType === "adapter-cable")) return false;
       const srcPort = resolvePort(srcNode, e.sourceHandle);
       const tgtPort = resolvePort(tgtNode, effectiveTargetEdge.targetHandle);
       if (srcNode?.type === "device" && (srcNode.data as DeviceData).deviceType === "adapter" && srcPort?.directAttach) return false;
