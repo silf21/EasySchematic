@@ -295,6 +295,10 @@ export function computePackList(
       continue;
     }
 
+    // Adapter cables are real device nodes, but belong in the cable pack list.
+    // Keep them out of the ordinary device and passive-adapter sections.
+    if (data.deviceType === "adapter-cable") continue;
+
     // Passive adapters go to their own section (shown in cables tab)
     if (data.deviceType === "adapter") {
       const key = `${model}|${room}`;
@@ -444,6 +448,31 @@ export function computePackList(
         a.cableType.localeCompare(b.cableType) ||
         a.signalType.localeCompare(b.signalType),
     );
+
+  // Include one physical cable per adapter-cable device (not one per edge).
+  // Its model is its cable type; endpoint connector labels stay available in the
+  // detailed cable list. The surrounding connection edges remain independently
+  // counted unless they are direct-attach leads.
+  for (const n of nodes) {
+    if (n.type !== "device") continue;
+    const data = n.data as DeviceData;
+    if (data.deviceType !== "adapter-cable" || data.isVenueProvided) continue;
+    const first = data.ports[0];
+    const last = data.ports[data.ports.length - 1];
+    const room = getRoomLabel(nodes, n.parentId);
+    cables.push({
+      cableType: transformLabelNow(data.model ?? data.baseLabel ?? data.label),
+      signalType: signalLabel(first?.signalType ?? "custom"),
+      cableLength: data.adapterCableLength ?? "",
+      sourceDevice: data.label,
+      sourcePort: first?.label ?? "",
+      sourceRoom: room,
+      targetDevice: data.label,
+      targetPort: last?.label ?? "",
+      targetRoom: room,
+    });
+  }
+  cables.sort((a, b) => a.cableType.localeCompare(b.cableType) || a.signalType.localeCompare(b.signalType));
 
   // Summary — group by (cableType, signalType, cableLength, route)
   const summaryMap = new Map<string, PackListSummaryRow>();
