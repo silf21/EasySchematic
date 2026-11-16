@@ -576,6 +576,10 @@ export interface ConnectionData {
   patchHops?: PatchHop[];
   /** Hide patch-panel names and port positions on this schematic connection. */
   hidePatchHops?: boolean;
+  /** Patch hop table offset from the cable midpoint in canvas units. */
+  patchHopTablePosition?: { x: number; y: number };
+  /** Patch hop table dimensions in canvas units. */
+  patchHopTableSize?: { width: number; height: number };
   /** Sparse per-segment overrides, parallel to the segment list (patchHops.length + 1). */
   patchSegments?: PatchSegmentOverride[];
 }
