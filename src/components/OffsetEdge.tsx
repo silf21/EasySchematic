@@ -2,6 +2,7 @@ import { memo, useState, useRef, useEffect } from "react";
 import {
   BaseEdge,
   EdgeLabelRenderer,
+  useReactFlow,
   type EdgeProps,
 } from "@xyflow/react";
 import { useSchematicStore } from "../store";
@@ -30,6 +31,7 @@ function OffsetEdgeComponent({
   // recoloured) shows its live colour. Built-ins keep their stored var(--color-*), and an
   // id this client doesn't know keeps the colour the file was saved with.
   const registryVersion = useTypeRegistryVersion();
+  const reactFlow = useReactFlow();
   const liveStroke = useSchematicStore((s) => {
     void registryVersion;
     const d = s.edges.find((e) => e.id === id)?.data;
@@ -180,7 +182,7 @@ function OffsetEdgeComponent({
   const tablePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!tableGesture) return;
     event.stopPropagation();
-    const zoom = useSchematicStore.getState().viewport.zoom || 1;
+    const zoom = reactFlow.getZoom() || 1;
     const dx = (event.clientX - tableGesture.startX) / zoom;
     const dy = (event.clientY - tableGesture.startY) / zoom;
     setTableLive(tableGesture.mode === "move"
@@ -190,7 +192,7 @@ function OffsetEdgeComponent({
   const tablePointerEnd = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!tableGesture) return;
     event.stopPropagation();
-    const zoom = useSchematicStore.getState().viewport.zoom || 1;
+    const zoom = reactFlow.getZoom() || 1;
     const dx = (event.clientX - tableGesture.startX) / zoom;
     const dy = (event.clientY - tableGesture.startY) / zoom;
     if (tableGesture.mode === "move") patchEdgeData(id, { patchHopTablePosition: { x: tableGesture.position.x + dx, y: tableGesture.position.y + dy } });
