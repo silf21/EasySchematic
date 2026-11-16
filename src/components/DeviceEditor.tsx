@@ -135,6 +135,11 @@ export default function DeviceEditor() {
   const [hostname, setHostname] = useState("");
   const [deviceType, setDeviceType] = useState("");
   const [manufacturer, setManufacturer] = useState("");
+  const [supplier, setSupplier] = useState("");
+  const existingSuppliers = useMemo(() => [...new Set(nodes
+    .filter((n): n is DeviceNode => n.type === "device")
+    .map((n) => n.data.supplier?.trim() ?? "")
+    .filter(Boolean))].sort((a, b) => a.localeCompare(b)), [nodes]);
   const [modelNumber, setModelNumber] = useState("");
   const [referenceUrl, setReferenceUrl] = useState("");
   const [category, setCategory] = useState("");
@@ -256,6 +261,7 @@ export default function DeviceEditor() {
     setHostname(node.data.hostname ?? "");
     setDeviceType(node.data.deviceType);
     setManufacturer(node.data.manufacturer ?? "");
+    setSupplier(node.data.supplier ?? "");
     setModelNumber(node.data.modelNumber ?? "");
     setReferenceUrl(node.data.referenceUrl ?? tpl?.referenceUrl ?? "");
     setCategory(node.data.category ?? tpl?.category ?? "");
@@ -405,6 +411,7 @@ export default function DeviceEditor() {
       deviceType: deviceType.trim() || "custom",
       ports: finalPorts,
       ...(manufacturer.trim() ? { manufacturer: manufacturer.trim() } : {}),
+      ...(supplier.trim() ? { supplier: supplier.trim() } : {}),
       ...(modelNumber.trim() ? { modelNumber: modelNumber.trim() } : {}),
       ...(referenceUrl.trim() ? { referenceUrl: referenceUrl.trim() } : {}),
       ...(category.trim() ? { category: category.trim() } : {}),
@@ -446,7 +453,7 @@ export default function DeviceEditor() {
       ...(() => { const t = searchTermsRaw.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 20); return t.length > 0 ? { searchTerms: t } : {}; })(),
     };
     return overrides ? { ...data, ...overrides } : data;
-  }, [editingNodeId, ports, label, shortName, useShortName, wrapLabel, hostname, deviceType, manufacturer, modelNumber, referenceUrl, category, color, headerColor, node, showAllPorts, hiddenPorts, dhcpServer, powerDrawW, powerCapacityW, voltage, thermalBtuh, poeBudgetW, poeDrawW, unitCost, serialNumber, note, isSpare, procurementSource, heightMm, widthMm, depthMm, weightKg, rackForm, isCableAccessory, integratedWithCable, isVenueProvided, adapterVisibility, auxiliaryData, searchTermsRaw]);
+  }, [editingNodeId, ports, label, shortName, useShortName, wrapLabel, hostname, deviceType, manufacturer, supplier, modelNumber, referenceUrl, category, color, headerColor, node, showAllPorts, hiddenPorts, dhcpServer, powerDrawW, powerCapacityW, voltage, thermalBtuh, poeBudgetW, poeDrawW, unitCost, serialNumber, note, isSpare, procurementSource, heightMm, widthMm, depthMm, weightKg, rackForm, isCableAccessory, integratedWithCable, isVenueProvided, adapterVisibility, auxiliaryData, searchTermsRaw]);
 
   const handleSave = useCallback(() => {
     if (!editingNodeId) return;
@@ -1105,6 +1112,18 @@ export default function DeviceEditor() {
                 onChange={(e) => setManufacturer(e.target.value)}
                 placeholder="e.g. Sony"
               />
+            </Field>
+            <Field label="Supplier">
+              <input
+                className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded px-2 py-1.5 text-xs text-[var(--color-text-heading)] outline-none focus:border-blue-500"
+                list="device-supplier-options"
+                value={supplier}
+                onChange={(e) => setSupplier(e.target.value)}
+                placeholder="Choose or enter supplier"
+              />
+              <datalist id="device-supplier-options">
+                {existingSuppliers.map((name) => <option key={name} value={name} />)}
+              </datalist>
             </Field>
             <Field label="Model Number">
               <input
