@@ -156,12 +156,12 @@ function OffsetEdgeComponent({
       const panel = s.nodes.find((n) => n.id === hop.panelNodeId);
       const data = panel?.data as { label?: string; ports?: { id: string; label?: string }[] } | undefined;
       const port = data?.ports?.find((p) => p.id === hop.portId);
-      return [data?.label ?? "Patch Panel", port?.label ?? hop.portId];
+      return [data?.label ?? "Patch Panel", port?.label ?? hop.portId, hop.orientation === "front-to-rear" ? "Front → Rear" : "Rear → Front"];
     });
     return JSON.stringify({ rows, position: edge.data.patchHopTablePosition ?? { x: 0, y: -28 }, size: edge.data.patchHopTableSize ?? { width: 260, height: 0 } });
   });
   const patchHopData = patchHopDataJson ? JSON.parse(patchHopDataJson) as {
-    rows: [string, string][];
+    rows: [string, string, string][];
     position: { x: number; y: number };
     size: { width: number; height: number };
   } : null;
@@ -779,6 +779,34 @@ function OffsetEdgeComponent({
     </div>
   ) : null;
 
+  // Connector is anchored to the actual routed cable midpoint and ends at the
+  // nearest point of the card rectangle. Both endpoints follow drag and resize.
+  const patchCardX = tableDisplay ? lx + tableDisplay.position.x : 0;
+  const patchCardY = tableDisplay ? ly + tableDisplay.position.y : 0;
+  const patchCardW = tableDisplay?.size.width ?? 260;
+  const patchCardH = tableDisplay?.size.height || 110;
+  const patchAnchorX = customMidPt.x;
+  const patchAnchorY = customMidPt.y;
+  const patchLineEndX = Math.max(patchCardX, Math.min(patchAnchorX, patchCardX + patchCardW));
+  const patchLineEndY = Math.max(patchCardY, Math.min(patchAnchorY, patchCardY + patchCardH));
+  // If the anchor is inside the card projection, attach to the nearest edge.
+  const patchInside = patchAnchorX >= patchCardX && patchAnchorX <= patchCardX + patchCardW
+    && patchAnchorY >= patchCardY && patchAnchorY <= patchCardY + patchCardH;
+  const patchDistances = [
+    Math.abs(patchAnchorX - patchCardX), Math.abs(patchAnchorX - (patchCardX + patchCardW)),
+    Math.abs(patchAnchorY - patchCardY), Math.abs(patchAnchorY - (patchCardY + patchCardH)),
+  ];
+  const patchNearestSide = patchDistances.indexOf(Math.min(...patchDistances));
+  const patchEndX = !patchInside ? patchLineEndX : patchNearestSide === 0 ? patchCardX : patchNearestSide === 1 ? patchCardX + patchCardW : patchAnchorX;
+  const patchEndY = !patchInside ? patchLineEndY : patchNearestSide === 2 ? patchCardY : patchNearestSide === 3 ? patchCardY + patchCardH : patchAnchorY;
+  const patchConnector = patchHopData && tableDisplay && routeStr ? (
+    <svg aria-hidden="true" style={{ position: "absolute", overflow: "visible", pointerEvents: "none", left: 0, top: 0, width: 1, height: 1 }}>
+      <line x1={patchAnchorX} y1={patchAnchorY} x2={patchEndX} y2={patchEndY}
+        stroke="var(--color-text-muted, #94a3b8)" strokeWidth={1.5} strokeDasharray="5 4" />
+      <circle cx={patchAnchorX} cy={patchAnchorY} r={3} fill="var(--color-text-muted, #94a3b8)" />
+    </svg>
+  ) : null;
+
   const patchHopBadge = patchHopData && tableDisplay && routeStr ? (
     <div
       className="nodrag nopan nowheel"
@@ -788,15 +816,15 @@ function OffsetEdgeComponent({
       onContextMenu={(e) => e.stopPropagation()}
       style={{
         position: "absolute",
-        transform: `translate(${lx + tableDisplay.position.x}px, ${ly + tableDisplay.position.y}px)`,
-        width: tableDisplay.size.width,
+        transform: `translate(${patchCardX}px, ${patchCardY}px)`,
+        width: patchCardW,
         height: tableDisplay.size.height || "auto",
-        minHeight: 38,
+        minHeight: 80,
         pointerEvents: "all",
         background: "var(--color-surface)",
         color: "var(--color-text)",
         border: "1px solid var(--color-border)",
-        borderRadius: 4,
+        borderRadius: 5,
         boxShadow: "0 2px 7px #0005",
         fontSize: 11,
         display: "flex", flexDirection: "column",
@@ -805,23 +833,24 @@ function OffsetEdgeComponent({
       <div
         onPointerDown={(e) => tablePointerStart(e, "move")}
         style={{ cursor: "move", background: "var(--color-surface-raised, #263448)",
-          padding: "4px 8px", fontWeight: 600, borderBottom: "1px solid var(--color-border)", touchAction: "none" }}
-        title="Drag to move patch hops table"
-      >Patch Hops</div>
-      <div style={{ overflow: "auto", flex: 1 }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "inherit" }}>
-          <thead><tr><th style={{ textAlign: "left", padding: "3px 7px" }}>Panel</th><th style={{ textAlign: "left", padding: "3px 7px" }}>Position</th></tr></thead>
-          <tbody>{patchHopData.rows.map(([panel, port], i) => (
-            <tr key={i} style={{ borderTop: "1px solid var(--color-border)" }}>
-              <td style={{ padding: "3px 7px", overflowWrap: "anywhere" }}>{panel}</td>
-              <td style={{ padding: "3px 7px", whiteSpace: "nowrap" }}>{port}</td>
-            </tr>
-          ))}</tbody>
-        </table>
+          padding: "5px 8px", fontWeight: 600, borderBottom: "1px solid var(--color-border)", touchAction: "none" }}
+        title="Drag to move patch route"
+      >DMX / SIGNAL ROUTE · {patchHopData.rows.length} Patch Hops</div>
+      <div style={{ display: "flex", gap: 4, alignItems: "stretch", padding: "8px 6px", overflow: "auto", flex: 1 }}>
+        {patchHopData.rows.map(([panel, port, direction], i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0, flex: 1 }}>
+            {i > 0 && <span aria-hidden="true" style={{ color: "var(--color-text-muted)", fontSize: 15 }}>→</span>}
+            <div title={panel} style={{ minWidth: 0, flex: 1, textAlign: "center", display: "flex", flexDirection: "column", gap: 3 }}>
+              <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 10, opacity: 0.8 }}>{panel}</div>
+              <div style={{ background: "var(--color-surface-raised, #263448)", border: "1px solid var(--color-border)", borderRadius: 3, padding: "4px 2px", fontWeight: 600 }}>{port}</div>
+              <div style={{ fontSize: 9, opacity: 0.75, whiteSpace: "nowrap" }}>{direction}</div>
+            </div>
+          </div>
+        ))}
       </div>
       <div
         onPointerDown={(e) => tablePointerStart(e, "resize")}
-        title="Drag to resize patch hops table"
+        title="Drag to resize patch route"
         style={{ position: "absolute", right: 0, bottom: 0, width: 15, height: 15,
           cursor: "nwse-resize", touchAction: "none", background: "linear-gradient(135deg, transparent 55%, var(--color-text-muted) 55%, var(--color-text-muted) 63%, transparent 63%)" }}
       />
@@ -842,10 +871,11 @@ function OffsetEdgeComponent({
   ) : null;
 
   // All labels + reconnect visuals rendered via EdgeLabelRenderer (HTML layer above all SVG edges)
-  const hasPortalContent = customLabels || cableIdLabels || reconnectVisuals || usbcWarningBadge || cableLengthBadge || pathEditHint || patchHopBadge || adapterCableBadge;
+  const hasPortalContent = customLabels || cableIdLabels || reconnectVisuals || usbcWarningBadge || cableLengthBadge || pathEditHint || patchHopBadge || patchConnector || adapterCableBadge;
   const edgeLabelsPortal = hasPortalContent ? (
     <EdgeLabelRenderer>
       {cableIdLabels}
+      {patchConnector}
       {patchHopBadge}
       {adapterCableBadge}
       {customLabels}
