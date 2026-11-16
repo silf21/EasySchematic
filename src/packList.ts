@@ -776,7 +776,7 @@ export function getPackListTableData(
   // Devices table: only merge when room column is hidden AND not grouping by room
   const roomColVisible = devicesTableDef?.columns.find((c) => c.key === "room")?.visible ?? false;
   const devGroupBy = devicesTableDef?.groupBy;
-  const useRawDevices = devGroupBy === "room" || devGroupBy === "deviceType" || roomColVisible;
+  const useRawDevices = devGroupBy === "room" || devGroupBy === "deviceType" || devGroupBy === "supplier" || roomColVisible;
   const deviceSource = useRawDevices ? data.devices : mergeDevicesByModel(data.devices);
   const deviceRows: Record<string, string>[] = [];
   for (const d of deviceSource) {
@@ -815,6 +815,8 @@ export function getPackListTableData(
     deviceGroupedRows = groupBy(deviceRows, (r) => r.room);
   } else if (devGroupBy === "deviceType") {
     deviceGroupedRows = groupBy(deviceRows, (r) => r.deviceType || "Other");
+  } else if (devGroupBy === "supplier") {
+    deviceGroupedRows = groupBy(deviceRows, (r) => r.supplier || "Not assigned");
   }
 
   // Cables table: only merge when route column is hidden AND not grouping by path
@@ -823,6 +825,7 @@ export function getPackListTableData(
   const useRawCables = cabGroupBy === "path" || routeColVisible;
   const summarySource = useRawCables ? data.summary : mergeCablesByType(data.summary);
   const adapterCableRows = data.adapters.map((a) => ({
+    supplier: a.supplier,
     count: `${a.count}x`,
     cableType: a.model,
     signalType: "",
@@ -838,6 +841,7 @@ export function getPackListTableData(
       return {
         count: `${s.count}x`,
         cableType: s.cableType,
+        supplier: s.supplier,
         signalType: s.signalType,
         cableLength: s.cableLength,
         route: s.route,
@@ -854,6 +858,8 @@ export function getPackListTableData(
       routeRoomKey(r.route),
     );
     if (adapterCableRows.length > 0) cableGroupedRows.set("Adapters", adapterCableRows);
+  } else if (cabGroupBy === "supplier") {
+    cableGroupedRows = groupBy(cableRows, (r) => r.supplier || "Not assigned");
   } else if (cabGroupBy === "category") {
     // Group by cable category in the defined order (Video, Audio, Control, Data, Power, Custom)
     const ordered = groupCablesByCategory(summarySource);
@@ -868,6 +874,7 @@ export function getPackListTableData(
           return {
             count: `${s.count}x`,
             cableType: s.cableType,
+            supplier: s.supplier,
             signalType: s.signalType,
             cableLength: s.cableLength,
             route: s.route,
@@ -904,6 +911,8 @@ export function getPackListTableData(
     sortedDeviceGrouped = groupBy(sortedDeviceRows, (r) => r.room);
   } else if (devGroupBy === "deviceType" && devicesTableDef?.sortBy) {
     sortedDeviceGrouped = groupBy(sortedDeviceRows, (r) => r.deviceType || "Other");
+  } else if (devGroupBy === "supplier" && devicesTableDef?.sortBy) {
+    sortedDeviceGrouped = groupBy(sortedDeviceRows, (r) => r.supplier || "Not assigned");
   }
 
   let sortedCableGrouped = cableGroupedRows;
@@ -912,6 +921,8 @@ export function getPackListTableData(
       routeRoomKey(r.route),
     );
     if (adapterCableRows.length > 0) sortedCableGrouped.set("Adapters", adapterCableRows);
+  } else if (cabGroupBy === "supplier" && cablesTableDef?.sortBy) {
+    sortedCableGrouped = groupBy(sortedCableRows, (r) => r.supplier || "Not assigned");
   } else if (cabGroupBy === "category" && cablesTableDef?.sortBy) {
     // Re-group sorted rows by category, preserving category order
     sortedCableGrouped = new Map(
