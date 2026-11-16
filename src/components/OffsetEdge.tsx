@@ -146,6 +146,19 @@ function OffsetEdgeComponent({
     return (edge?.data?.targetLabel as string) ?? "";
   });
 
+  // Patch hop names and port positions, resolved live from the panel devices.
+  // Use a string selector to avoid rerender loops from newly allocated arrays.
+  const patchHopText = useSchematicStore((s) => {
+    const edge = s.edges.find((e) => e.id === id);
+    if (!edge?.data?.patchHops?.length || edge.data.hidePatchHops) return "";
+    return edge.data.patchHops.map((hop) => {
+      const panel = s.nodes.find((n) => n.id === hop.panelNodeId);
+      const data = panel?.data as { label?: string; ports?: { id: string; label?: string }[] } | undefined;
+      const port = data?.ports?.find((p) => p.id === hop.portId);
+      return `${data?.label ?? "Patch Panel"} · ${port?.label ?? hop.portId}`;
+    }).join(" → ");
+  });
+
   // Cable ID label from pre-computed map
   const showCableIdLabels = useSchematicStore((s) => s.showCableIdLabels);
   const showCustomLabels = useSchematicStore((s) => s.showCustomLabels);
@@ -719,11 +732,33 @@ function OffsetEdgeComponent({
     </div>
   ) : null;
 
+  const patchHopBadge = patchHopText && routeStr ? (
+    <div
+      className="nodrag nopan"
+      title={patchHopText}
+      style={{
+        position: "absolute",
+        transform: `translate(-50%, -100%) translate(${lx}px, ${ly - 14}px)`,
+        pointerEvents: "none",
+        whiteSpace: "nowrap",
+        fontSize: 10,
+        padding: "2px 5px",
+        borderRadius: 3,
+        background: "var(--color-surface)",
+        color: "var(--color-text)",
+        border: "1px solid var(--color-border)",
+      }}
+    >
+      {patchHopText}
+    </div>
+  ) : null;
+
   // All labels + reconnect visuals rendered via EdgeLabelRenderer (HTML layer above all SVG edges)
-  const hasPortalContent = customLabels || cableIdLabels || reconnectVisuals || usbcWarningBadge || cableLengthBadge || pathEditHint;
+  const hasPortalContent = customLabels || cableIdLabels || reconnectVisuals || usbcWarningBadge || cableLengthBadge || pathEditHint || patchHopBadge;
   const edgeLabelsPortal = hasPortalContent ? (
     <EdgeLabelRenderer>
       {cableIdLabels}
+      {patchHopBadge}
       {customLabels}
       {cableLengthBadge}
       {usbcWarningBadge}
