@@ -7,7 +7,7 @@ import { computeCableSchedule, type CableScheduleDistanceContext } from "./cable
 import { resolvePort, resolvePortLabel, getRoomLabel, escapeCsv, csvRow } from "./packList";
 import { PATCH_PANEL_SCHEDULE_COLUMNS } from "./patchPanelColumns";
 import { effectiveSignalType, resolvePortGender } from "./connectorTypes";
-import { getPanelOccupancy, segmentsForEdge } from "./patchCircuits";
+import { getPanelOccupancy, segmentsForEdge, hopEntryFace } from "./patchCircuits";
 import { getCableType } from "./cableTypes";
 import type { SignalType } from "./types";
 import { transformLabelNow } from "./labelCaseUtils";
@@ -238,23 +238,27 @@ export function computePatchPanelSchedule(
             const sigRaw = (hopEdge.data?.signalType ?? "custom") as SignalType;
             const inn = segs[occ.hopIndex];
             const outSeg = segs[occ.hopIndex + 1];
-            if (!rear.edgeId && inn) {
-              rear = {
+            const hop = hopEdge.data?.patchHops?.[occ.hopIndex];
+            const reversed = hop && hopEntryFace(hop) === "front";
+            if (!(reversed ? front.edgeId : rear.edgeId) && inn) {
+              const incoming = {
                 edgeId: hopEdge.id,
                 remoteDevice: inn.from.label, remotePort: inn.from.portLabel, remoteRoom: inn.from.room,
                 cableId: inn.label,
                 cableType: getCableType(inn.from.port, inn.to.port, sigRaw),
                 cableLength: inn.cableLength, computedLength: "",
               };
+              if (reversed) front = incoming; else rear = incoming;
             }
-            if (!front.edgeId && outSeg) {
-              front = {
+            if (!(reversed ? rear.edgeId : front.edgeId) && outSeg) {
+              const outgoing = {
                 edgeId: hopEdge.id,
                 remoteDevice: outSeg.to.label, remotePort: outSeg.to.portLabel, remoteRoom: outSeg.to.room,
                 cableId: outSeg.label,
                 cableType: getCableType(outSeg.from.port, outSeg.to.port, sigRaw),
                 cableLength: outSeg.cableLength, computedLength: "",
               };
+              if (reversed) rear = outgoing; else front = outgoing;
             }
           }
         }
