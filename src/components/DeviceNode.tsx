@@ -408,10 +408,8 @@ function DeviceNodeComponent({ id, data, selected }: NodeProps<DeviceNodeType>) 
       const style = { left: pt.x - 6, top: pt.y - 6, right: "auto", transform: "none", width: 12, height: 12,
         background: "var(--color-accent, #ef4444)", border: "2px solid var(--color-border)" } as const;
       return <span key={p.id}>
-        {p.direction === "bidirectional" ? <>
-          <Handle type="target" id={`${p.id}-in`} position={position} style={style} />
-          <Handle type="source" id={`${p.id}-out`} position={position} style={style} />
-        </> : <Handle type={p.direction === "input" ? "target" : "source"} id={p.id} position={position} style={style} />}
+        <Handle type="target" id={`${p.id}-in`} position={position} style={{ ...style, zIndex: 3 }} />
+        <Handle type="source" id={`${p.id}-out`} position={position} style={{ ...style, zIndex: 4 }} />
         <div className="nodrag nopan" onPointerDown={e => onCableEndDown(e, side)} onPointerMove={onCableEndMove}
           onPointerUp={onCableEndUp} onPointerCancel={onCableEndUp}
           title="Drag this grip to move the cable end; drag the circular port below to connect"
