@@ -136,6 +136,10 @@ export default function DeviceEditor() {
   const [deviceType, setDeviceType] = useState("");
   const [manufacturer, setManufacturer] = useState("");
   const [supplier, setSupplier] = useState("");
+  const existingSuppliers = useMemo(() => [...new Set(nodes
+    .filter((n): n is DeviceNode => n.type === "device")
+    .map((n) => n.data.supplier?.trim() ?? "")
+    .filter(Boolean))].sort((a, b) => a.localeCompare(b)), [nodes]);
   const [modelNumber, setModelNumber] = useState("");
   const [referenceUrl, setReferenceUrl] = useState("");
   const [category, setCategory] = useState("");
@@ -1109,13 +1113,17 @@ export default function DeviceEditor() {
                 placeholder="e.g. Sony"
               />
             </Field>
-            <Field label="Supplier (this instance)">
+            <Field label="Supplier">
               <input
                 className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded px-2 py-1.5 text-xs text-[var(--color-text-heading)] outline-none focus:border-blue-500"
+                list="device-supplier-options"
                 value={supplier}
                 onChange={(e) => setSupplier(e.target.value)}
-                placeholder="e.g. EventTechnik HOHL"
+                placeholder="Choose or enter supplier"
               />
+              <datalist id="device-supplier-options">
+                {existingSuppliers.map((name) => <option key={name} value={name} />)}
+              </datalist>
             </Field>
             <Field label="Model Number">
               <input
