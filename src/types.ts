@@ -494,6 +494,8 @@ export interface PatchHop {
   panelNodeId: string;
   /** Passthrough port id on that panel. */
   portId: string;
+  /** Physical traversal direction; omitted preserves legacy behavior. */
+  orientation?: "rear-to-front" | "front-to-rear";
 }
 
 /** Per-segment user overrides for a patched connection. Index i = physical segment i
