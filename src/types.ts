@@ -274,6 +274,8 @@ export interface DeviceData {
   templateId?: string;
   templateVersion?: number;
   manufacturer?: string;
+  /** Supplier for this device instance; independent from its manufacturer/template. */
+  supplier?: string;
   modelNumber?: string;
   /** Manufacturer spec sheet / product page URL — inherited from the source template but editable per-device */
   referenceUrl?: string;
