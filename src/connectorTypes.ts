@@ -289,7 +289,7 @@ export function findAdaptersForSignalBridge(
 ): DeviceTemplate[] {
   const matches = [];
   for (const t of templates) {
-    if (t.deviceType !== "adapter") continue;
+    if (t.deviceType !== "adapter" && t.deviceType !== "adapter-cable") continue;
     const bridge = resolveSignalBridgePorts(t, sourceSignalType, targetSignalType);
     if (!bridge) continue;
     if (endpoints && !canWireAdapterBridge(bridge, endpoints.sourcePort, endpoints.targetPort)) continue;
@@ -310,7 +310,7 @@ export function findAdaptersForConnectorBridge(
 ): DeviceTemplate[] {
   const matches = [];
   for (const t of templates) {
-    if (t.deviceType !== "adapter") continue;
+    if (t.deviceType !== "adapter" && t.deviceType !== "adapter-cable") continue;
     const bridge = resolveConnectorBridgePorts(t, sourceConnector, targetConnector, signalType);
     if (!bridge) continue;
     if (endpoints && !canWireAdapterBridge(bridge, endpoints.sourcePort, endpoints.targetPort)) continue;
