@@ -382,6 +382,7 @@ interface SchematicState {
   onNodesChange: OnNodesChange<SchematicNode>;
   onEdgesChange: OnEdgesChange<ConnectionEdge>;
   onConnect: OnConnect;
+  addCableJunction: (edgeId: string, position: { x: number; y: number }) => void;
 
   // Actions
   addDevice: (template: DeviceTemplate, position: { x: number; y: number }) => void;
@@ -2457,6 +2458,56 @@ export const useSchematicStore = create<SchematicState>((set, get) => ({
     // conversion the right-click action uses, so drawing a connection and stubbing it
     // by hand land on byte-identical state (#353).
     if (!applyDefaultConnectionType(newEdge.id)) get().saveToLocalStorage();
+  },
+
+  addCableJunction: (edgeId, position) => {
+    const state = get();
+    const edge = state.edges.find(e => e.id === edgeId);
+    if (!edge || edge.data?.linkedConnectionId || edge.data?.bundleId ||
+        edge.source.startsWith("virtual-") || edge.target.startsWith("virtual-")) {
+      get().addToast("Cable junctions require an ordinary, unbundled connection", "info");
+      return;
+    }
+    const srcPort = getPortFromHandle(state.nodes, edge.source, edge.sourceHandle);
+    const tgtPort = getPortFromHandle(state.nodes, edge.target, edge.targetHandle);
+    if (!srcPort || !tgtPort) {
+      get().addToast("Cable junction requires two physical endpoints", "info");
+      return;
+    }
+    pushUndo({ nodes: state.nodes, edges: state.edges });
+    const id = nextNodeId();
+    const junction: DeviceNode = {
+      id, type: "device",
+      position: {
+        x: Math.round(position.x / GRID_SIZE) * GRID_SIZE - 12,
+        y: Math.round(position.y / GRID_SIZE) * GRID_SIZE - 12,
+      },
+      data: {
+        label: "Cable Junction", deviceType: "cable-junction",
+        ports: [
+          { id: "in", label: "Cable A", direction: "input",
+            signalType: srcPort.signalType, connectorType: srcPort.connectorType },
+          { id: "out", label: "Cable B", direction: "output",
+            signalType: tgtPort.signalType, connectorType: tgtPort.connectorType },
+        ],
+      },
+    };
+    // Each segment is a real edge with its own ID, length, supplier and routing.
+    // Keep the original edge's metadata on the first segment; the new segment
+    // starts without a duplicated cable ID, length or supplier.
+    const { manualWaypoints: _mw, autoRouteWaypoints: _ar, ...originalData } = edge.data ?? { signalType: srcPort.signalType };
+    const first: ConnectionEdge = {
+      ...edge, target: id, targetHandle: "in",
+      data: { ...originalData },
+    };
+    const secondData: ConnectionData = { signalType: tgtPort.signalType };
+    const second: ConnectionEdge = {
+      ...edge, id: nextEdgeId(state.edges), source: id, sourceHandle: "out",
+      data: secondData, style: { ...edge.style, stroke: resolveEdgeStroke(secondData) },
+    };
+    const nextEdges = state.edges.flatMap(e => e.id === edgeId ? [first, second] : [e]);
+    set({ nodes: reconcileWaypointNodes([...state.nodes, junction], nextEdges), edges: nextEdges });
+    get().saveToLocalStorage();
   },
 
   addDevice: (template, position) => {
