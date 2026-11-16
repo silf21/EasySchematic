@@ -33,9 +33,15 @@ function PackListDialog({ onClose }: PackListDialogProps) {
   const [groupDevicesByRoom, setGroupDevicesByRoom] = useState(false);
   const [groupCablesByPath, setGroupCablesByPath] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [supplierFilter, setSupplierFilter] = useState("");
 
   const pages = useSchematicStore((s) => s.pages);
   const data = useMemo(() => computePackList(nodes, edges, pages), [nodes, edges, pages]);
+  const suppliers = useMemo(() => [...new Set(data.devices.map((d) => d.supplier.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [data.devices]);
+  const filteredData = useMemo(() => supplierFilter === "" ? data : {
+    ...data,
+    devices: data.devices.filter((d) => supplierFilter === "__unassigned__" ? !d.supplier.trim() : d.supplier === supplierFilter),
+  }, [data, supplierFilter]);
 
   const defaultLayout = useMemo(() => createDefaultPackListLayout(), []);
 
@@ -66,7 +72,7 @@ function PackListDialog({ onClose }: PackListDialogProps) {
             </h2>
             <div className="flex-1" />
             <button
-              onClick={() => exportPackListCsv(data, schematicName)}
+              onClick={() => exportPackListCsv(filteredData, schematicName)}
               className={btnClass}
             >
               CSV
@@ -83,6 +89,16 @@ function PackListDialog({ onClose }: PackListDialogProps) {
             >
               &times;
             </button>
+          </div>
+
+          <div className="px-4 pt-2 flex items-center gap-2 text-xs">
+            <label htmlFor="packlist-supplier">Supplier</label>
+            <select id="packlist-supplier" value={supplierFilter} onChange={(e) => setSupplierFilter(e.target.value)}
+              className="flex-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded px-2 py-1.5 text-[var(--color-text)]">
+              <option value="">All suppliers</option>
+              {suppliers.map((supplier) => <option key={supplier} value={supplier}>{supplier}</option>)}
+              <option value="__unassigned__">Not assigned</option>
+            </select>
           </div>
 
           {/* Tabs */}
@@ -110,7 +126,7 @@ function PackListDialog({ onClose }: PackListDialogProps) {
                     Group by Room
                   </label>
                 </div>
-                <DevicesTab devices={data.devices} groupByRoom={groupDevicesByRoom} />
+                <DevicesTab devices={filteredData.devices} groupByRoom={groupDevicesByRoom} />
               </>
             )}
             {tab === "cables" && (
@@ -138,7 +154,7 @@ function PackListDialog({ onClose }: PackListDialogProps) {
           reportKey={REPORT_LAYOUT_KEY}
           defaultLayout={defaultLayout}
           titleBlock={titleBlock}
-          getTableData={(layout) => getPackListTableData(data, layout)}
+          getTableData={(layout) => getPackListTableData(filteredData, layout)}
           onClose={() => setShowPreview(false)}
           filename={`${schematicName.replace(/[^a-zA-Z0-9-_ ]/g, "")} - Pack List.pdf`}
         />
