@@ -107,6 +107,7 @@ export interface PackListDevice {
 }
 
 export interface PackListCable {
+  supplier: string;
   cableType: string;
   signalType: string;
   cableLength: string;
@@ -119,6 +120,7 @@ export interface PackListCable {
 }
 
 export interface PackListSummaryRow {
+  supplier: string;
   cableType: string;
   signalType: string;
   cableLength: string;
@@ -135,6 +137,7 @@ export interface PackListAccessory {
 }
 
 export interface PackListAdapter {
+  supplier: string;
   model: string;
   room: string;
   count: number;
@@ -165,7 +168,7 @@ export interface PackListData {
 export function mergeCablesByType(summary: PackListSummaryRow[]): PackListSummaryRow[] {
   const map = new Map<string, PackListSummaryRow>();
   for (const s of summary) {
-    const key = `${s.cableType}|${s.signalType}|${s.cableLength}`;
+    const key = `${s.supplier}|${s.cableType}|${s.signalType}|${s.cableLength}`;
     const existing = map.get(key);
     if (existing) {
       existing.count += s.count;
@@ -302,12 +305,13 @@ export function computePackList(
 
     // Passive adapters go to their own section (shown in cables tab)
     if (data.deviceType === "adapter") {
-      const key = `${model}|${room}`;
+      const key = `${model}|${room}|${data.supplier ?? ""}`;
       const existing = adapterMap.get(key);
       if (existing) {
         existing.count++;
       } else {
         adapterMap.set(key, {
+          supplier: data.supplier ?? "",
           model,
           room,
           count: 1,
@@ -430,6 +434,7 @@ export function computePackList(
         ? getRoomLabel(nodes, tgtNode.parentId)
         : "Unknown";
       return {
+        supplier: e.data?.supplier ?? "",
         cableType: getCableType(srcPort, tgtPort, signalType),
         signalType: signalLabel(signalType),
         cableLength: (e.data?.cableLength as string) ?? "",
@@ -463,6 +468,7 @@ export function computePackList(
     const last = data.ports[data.ports.length - 1];
     const room = getRoomLabel(nodes, n.parentId);
     cables.push({
+      supplier: data.supplier ?? "",
       cableType: transformLabelNow(data.model ?? data.baseLabel ?? data.label),
       signalType: signalLabel(first?.signalType ?? "custom"),
       cableLength: data.adapterCableLength ?? "",
@@ -489,12 +495,13 @@ export function computePackList(
           ? `Within ${c.sourceRoom}`
           : ""
         : `${c.sourceRoom} > ${c.targetRoom}`;
-    const key = `${c.cableType}|${c.signalType}|${c.cableLength}|${route}`;
+    const key = `${c.supplier}|${c.cableType}|${c.signalType}|${c.cableLength}|${route}`;
     const existing = summaryMap.get(key);
     if (existing) {
       existing.count++;
     } else {
       summaryMap.set(key, {
+        supplier: c.supplier,
         cableType: c.cableType,
         signalType: c.signalType,
         cableLength: c.cableLength,
