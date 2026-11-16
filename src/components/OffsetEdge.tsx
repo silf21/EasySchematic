@@ -146,18 +146,57 @@ function OffsetEdgeComponent({
     return (edge?.data?.targetLabel as string) ?? "";
   });
 
-  // Patch hop names and port positions, resolved live from the panel devices.
-  // Use a string selector to avoid rerender loops from newly allocated arrays.
-  const patchHopText = useSchematicStore((s) => {
+  // Stable primitive selector: avoids re-renders when unrelated nodes/edges change.
+  const patchHopDataJson = useSchematicStore((s) => {
     const edge = s.edges.find((e) => e.id === id);
     if (!edge?.data?.patchHops?.length || edge.data.hidePatchHops) return "";
-    return edge.data.patchHops.map((hop) => {
+    const rows = edge.data.patchHops.map((hop) => {
       const panel = s.nodes.find((n) => n.id === hop.panelNodeId);
       const data = panel?.data as { label?: string; ports?: { id: string; label?: string }[] } | undefined;
       const port = data?.ports?.find((p) => p.id === hop.portId);
-      return `${data?.label ?? "Patch Panel"} · ${port?.label ?? hop.portId}`;
-    }).join(" → ");
+      return [data?.label ?? "Patch Panel", port?.label ?? hop.portId];
+    });
+    return JSON.stringify({ rows, position: edge.data.patchHopTablePosition ?? { x: 0, y: -28 }, size: edge.data.patchHopTableSize ?? { width: 260, height: 0 } });
   });
+  const patchHopData = patchHopDataJson ? JSON.parse(patchHopDataJson) as {
+    rows: [string, string][];
+    position: { x: number; y: number };
+    size: { width: number; height: number };
+  } : null;
+  const [tableGesture, setTableGesture] = useState<{
+    mode: "move" | "resize"; startX: number; startY: number;
+    position: { x: number; y: number }; size: { width: number; height: number };
+  } | null>(null);
+  const [tableLive, setTableLive] = useState<{ position: { x: number; y: number }; size: { width: number; height: number } } | null>(null);
+  const patchEdgeData = useSchematicStore((s) => s.patchEdgeData);
+  const tableDisplay = tableLive ?? patchHopData;
+  const tablePointerStart = (event: React.PointerEvent<HTMLDivElement>, mode: "move" | "resize") => {
+    if (!tableDisplay) return;
+    event.preventDefault(); event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setTableGesture({ mode, startX: event.clientX, startY: event.clientY,
+      position: { ...tableDisplay.position }, size: { ...tableDisplay.size } });
+  };
+  const tablePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!tableGesture) return;
+    event.stopPropagation();
+    const zoom = useSchematicStore.getState().viewport.zoom || 1;
+    const dx = (event.clientX - tableGesture.startX) / zoom;
+    const dy = (event.clientY - tableGesture.startY) / zoom;
+    setTableLive(tableGesture.mode === "move"
+      ? { position: { x: tableGesture.position.x + dx, y: tableGesture.position.y + dy }, size: tableGesture.size }
+      : { position: tableGesture.position, size: { width: Math.max(150, tableGesture.size.width + dx), height: Math.max(0, tableGesture.size.height + dy) } });
+  };
+  const tablePointerEnd = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!tableGesture) return;
+    event.stopPropagation();
+    const zoom = useSchematicStore.getState().viewport.zoom || 1;
+    const dx = (event.clientX - tableGesture.startX) / zoom;
+    const dy = (event.clientY - tableGesture.startY) / zoom;
+    if (tableGesture.mode === "move") patchEdgeData(id, { patchHopTablePosition: { x: tableGesture.position.x + dx, y: tableGesture.position.y + dy } });
+    else patchEdgeData(id, { patchHopTableSize: { width: Math.max(150, tableGesture.size.width + dx), height: Math.max(0, tableGesture.size.height + dy) } });
+    setTableGesture(null); setTableLive(null);
+  };
 
   // Cable ID label from pre-computed map
   const showCableIdLabels = useSchematicStore((s) => s.showCableIdLabels);
@@ -732,24 +771,52 @@ function OffsetEdgeComponent({
     </div>
   ) : null;
 
-  const patchHopBadge = patchHopText && routeStr ? (
+  const patchHopBadge = patchHopData && tableDisplay && routeStr ? (
     <div
-      className="nodrag nopan"
-      title={patchHopText}
+      className="nodrag nopan nowheel"
+      onPointerMove={tablePointerMove}
+      onPointerUp={tablePointerEnd}
+      onPointerCancel={() => { setTableGesture(null); setTableLive(null); }}
+      onContextMenu={(e) => e.stopPropagation()}
       style={{
         position: "absolute",
-        transform: `translate(-50%, -100%) translate(${lx}px, ${ly - 14}px)`,
-        pointerEvents: "none",
-        whiteSpace: "nowrap",
-        fontSize: 10,
-        padding: "2px 5px",
-        borderRadius: 3,
+        transform: `translate(${lx + tableDisplay.position.x}px, ${ly + tableDisplay.position.y}px)`,
+        width: tableDisplay.size.width,
+        height: tableDisplay.size.height || "auto",
+        minHeight: 38,
+        pointerEvents: "all",
         background: "var(--color-surface)",
         color: "var(--color-text)",
         border: "1px solid var(--color-border)",
+        borderRadius: 4,
+        boxShadow: "0 2px 7px #0005",
+        fontSize: 11,
+        display: "flex", flexDirection: "column",
       }}
     >
-      {patchHopText}
+      <div
+        onPointerDown={(e) => tablePointerStart(e, "move")}
+        style={{ cursor: "move", background: "var(--color-surface-raised, #263448)",
+          padding: "4px 8px", fontWeight: 600, borderBottom: "1px solid var(--color-border)", touchAction: "none" }}
+        title="Drag to move patch hops table"
+      >Patch Hops</div>
+      <div style={{ overflow: "auto", flex: 1 }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "inherit" }}>
+          <thead><tr><th style={{ textAlign: "left", padding: "3px 7px" }}>Panel</th><th style={{ textAlign: "left", padding: "3px 7px" }}>Position</th></tr></thead>
+          <tbody>{patchHopData.rows.map(([panel, port], i) => (
+            <tr key={i} style={{ borderTop: "1px solid var(--color-border)" }}>
+              <td style={{ padding: "3px 7px", overflowWrap: "anywhere" }}>{panel}</td>
+              <td style={{ padding: "3px 7px", whiteSpace: "nowrap" }}>{port}</td>
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+      <div
+        onPointerDown={(e) => tablePointerStart(e, "resize")}
+        title="Drag to resize patch hops table"
+        style={{ position: "absolute", right: 0, bottom: 0, width: 15, height: 15,
+          cursor: "nwse-resize", touchAction: "none", background: "linear-gradient(135deg, transparent 55%, var(--color-text-muted) 55%, var(--color-text-muted) 63%, transparent 63%)" }}
+      />
     </div>
   ) : null;
 
