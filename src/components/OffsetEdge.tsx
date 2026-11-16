@@ -184,11 +184,11 @@ function OffsetEdgeComponent({
     const other = state.edges.find(e => e.id !== id && e.source === adapterId);
     if (!other) return "";
     const ports = node.data.ports as { id: string; label?: string }[];
-    return JSON.stringify({ label: node.data.label, length: node.data.adapterCableLength ?? "",
+    return JSON.stringify({ nodeId: node.id, label: node.data.label, length: node.data.adapterCableLength ?? "",
       sourcePort: ports.find(p => p.id === (edge.targetHandle ?? "").replace(/-(in|out)$/, ""))?.label ?? ports[0]?.label ?? "",
       targetPort: ports.find(p => p.id === (other.sourceHandle ?? "").replace(/-(in|out)$/, ""))?.label ?? ports[1]?.label ?? "" });
   });
-  const routedAdapter = routedAdapterJson ? JSON.parse(routedAdapterJson) as {label:string;length:string;sourcePort:string;targetPort:string} : null;
+  const routedAdapter = routedAdapterJson ? JSON.parse(routedAdapterJson) as {nodeId:string;label:string;length:string;sourcePort:string;targetPort:string} : null;
 
   // Cable ID label from pre-computed map
   const showCableIdLabels = useSchematicStore((s) => s.showCableIdLabels);
@@ -822,9 +822,13 @@ function OffsetEdgeComponent({
       </div>
     );
   }) : null;
+  const openAdapterSettings = () => {
+    if (routedAdapter?.nodeId) useSchematicStore.getState().setEditingNodeId(routedAdapter.nodeId);
+  };
   const adapterCableBadge = (adapterCable || routedAdapter) && routeStr ? (
-    <div className="nodrag nopan" style={{
-      position: "absolute", pointerEvents: "none",
+    <div className="nodrag nopan" onDoubleClick={routedAdapter ? openAdapterSettings : undefined}
+      title={routedAdapter ? "Double-click to configure Adapter Cable" : undefined} style={{
+      position: "absolute", pointerEvents: routedAdapter ? "all" : "none", cursor: routedAdapter ? "pointer" : "default",
       transform: `translate(-50%, -50%) translate(${customMidPt.x}px, ${customMidPt.y - 24}px)`,
       background: "var(--color-surface)", border: "1px solid var(--color-border)",
       borderRadius: 4, padding: "3px 7px", fontSize: 11,
