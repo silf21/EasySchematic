@@ -200,6 +200,12 @@ function OffsetEdgeComponent({
     setTableGesture(null); setTableLive(null);
   };
 
+  const adapterCableJson = useSchematicStore((s) => {
+    const edge = s.edges.find((e) => e.id === id);
+    return edge?.data?.adapterCable ? JSON.stringify(edge.data.adapterCable) : "";
+  });
+  const adapterCable = adapterCableJson ? JSON.parse(adapterCableJson) as { label: string; sourcePort: string; targetPort: string } : null;
+
   // Cable ID label from pre-computed map
   const showCableIdLabels = useSchematicStore((s) => s.showCableIdLabels);
   const showCustomLabels = useSchematicStore((s) => s.showCustomLabels);
@@ -822,12 +828,26 @@ function OffsetEdgeComponent({
     </div>
   ) : null;
 
+  const adapterCableBadge = adapterCable && routeStr ? (
+    <div className="nodrag nopan" style={{
+      position: "absolute", pointerEvents: "none",
+      transform: `translate(-50%, -50%) translate(${customMidPt.x}px, ${customMidPt.y - 24}px)`,
+      background: "var(--color-surface)", border: "1px solid var(--color-border)",
+      borderRadius: 4, padding: "3px 7px", fontSize: 11,
+      color: "var(--color-text)", whiteSpace: "nowrap", textAlign: "center",
+    }}>
+      <div style={{ fontWeight: 600 }}>{adapterCable.label || "Adapter Cable"}</div>
+      <div style={{ fontSize: 10 }}>{adapterCable.sourcePort || "Source"} → {adapterCable.targetPort || "Target"}</div>
+    </div>
+  ) : null;
+
   // All labels + reconnect visuals rendered via EdgeLabelRenderer (HTML layer above all SVG edges)
-  const hasPortalContent = customLabels || cableIdLabels || reconnectVisuals || usbcWarningBadge || cableLengthBadge || pathEditHint || patchHopBadge;
+  const hasPortalContent = customLabels || cableIdLabels || reconnectVisuals || usbcWarningBadge || cableLengthBadge || pathEditHint || patchHopBadge || adapterCableBadge;
   const edgeLabelsPortal = hasPortalContent ? (
     <EdgeLabelRenderer>
       {cableIdLabels}
       {patchHopBadge}
+      {adapterCableBadge}
       {customLabels}
       {cableLengthBadge}
       {usbcWarningBadge}
