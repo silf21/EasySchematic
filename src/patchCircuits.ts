@@ -69,6 +69,9 @@ export function devicePoint(
 /** Panel-side point. `face` picks the connector reported for cable typing:
  *  a segment ARRIVING at a panel lands on the rear (field) face; a segment
  *  LEAVING a panel departs from the front (patch) face. */
+export const hopEntryFace = (hop: PatchHop): "rear" | "front" => hop.orientation === "front-to-rear" ? "front" : "rear";
+export const hopExitFace = (hop: PatchHop): "rear" | "front" => hop.orientation === "front-to-rear" ? "rear" : "front";
+
 function panelPoint(
   nodes: SchematicNode[],
   hop: PatchHop,
@@ -132,8 +135,8 @@ export function getPatchSegments(
   const segs: PatchSegmentInfo[] = [];
   const segCount = hops.length + 1;
   for (let i = 0; i < segCount; i++) {
-    const from = i === 0 ? srcPoint : panelPoint(nodes, hops[i - 1], "front")!;
-    const to = i === segCount - 1 ? tgtPoint : panelPoint(nodes, hops[i], "rear")!;
+    const from = i === 0 ? srcPoint : panelPoint(nodes, hops[i - 1], hopExitFace(hops[i - 1]))!;
+    const to = i === segCount - 1 ? tgtPoint : panelPoint(nodes, hops[i], hopEntryFace(hops[i]))!;
     const suffix = SUFFIXES[i] ?? `Z${i}`;
     const autoLabel = `${baseCableId}-${suffix}`;
     const ov = overrides[i];
@@ -177,18 +180,20 @@ export function checkHopConnectors(
   srcPoint: PatchPointInfo,
   tgtPoint: PatchPointInfo,
 ): HopConnectorMismatch | null {
-  const newRear = panelPoint(nodes, hop, "rear");
-  const newFront = panelPoint(nodes, hop, "front");
-  if (!newRear || !newFront) return null;
+  const entryFace = hopEntryFace(hop);
+  const exitFace = hopExitFace(hop);
+  const newEntry = panelPoint(nodes, hop, entryFace);
+  const newExit = panelPoint(nodes, hop, exitFace);
+  if (!newEntry || !newExit) return null;
 
   const hops = resolvableHops(edge, nodes);
   const prev = hops.length === 0
     ? srcPoint
-    : panelPoint(nodes, hops[hops.length - 1], "front") ?? srcPoint;
+    : panelPoint(nodes, hops[hops.length - 1], hopExitFace(hops[hops.length - 1])) ?? srcPoint;
 
   const checks = [
-    { face: "rear" as const, panel: newRear, other: prev },
-    { face: "front" as const, panel: newFront, other: tgtPoint },
+    { face: entryFace, panel: newEntry, other: prev },
+    { face: exitFace, panel: newExit, other: tgtPoint },
   ];
   for (const c of checks) {
     const panelConnector = c.panel.port?.connectorType;
@@ -332,11 +337,11 @@ export function resolvePortDisplay(
       kind: "hop",
       edgeId: edge.id,
       signalType: edge.data?.signalType as string | undefined,
-      rear: {
+      [hopEntryFace(edge.data!.patchHops![occupant.hopIndex])]: {
         cableLabel: inn.label, farLabel: inn.from.label, farPortLabel: inn.from.portLabel,
         segIndex: inn.index, overridden: inn.overridden,
       },
-      front: {
+      [hopExitFace(edge.data!.patchHops![occupant.hopIndex])]: {
         cableLabel: outSeg.label, farLabel: outSeg.to.label, farPortLabel: outSeg.to.portLabel,
         segIndex: outSeg.index, overridden: outSeg.overridden,
       },
