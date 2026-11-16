@@ -414,9 +414,9 @@ function DeviceNodeComponent({ id, data, selected }: NodeProps<DeviceNodeType>) 
       };
       return <span key={port.id}>
         <Handle type="target" id={`${port.id}-in`} position={position}
-          style={{ ...style, zIndex: 3 }} />
+          style={{ ...style, top: "38%", zIndex: 3 }} />
         <Handle type="source" id={`${port.id}-out`} position={position}
-          style={{ ...style, zIndex: 4 }} />
+          style={{ ...style, top: "62%", zIndex: 4 }} />
         <span style={{
           position: "absolute", top: 52, [side]: 4, fontSize: 10,
           whiteSpace: "nowrap", pointerEvents: "none",
