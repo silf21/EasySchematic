@@ -510,6 +510,8 @@ export interface PatchSegmentOverride {
 }
 
 export interface ConnectionData {
+  /** Supplier for this physical cable connection, independent of endpoint devices. */
+  supplier?: string;
   [key: string]: unknown;
   signalType: SignalType;
   manualWaypoints?: { x: number; y: number }[];
