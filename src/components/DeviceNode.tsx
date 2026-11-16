@@ -1,5 +1,5 @@
-import { memo, useMemo, useCallback, useState, useRef } from "react";
-import { Handle, Position, useReactFlow, useUpdateNodeInternals, type NodeProps } from "@xyflow/react";
+import { memo, useMemo, useCallback } from "react";
+import { Handle, Position, type NodeProps } from "@xyflow/react";
 import type { DeviceNode as DeviceNodeType, Port } from "../types";
 import { portSide } from "../types";
 import { useSchematicStore } from "../store";
@@ -55,42 +55,6 @@ function buildColumnItems(ports: Port[]): ColumnItem[] {
 function DeviceNodeComponent({ id, data, selected }: NodeProps<DeviceNodeType>) {
   useTypeRegistryVersion(); // community signal labels / colours resolve once registered
   const setEditingNodeId = useSchematicStore((s) => s.setEditingNodeId);
-  const flow = useReactFlow();
-  const updateNodeInternals = useUpdateNodeInternals();
-  const [liveEnds, setLiveEnds] = useState<DeviceNodeType["data"]["adapterCableEnds"] | null>(null);
-  const cableDrag = useRef<{ side: "left" | "right"; pointerX: number; pointerY: number; origin: { x: number; y: number } } | null>(null);
-  const cableEnds = liveEnds ?? data.adapterCableEnds ?? { left: { x: 0, y: 32 }, right: { x: 208, y: 32 } };
-  const onCableEndDown = (e: React.PointerEvent, side: "left" | "right") => {
-    e.stopPropagation();
-    e.preventDefault();
-    cableDrag.current = { side, pointerX: e.clientX, pointerY: e.clientY, origin: { ...cableEnds[side] } };
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-  };
-  const onCableEndMove = (e: React.PointerEvent) => {
-    const drag = cableDrag.current;
-    if (!drag) return;
-    e.stopPropagation();
-    const zoom = flow.getZoom();
-    const next = { ...cableEnds, [drag.side]: {
-      x: drag.origin.x + (e.clientX - drag.pointerX) / zoom,
-      y: drag.origin.y + (e.clientY - drag.pointerY) / zoom,
-    } };
-    setLiveEnds(next);
-    updateNodeInternals(id);
-  };
-  const onCableEndUp = (e: React.PointerEvent) => {
-    if (!cableDrag.current) return;
-    e.stopPropagation();
-    cableDrag.current = null;
-    const ends = liveEnds ?? cableEnds;
-    const store = useSchematicStore.getState();
-    useSchematicStore.setState({ nodes: store.nodes.map(n => n.id === id && n.type === "device"
-      ? { ...n, data: { ...n.data, adapterCableEnds: ends } } : n) });
-    store.saveToLocalStorage();
-    setLiveEnds(null);
-    updateNodeInternals(id);
-  };
-
   const displayLabel = useDisplayLabel();
   const useShortNames = useSchematicStore((s) => s.useShortNames);
   const wrapDeviceLabels = useSchematicStore((s) => s.wrapDeviceLabels);
@@ -433,46 +397,51 @@ function DeviceNodeComponent({ id, data, selected }: NodeProps<DeviceNodeType>) 
     );
   }
 
-  // Each cable endpoint has an independent draggable position. Connection handles
-  // follow those positions, while the adapter remains a single device in the BOM.
+  // An adapter cable is a physical device in the model, but NEVER draws its
+  // own cable path. React Flow's native connections and the existing hidden-
+  // adapter virtual-edge router own all cable geometry and reconnection.
+  // Before both plugs are connected this compact node only exposes handles.
   if (data.deviceType === "adapter-cable") {
     const left = data.ports.find(p => p.direction === "input" || p.flipped) ?? data.ports[0];
     const right = data.ports.find(p => p !== left && p.direction === "output") ?? data.ports.find(p => p !== left);
-    const endpoint = (p: Port | undefined, side: "left" | "right") => {
-      if (!p) return null;
-      const pt = cableEnds[side];
+    const plug = (port: Port | undefined, side: "left" | "right") => {
+      if (!port) return null;
       const position = side === "left" ? Position.Left : Position.Right;
-      const style = { left: pt.x - 6, top: pt.y - 6, right: "auto", transform: "none", width: 12, height: 12,
-        background: "var(--color-accent, #ef4444)", border: "2px solid var(--color-border)" } as const;
-      return <span key={p.id}>
-        <Handle type="target" id={`${p.id}-in`} position={position} style={{ ...style, zIndex: 3 }} />
-        <Handle type="source" id={`${p.id}-out`} position={position} style={{ ...style, zIndex: 4 }} />
-        <div className="nodrag nopan" onPointerDown={e => onCableEndDown(e, side)} onPointerMove={onCableEndMove}
-          onPointerUp={onCableEndUp} onPointerCancel={onCableEndUp}
-          title="Drag this grip to move the cable end; drag the circular port below to connect"
-          style={{ position: "absolute", left: pt.x - 7, top: pt.y - 27, width: 14, height: 14,
-            borderRadius: "50%", border: selected ? "1px dashed #60a5fa" : "1px solid transparent",
-            cursor: "move", touchAction: "none", zIndex: 2, pointerEvents: "auto" }} />
-        <span style={{ position: "absolute", left: pt.x + (side === "left" ? -8 : 8), top: pt.y + 12,
-          transform: side === "left" ? "translateX(-100%)" : "none", fontSize: 10,
-          whiteSpace: "nowrap", background: "var(--color-surface)", pointerEvents: "none" }}>{p.label}</span>
+      const style = {
+        top: "50%", width: 13, height: 13,
+        background: "var(--color-accent, #ef4444)",
+        border: "2px solid var(--color-border)",
+      };
+      return <span key={port.id}>
+        <Handle type="target" id={`${port.id}-in`} position={position}
+          style={{ ...style, zIndex: 3 }} />
+        <Handle type="source" id={`${port.id}-out`} position={position}
+          style={{ ...style, zIndex: 4 }} />
+        <span style={{
+          position: "absolute", top: 52, [side]: 4, fontSize: 10,
+          whiteSpace: "nowrap", pointerEvents: "none",
+        }}>{port.label}</span>
       </span>;
     };
-    const midX = (cableEnds.left.x + cableEnds.right.x) / 2;
-    const midY = (cableEnds.left.y + cableEnds.right.y) / 2;
-    return <div onDoubleClick={() => setEditingNodeId(id)}
-      style={{ position: "relative", width: 208, height: 64, overflow: "visible", color: "var(--color-text)" }}>
-      <svg style={{ position: "absolute", inset: 0, overflow: "visible", pointerEvents: "none" }} width={208} height={64}>
-        <path d={`M ${cableEnds.left.x} ${cableEnds.left.y} L ${cableEnds.right.x} ${cableEnds.right.y}`}
-          fill="none" stroke="var(--color-accent, #ef4444)" strokeWidth={3} />
-      </svg>
-      <div style={{ position: "absolute", left: midX, top: midY - 30, transform: "translate(-50%, -50%)",
-        padding: "3px 7px", border: selected ? "1px solid #60a5fa" : "1px solid var(--color-border)",
-        borderRadius: 4, background: "var(--color-surface)", fontSize: 11, whiteSpace: "nowrap", pointerEvents: "none" }}>
-        {displayLabel(data.label)}{data.adapterCableLength ? ` · ${data.adapterCableLength}` : ""}
+    return (
+      <div onDoubleClick={() => setEditingNodeId(id)}
+        title="Connect both plugs using the native connection handles. Double-click to edit."
+        style={{
+          position: "relative", width: 210, height: 72,
+          border: selected ? "1px solid #60a5fa" : "1px solid var(--color-border)",
+          borderRadius: 6, background: "var(--color-surface)",
+          color: "var(--color-text)", boxSizing: "border-box",
+        }}>
+        <div style={{ textAlign: "center", fontSize: 11, padding: "10px 8px 4px",
+          overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
+          {displayLabel(data.label)}{data.adapterCableLength ? ` · ${data.adapterCableLength}` : ""}
+        </div>
+        <div style={{ textAlign: "center", fontSize: 9, opacity: 0.65 }}>
+          Connect both ends
+        </div>
+        {plug(left, "left")}{plug(right, "right")}
       </div>
-      {endpoint(left, "left")}{endpoint(right, "right")}
-    </div>;
+    );
   }
 
   /** Footer aux block — rows below the port area. Grid-rounded (16-multiple) so device
