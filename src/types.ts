@@ -582,6 +582,8 @@ export interface ConnectionData {
    *  connection as "patched": schedules expand it into hops.length+1 physical cables
    *  with suffix IDs (E001 → E001-A/-B/…). The canvas edge itself is untouched. */
   patchHops?: PatchHop[];
+  /** Device instance supplying a physical adapter cable routed as this edge. */
+  adapterCableDeviceId?: string;
   /** Optional inline adapter cable, represented by this connection rather than a device. */
   adapterCable?: { label: string; sourcePort: string; targetPort: string };
   /** Hide patch-panel names and port positions on this schematic connection. */
