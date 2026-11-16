@@ -780,6 +780,7 @@ interface SchematicState {
   addEdgePatchHop: (edgeId: string, hop: PatchHop) => boolean;
   /** Remove all hops + segment overrides from a connection. */
   clearEdgePatchHops: (edgeId: string) => void;
+  setEdgePatchHopOrientation: (edgeId: string, hopIndex: number, orientation: "rear-to-front" | "front-to-rear") => void;
   /** Set/merge one segment's override. Empty strings clear the field. */
   setPatchSegmentOverride: (edgeId: string, segIndex: number, patch: PatchSegmentOverride) => void;
   /** Create an off-canvas patch panel device from a template. Returns the node id. */
@@ -5406,6 +5407,22 @@ export const useSchematicStore = create<SchematicState>((set, get) => ({
     });
     get().saveToLocalStorage();
     return true;
+  },
+
+  setEdgePatchHopOrientation: (edgeId, hopIndex, orientation) => {
+    const state = get();
+    const edge = state.edges.find((e) => e.id === edgeId);
+    if (!edge?.data?.patchHops?.[hopIndex]) return;
+    pushUndo({ nodes: state.nodes, edges: state.edges });
+    set({
+      edges: state.edges.map((e) => e.id !== edgeId ? e : {
+        ...e,
+        data: { ...e.data!, patchHops: e.data!.patchHops!.map((h, i) => i === hopIndex ? { ...h, orientation } : h) },
+      }),
+      undoSize: undoStack.length,
+      redoSize: 0,
+    });
+    get().saveToLocalStorage();
   },
 
   clearEdgePatchHops: (edgeId) => {
