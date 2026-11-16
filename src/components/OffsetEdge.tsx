@@ -205,6 +205,22 @@ function OffsetEdgeComponent({
     return edge?.data?.adapterCable ? JSON.stringify(edge.data.adapterCable) : "";
   });
   const adapterCable = adapterCableJson ? JSON.parse(adapterCableJson) as { label: string; sourcePort: string; targetPort: string } : null;
+  // A physical adapter-cable device is represented by the routed primary edge
+  // once both of its plug connections are present.
+  const routedAdapterJson = useSchematicStore((state) => {
+    const edge = state.edges.find(e => e.id === id);
+    if (!edge) return "";
+    const adapterId = edge.target;
+    const node = state.nodes.find(n => n.id === adapterId && n.type === "device" && n.data.deviceType === "adapter-cable");
+    if (!node || !state.hiddenAdapterNodeIds.has(adapterId)) return "";
+    const other = state.edges.find(e => e.id !== id && e.source === adapterId);
+    if (!other) return "";
+    const ports = node.data.ports;
+    return JSON.stringify({ label: node.data.label, length: node.data.adapterCableLength ?? "",
+      sourcePort: ports.find(p => p.id === (edge.targetHandle ?? "").replace(/-(in|out)$/, ""))?.label ?? ports[0]?.label ?? "",
+      targetPort: ports.find(p => p.id === (other.sourceHandle ?? "").replace(/-(in|out)$/, ""))?.label ?? ports[1]?.label ?? "" });
+  });
+  const routedAdapter = routedAdapterJson ? JSON.parse(routedAdapterJson) as {label:string;length:string;sourcePort:string;targetPort:string} : null;
 
   // Cable ID label from pre-computed map
   const showCableIdLabels = useSchematicStore((s) => s.showCableIdLabels);
@@ -857,7 +873,7 @@ function OffsetEdgeComponent({
     </div>
   ) : null;
 
-  const adapterCableBadge = adapterCable && routeStr ? (
+  const adapterCableBadge = (adapterCable || routedAdapter) && routeStr ? (
     <div className="nodrag nopan" style={{
       position: "absolute", pointerEvents: "none",
       transform: `translate(-50%, -50%) translate(${customMidPt.x}px, ${customMidPt.y - 24}px)`,
@@ -865,8 +881,8 @@ function OffsetEdgeComponent({
       borderRadius: 4, padding: "3px 7px", fontSize: 11,
       color: "var(--color-text)", whiteSpace: "nowrap", textAlign: "center",
     }}>
-      <div style={{ fontWeight: 600 }}>{adapterCable.label || "Adapter Cable"}</div>
-      <div style={{ fontSize: 10 }}>{adapterCable.sourcePort || "Source"} → {adapterCable.targetPort || "Target"}</div>
+      <div style={{ fontWeight: 600 }}>{routedAdapter?.label || adapterCable?.label || "Adapter Cable"}{routedAdapter?.length ? ` · ${routedAdapter.length}` : ""}</div>
+      <div style={{ fontSize: 10 }}>{routedAdapter?.sourcePort || adapterCable?.sourcePort || "Source"} → {routedAdapter?.targetPort || adapterCable?.targetPort || "Target"}</div>
     </div>
   ) : null;
 
