@@ -574,6 +574,8 @@ export interface ConnectionData {
    *  connection as "patched": schedules expand it into hops.length+1 physical cables
    *  with suffix IDs (E001 → E001-A/-B/…). The canvas edge itself is untouched. */
   patchHops?: PatchHop[];
+  /** Hide patch-panel names and port positions on this schematic connection. */
+  hidePatchHops?: boolean;
   /** Sparse per-segment overrides, parallel to the segment list (patchHops.length + 1). */
   patchSegments?: PatchSegmentOverride[];
 }
