@@ -64,6 +64,17 @@ export default function EdgeContextMenu() {
     };
   }, [menu]);
 
+  const insertCableJunction = useCallback(() => {
+    if (!menu) return;
+    const store = useSchematicStore.getState();
+    const route = store.routedEdges[menu.edgeId];
+    const position = route?.waypoints && route.waypoints.length > 1
+      ? projectOntoSegments(menu.flowX, menu.flowY, route.waypoints)
+      : { x: menu.flowX, y: menu.flowY };
+    store.addCableJunction(menu.edgeId, { x: position.x, y: position.y });
+    useSchematicStore.setState({ edgeContextMenu: null });
+  }, [menu]);
+
   const addHandle = useCallback(() => {
     if (!menu) return;
     const store = useSchematicStore.getState();
@@ -694,6 +705,7 @@ export default function EdgeContextMenu() {
           <div className="h-px bg-gray-200 my-1" />
         </>
       )}
+      <MenuItem label="Split into Two Cables (Cable Junction)..." onClick={insertCableJunction} />
       <MenuItem label="Add Handle" onClick={addHandle} />
       {nearWaypoint && (
         <MenuItem label="Remove Handle" onClick={removeHandle} />
