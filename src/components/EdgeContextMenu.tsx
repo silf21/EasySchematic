@@ -223,6 +223,26 @@ export default function EdgeContextMenu() {
     useSchematicStore.setState({ edgeContextMenu: null });
   }, [menu]);
 
+  // A fully connected adapter-cable is displayed as a routed connection.
+  // Expose its actual Device Properties editor from that connection's menu.
+  const physicalAdapterId = useSchematicStore((state) => {
+    if (!menu) return null;
+    const edge = state.edges.find(e => e.id === menu.edgeId);
+    if (!edge) return null;
+    const candidates = [edge.source, edge.target];
+    for (const nodeId of candidates) {
+      const node = state.nodes.find(n => n.id === nodeId);
+      if (node?.type === "device" && node.data.deviceType === "adapter-cable") return nodeId;
+    }
+    return null;
+  });
+  const editPhysicalAdapter = useCallback(() => {
+    if (!physicalAdapterId) return;
+    const store = useSchematicStore.getState();
+    store.setEditingNodeId(physicalAdapterId);
+    useSchematicStore.setState({ edgeContextMenu: null });
+  }, [physicalAdapterId]);
+
   const [editingLabel, setEditingLabel] = useState<false | "label" | "multicable" | "source" | "target" | "length" | "adapterCable" | "adapterSource" | "adapterTarget" | "supplier">(false);
   const [labelValue, setLabelValue] = useState("");
 
@@ -651,6 +671,7 @@ export default function EdgeContextMenu() {
       }}
       onClick={(e) => e.stopPropagation()}
     >
+      {physicalAdapterId && <MenuItem label="Adapter Cable Settings..." onClick={editPhysicalAdapter} />}
       <MenuItem label="Add Handle" onClick={addHandle} />
       {nearWaypoint && (
         <MenuItem label="Remove Handle" onClick={removeHandle} />
