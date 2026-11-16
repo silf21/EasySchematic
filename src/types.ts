@@ -588,6 +588,8 @@ export interface ConnectionData {
   adapterCable?: { label: string; sourcePort: string; targetPort: string };
   /** Hide patch-panel names and port positions on this schematic connection. */
   hidePatchHops?: boolean;
+  /** Normalized positions of patch-hop markers along the routed cable (0..1). */
+  patchHopPositions?: number[];
   /** Patch hop table offset from the cable midpoint in canvas units. */
   patchHopTablePosition?: { x: number; y: number };
   /** Patch hop table dimensions in canvas units. */
