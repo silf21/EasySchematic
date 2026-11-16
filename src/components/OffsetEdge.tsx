@@ -149,57 +149,25 @@ function OffsetEdgeComponent({
   });
 
   // Stable primitive selector: avoids re-renders when unrelated nodes/edges change.
-  const patchHopDataJson = useSchematicStore((s) => {
-    const edge = s.edges.find((e) => e.id === id);
+  const patchHopDataJson = useSchematicStore((state) => {
+    const edge = state.edges.find(e => e.id === id);
     if (!edge?.data?.patchHops?.length || edge.data.hidePatchHops) return "";
-    const rows = edge.data.patchHops.map((hop) => {
-      const panel = s.nodes.find((n) => n.id === hop.panelNodeId);
-      const data = panel?.data as { label?: string; ports?: { id: string; label?: string }[] } | undefined;
-      const port = data?.ports?.find((p) => p.id === hop.portId);
-      return [data?.label ?? "Patch Panel", port?.label ?? hop.portId, hop.orientation === "front-to-rear" ? "Front → Rear" : "Rear → Front"];
+    return JSON.stringify({
+      rows: edge.data.patchHops.map(hop => {
+        const panel = state.nodes.find(n => n.id === hop.panelNodeId);
+        const data = panel?.data as { label?: string; ports?: { id: string; label?: string }[] } | undefined;
+        const port = data?.ports?.find(p => p.id === hop.portId);
+        return [data?.label ?? "Patch Panel", port?.label ?? hop.portId,
+          hop.orientation === "front-to-rear" ? "Front → Rear" : "Rear → Front"] as [string, string, string];
+      }),
+      positions: edge.data.patchHopPositions ?? [],
     });
-    return JSON.stringify({ rows, position: edge.data.patchHopTablePosition ?? { x: 0, y: -28 }, size: edge.data.patchHopTableSize ?? { width: 260, height: 0 } });
   });
   const patchHopData = patchHopDataJson ? JSON.parse(patchHopDataJson) as {
-    rows: [string, string, string][];
-    position: { x: number; y: number };
-    size: { width: number; height: number };
+    rows: [string, string, string][]; positions: number[];
   } : null;
-  const [tableGesture, setTableGesture] = useState<{
-    mode: "move" | "resize"; startX: number; startY: number;
-    position: { x: number; y: number }; size: { width: number; height: number };
-  } | null>(null);
-  const [tableLive, setTableLive] = useState<{ position: { x: number; y: number }; size: { width: number; height: number } } | null>(null);
-  const patchEdgeData = useSchematicStore((s) => s.patchEdgeData);
-  const tableDisplay = tableLive ?? patchHopData;
-  const tablePointerStart = (event: React.PointerEvent<HTMLDivElement>, mode: "move" | "resize") => {
-    if (!tableDisplay) return;
-    event.preventDefault(); event.stopPropagation();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    setTableGesture({ mode, startX: event.clientX, startY: event.clientY,
-      position: { ...tableDisplay.position }, size: { ...tableDisplay.size } });
-  };
-  const tablePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!tableGesture) return;
-    event.stopPropagation();
-    const zoom = reactFlow.getZoom() || 1;
-    const dx = (event.clientX - tableGesture.startX) / zoom;
-    const dy = (event.clientY - tableGesture.startY) / zoom;
-    setTableLive(tableGesture.mode === "move"
-      ? { position: { x: tableGesture.position.x + dx, y: tableGesture.position.y + dy }, size: tableGesture.size }
-      : { position: tableGesture.position, size: { width: Math.max(150, tableGesture.size.width + dx), height: Math.max(0, tableGesture.size.height + dy) } });
-  };
-  const tablePointerEnd = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!tableGesture) return;
-    event.stopPropagation();
-    const zoom = reactFlow.getZoom() || 1;
-    const dx = (event.clientX - tableGesture.startX) / zoom;
-    const dy = (event.clientY - tableGesture.startY) / zoom;
-    if (tableGesture.mode === "move") patchEdgeData(id, { patchHopTablePosition: { x: tableGesture.position.x + dx, y: tableGesture.position.y + dy } });
-    else patchEdgeData(id, { patchHopTableSize: { width: Math.max(150, tableGesture.size.width + dx), height: Math.max(0, tableGesture.size.height + dy) } });
-    setTableGesture(null); setTableLive(null);
-  };
-
+  const patchEdgeData = useSchematicStore(s => s.patchEdgeData);
+  const [liveHop, setLiveHop] = useState<{ index: number; fraction: number } | null>(null);
   const adapterCableJson = useSchematicStore((s) => {
     const edge = s.edges.find((e) => e.id === id);
     return edge?.data?.adapterCable ? JSON.stringify(edge.data.adapterCable) : "";
@@ -795,84 +763,61 @@ function OffsetEdgeComponent({
     </div>
   ) : null;
 
-  // Connector is anchored to the actual routed cable midpoint and ends at the
-  // nearest point of the card rectangle. Both endpoints follow drag and resize.
-  const patchCardX = tableDisplay ? lx + tableDisplay.position.x : 0;
-  const patchCardY = tableDisplay ? ly + tableDisplay.position.y : 0;
-  const patchCardW = tableDisplay?.size.width ?? 260;
-  const patchCardH = tableDisplay?.size.height || 110;
-  const patchAnchorX = customMidPt.x;
-  const patchAnchorY = customMidPt.y;
-  const patchLineEndX = Math.max(patchCardX, Math.min(patchAnchorX, patchCardX + patchCardW));
-  const patchLineEndY = Math.max(patchCardY, Math.min(patchAnchorY, patchCardY + patchCardH));
-  // If the anchor is inside the card projection, attach to the nearest edge.
-  const patchInside = patchAnchorX >= patchCardX && patchAnchorX <= patchCardX + patchCardW
-    && patchAnchorY >= patchCardY && patchAnchorY <= patchCardY + patchCardH;
-  const patchDistances = [
-    Math.abs(patchAnchorX - patchCardX), Math.abs(patchAnchorX - (patchCardX + patchCardW)),
-    Math.abs(patchAnchorY - patchCardY), Math.abs(patchAnchorY - (patchCardY + patchCardH)),
-  ];
-  const patchNearestSide = patchDistances.indexOf(Math.min(...patchDistances));
-  const patchEndX = !patchInside ? patchLineEndX : patchNearestSide === 0 ? patchCardX : patchNearestSide === 1 ? patchCardX + patchCardW : patchAnchorX;
-  const patchEndY = !patchInside ? patchLineEndY : patchNearestSide === 2 ? patchCardY : patchNearestSide === 3 ? patchCardY + patchCardH : patchAnchorY;
-  const patchConnector = patchHopData && tableDisplay && routeStr ? (
-    <svg aria-hidden="true" style={{ position: "absolute", overflow: "visible", pointerEvents: "none", left: 0, top: 0, width: 1, height: 1 }}>
-      <line x1={patchAnchorX} y1={patchAnchorY} x2={patchEndX} y2={patchEndY}
-        stroke="var(--color-text-muted, #94a3b8)" strokeWidth={1.5} strokeDasharray="5 4" />
-      <circle cx={patchAnchorX} cy={patchAnchorY} r={3} fill="var(--color-text-muted, #94a3b8)" />
-    </svg>
-  ) : null;
-
-  const patchHopBadge = patchHopData && tableDisplay && routeStr ? (
-    <div
-      className="nodrag nopan nowheel"
-      onPointerMove={tablePointerMove}
-      onPointerUp={tablePointerEnd}
-      onPointerCancel={() => { setTableGesture(null); setTableLive(null); }}
-      onContextMenu={(e) => e.stopPropagation()}
-      style={{
-        position: "absolute",
-        transform: `translate(${patchCardX}px, ${patchCardY}px)`,
-        width: patchCardW,
-        height: tableDisplay.size.height || "auto",
-        minHeight: 80,
-        pointerEvents: "all",
-        background: "var(--color-surface)",
-        color: "var(--color-text)",
-        border: "1px solid var(--color-border)",
-        borderRadius: 5,
-        boxShadow: "0 2px 7px #0005",
-        fontSize: 11,
-        display: "flex", flexDirection: "column",
-      }}
-    >
-      <div
-        onPointerDown={(e) => tablePointerStart(e, "move")}
-        style={{ cursor: "move", background: "var(--color-surface-raised, #263448)",
-          padding: "5px 8px", fontWeight: 600, borderBottom: "1px solid var(--color-border)", touchAction: "none" }}
-        title="Drag to move patch route"
-      >DMX / SIGNAL ROUTE · {patchHopData.rows.length} Patch Hops</div>
-      <div style={{ display: "flex", gap: 4, alignItems: "stretch", padding: "8px 6px", overflow: "auto", flex: 1 }}>
-        {patchHopData.rows.map(([panel, port, direction], i) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0, flex: 1 }}>
-            {i > 0 && <span aria-hidden="true" style={{ color: "var(--color-text-muted)", fontSize: 15 }}>→</span>}
-            <div title={panel} style={{ minWidth: 0, flex: 1, textAlign: "center", display: "flex", flexDirection: "column", gap: 3 }}>
-              <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 10, opacity: 0.8 }}>{panel}</div>
-              <div style={{ background: "var(--color-surface-raised, #263448)", border: "1px solid var(--color-border)", borderRadius: 3, padding: "4px 2px", fontWeight: 600 }}>{port}</div>
-              <div style={{ fontSize: 9, opacity: 0.75, whiteSpace: "nowrap" }}>{direction}</div>
-            </div>
-          </div>
-        ))}
+  // Each hop is a virtual point constrained to the routed connection path.
+  // Default fractions are evenly spaced; a dragged fraction is saved on the edge.
+  const hopFraction = (index: number): number =>
+    liveHop?.index === index ? liveHop.fraction :
+    patchHopData?.positions[index] ?? (index + 1) / ((patchHopData?.rows.length ?? 0) + 1);
+  const nearestFraction = (x: number, y: number): number => {
+    if (totalLen <= 0 || pathWps.length < 2) return 0.5;
+    let nearest = Number.POSITIVE_INFINITY;
+    let along = 0;
+    for (let i = 1; i < pathWps.length; i++) {
+      const p = pathWps[i - 1], q = pathWps[i];
+      const dx = q.x - p.x, dy = q.y - p.y;
+      const lenSq = dx * dx + dy * dy;
+      const t = lenSq ? Math.max(0, Math.min(1, ((x - p.x) * dx + (y - p.y) * dy) / lenSq)) : 0;
+      const distSq = (x - p.x - t * dx) ** 2 + (y - p.y - t * dy) ** 2;
+      if (distSq < nearest) {
+        nearest = distSq;
+        along = cumDist[i - 1] + t * Math.sqrt(lenSq);
+      }
+    }
+    return Math.max(0.01, Math.min(0.99, along / totalLen));
+  };
+  const moveHop = (event: React.PointerEvent<HTMLDivElement>, index: number, commit: boolean) => {
+    event.stopPropagation();
+    const point = reactFlow.screenToFlowPosition({ x: event.clientX, y: event.clientY });
+    const fraction = nearestFraction(point.x, point.y);
+    if (commit && patchHopData) {
+      const positions = patchHopData.rows.map((_, i) => i === index ? fraction : hopFraction(i));
+      patchEdgeData(id, { patchHopPositions: positions });
+      setLiveHop(null);
+    } else setLiveHop({ index, fraction });
+  };
+  const patchHopMarkers = patchHopData && routeStr && totalLen > 0 ? patchHopData.rows.map(([panel, port, direction], index) => {
+    const point = pointAtDistance(hopFraction(index) * totalLen);
+    return (
+      <div key={index} className="nodrag nopan nowheel"
+        onPointerDown={e => { e.preventDefault(); e.stopPropagation(); e.currentTarget.setPointerCapture(e.pointerId); setLiveHop({ index, fraction: hopFraction(index) }); }}
+        onPointerMove={e => { if (liveHop?.index === index) moveHop(e, index, false); }}
+        onPointerUp={e => { if (liveHop?.index === index) moveHop(e, index, true); }}
+        onPointerCancel={() => setLiveHop(null)}
+        title={`${panel} · ${port} · ${direction} — drag along connection`}
+        style={{ position: "absolute", transform: `translate(${point.x}px, ${point.y}px) translate(-50%, -50%)`,
+          display: "flex", flexDirection: "column", alignItems: "center", cursor: "grab",
+          touchAction: "none", pointerEvents: "all", userSelect: "none", zIndex: 3 }}>
+        <div style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)",
+          borderRadius: 4, padding: "3px 6px", fontSize: 10, textAlign: "center",
+          boxShadow: "0 1px 5px #0005", whiteSpace: "nowrap", marginBottom: 5 }}>
+          <div style={{ fontWeight: 600 }}>{panel}</div>
+          <div>{port} <span style={{ opacity: 0.65 }}>· {direction}</span></div>
+        </div>
+        <div style={{ width: 11, height: 11, borderRadius: "50%", border: "2px solid var(--color-surface)",
+          background: "var(--color-accent, #60a5fa)", boxShadow: "0 0 0 1px var(--color-border)" }} />
       </div>
-      <div
-        onPointerDown={(e) => tablePointerStart(e, "resize")}
-        title="Drag to resize patch route"
-        style={{ position: "absolute", right: 0, bottom: 0, width: 15, height: 15,
-          cursor: "nwse-resize", touchAction: "none", background: "linear-gradient(135deg, transparent 55%, var(--color-text-muted) 55%, var(--color-text-muted) 63%, transparent 63%)" }}
-      />
-    </div>
-  ) : null;
-
+    );
+  }) : null;
   const adapterCableBadge = (adapterCable || routedAdapter) && routeStr ? (
     <div className="nodrag nopan" style={{
       position: "absolute", pointerEvents: "none",
@@ -887,7 +832,7 @@ function OffsetEdgeComponent({
   ) : null;
 
   // All labels + reconnect visuals rendered via EdgeLabelRenderer (HTML layer above all SVG edges)
-  const hasPortalContent = customLabels || cableIdLabels || reconnectVisuals || usbcWarningBadge || cableLengthBadge || pathEditHint || patchHopBadge || patchConnector || adapterCableBadge;
+  const hasPortalContent = customLabels || cableIdLabels || reconnectVisuals || usbcWarningBadge || cableLengthBadge || pathEditHint || patchHopMarkers || adapterCableBadge;
   const edgeLabelsPortal = hasPortalContent ? (
     <EdgeLabelRenderer>
       {cableIdLabels}
