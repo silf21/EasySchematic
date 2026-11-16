@@ -243,6 +243,20 @@ export default function EdgeContextMenu() {
     useSchematicStore.setState({ edgeContextMenu: null });
   }, [physicalAdapterId]);
 
+  const disconnectAdapter = useCallback((end: "input" | "output" | "both") => {
+    if (!physicalAdapterId) return;
+    const store = useSchematicStore.getState();
+    const attached = store.edges.filter(e => e.source === physicalAdapterId || e.target === physicalAdapterId);
+    const remove = attached.filter(e =>
+      end === "both" ||
+      (end === "input" && e.target === physicalAdapterId) ||
+      (end === "output" && e.source === physicalAdapterId));
+    if (!remove.length) return;
+    // Use the same removal action as an ordinary Connection (undo + autosave).
+    store.onEdgesChange(remove.map(e => ({ id: e.id, type: "remove" as const })));
+    useSchematicStore.setState({ edgeContextMenu: null });
+  }, [physicalAdapterId]);
+
   const [editingLabel, setEditingLabel] = useState<false | "label" | "multicable" | "source" | "target" | "length" | "adapterCable" | "adapterSource" | "adapterTarget" | "supplier">(false);
   const [labelValue, setLabelValue] = useState("");
 
@@ -671,7 +685,15 @@ export default function EdgeContextMenu() {
       }}
       onClick={(e) => e.stopPropagation()}
     >
-      {physicalAdapterId && <MenuItem label="Adapter Cable Settings..." onClick={editPhysicalAdapter} />}
+      {physicalAdapterId && (
+        <>
+          <MenuItem label="Adapter Cable Settings..." onClick={editPhysicalAdapter} />
+          <MenuItem label="Disconnect Adapter Input" onClick={() => disconnectAdapter("input")} />
+          <MenuItem label="Disconnect Adapter Output" onClick={() => disconnectAdapter("output")} />
+          <MenuItem label="Disconnect Both Adapter Ends" onClick={() => disconnectAdapter("both")} />
+          <div className="h-px bg-gray-200 my-1" />
+        </>
+      )}
       <MenuItem label="Add Handle" onClick={addHandle} />
       {nearWaypoint && (
         <MenuItem label="Remove Handle" onClick={removeHandle} />
