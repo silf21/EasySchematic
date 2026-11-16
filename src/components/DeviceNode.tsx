@@ -366,7 +366,7 @@ function DeviceNodeComponent({ id, data, selected }: NodeProps<DeviceNodeType>) 
   if (data.deviceType === "adapter-cable") {
     const left = data.ports.find((p) => p.direction === "input" || p.flipped) ?? data.ports[0];
     const right = data.ports.find((p) => p !== left && p.direction === "output") ?? data.ports.find((p) => p !== left);
-    const renderCableHandle = (p: typeof left, side: "left" | "right") => {
+    const renderCableHandle = (p: (typeof data.ports)[number] | undefined, side: "left" | "right") => {
       if (!p) return null;
       const position = side === "left" ? Position.Left : Position.Right;
       const baseStyle = { top: "50%", background: "var(--color-accent, #ef4444)", border: "2px solid var(--color-border)" };
