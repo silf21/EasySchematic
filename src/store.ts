@@ -2468,8 +2468,8 @@ export const useSchematicStore = create<SchematicState>((set, get) => ({
       get().addToast("Cable junctions require an ordinary, unbundled connection", "info");
       return;
     }
-    const srcPort = getPortFromHandle(state.nodes, edge.source, edge.sourceHandle);
-    const tgtPort = getPortFromHandle(state.nodes, edge.target, edge.targetHandle);
+    const srcPort = getPortFromHandle(state.nodes, edge.source, edge.sourceHandle ?? null);
+    const tgtPort = getPortFromHandle(state.nodes, edge.target, edge.targetHandle ?? null);
     if (!srcPort || !tgtPort) {
       get().addToast("Cable junction requires two physical endpoints", "info");
       return;
