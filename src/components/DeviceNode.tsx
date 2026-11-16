@@ -360,6 +360,39 @@ function DeviceNodeComponent({ id, data, selected }: NodeProps<DeviceNodeType>) 
     );
   };
 
+  // Adapter cables are real, fully editable devices with two real React Flow ports.
+  // Their visual form is a cable, not a device card. Double-click opens the same
+  // device editor as any other node; drag/select behavior stays native.
+  if (data.deviceType === "adapter-cable") {
+    const left = data.ports.find((p) => p.direction === "input" || p.flipped) ?? data.ports[0];
+    const right = data.ports.find((p) => p !== left && p.direction === "output") ?? data.ports.find((p) => p !== left);
+    const renderCableHandle = (p: typeof left, side: "left" | "right") => {
+      if (!p) return null;
+      const position = side === "left" ? Position.Left : Position.Right;
+      const baseStyle = { top: "50%", background: "var(--color-accent, #ef4444)", border: "2px solid var(--color-border)" };
+      if (p.direction === "bidirectional") return <span key={p.id}>
+        <Handle type="target" id={`${p.id}-in`} position={position} style={baseStyle} />
+        <Handle type="source" id={`${p.id}-out`} position={position} style={baseStyle} />
+      </span>;
+      return <Handle key={p.id} type={p.direction === "input" ? "target" : "source"} id={p.id} position={position} style={baseStyle} />;
+    };
+    return (
+      <div onDoubleClick={() => setEditingNodeId(id)} title="Double-click to edit adapter cable"
+        className="relative nodrag-false" style={{ width: 208, height: 64, color: "var(--color-text)", cursor: "grab" }}>
+        <div style={{ position: "absolute", left: 0, right: 0, top: 32, borderTop: "3px solid var(--color-accent, #ef4444)" }} />
+        <div style={{ position: "absolute", top: 1, left: 20, right: 20, textAlign: "center", fontSize: 11,
+          background: "var(--color-surface)", border: selected ? "1px solid #3b82f6" : "1px solid var(--color-border)",
+          borderRadius: 4, padding: "3px 5px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {displayLabel(data.label)}{data.adapterCableLength ? ` · ${data.adapterCableLength}` : ""}
+        </div>
+        <div style={{ position: "absolute", left: 3, bottom: 1, fontSize: 10, background: "var(--color-surface)", padding: "0 3px" }}>{left?.label ?? ""}</div>
+        <div style={{ position: "absolute", right: 3, bottom: 1, fontSize: 10, background: "var(--color-surface)", padding: "0 3px" }}>{right?.label ?? ""}</div>
+        {renderCableHandle(left, "left")}
+        {renderCableHandle(right, "right")}
+      </div>
+    );
+  }
+
   if (isHiddenAdapter) {
     // Render 1x1 invisible placeholder — keeps React Flow handle refs valid but
     // doesn't block device placement (RF re-measures this as ~1px)
