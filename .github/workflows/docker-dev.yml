@@ -33,5 +33,5 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/sifl21/easyschematic:patch-bay-dev
+          tags: ghcr.io/silf21/easyschematic:patch-bay-dev
           platforms: linux/amd64
