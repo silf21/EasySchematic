@@ -36,6 +36,8 @@ export default function PatchPanelRenderer() {
   const setPatchAssignEdge = useSchematicStore((s) => s.setPatchAssignEdge);
   const setPatchTracedEdge = useSchematicStore((s) => s.setPatchTracedEdge);
   const addEdgePatchHop = useSchematicStore((s) => s.addEdgePatchHop);
+  const setEdgePatchHopOrientation = useSchematicStore((s) => s.setEdgePatchHopOrientation);
+  const [newHopOrientation, setNewHopOrientation] = useState<"rear-to-front" | "front-to-rear">("rear-to-front");
   const setPatchSegmentOverride = useSchematicStore((s) => s.setPatchSegmentOverride);
   const addToast = useSchematicStore((s) => s.addToast);
 
@@ -89,7 +91,7 @@ export default function PatchPanelRenderer() {
 
   const tryAssign = (panelNodeId: string, portId: string) => {
     if (!patchAssignEdgeId || !assignEdge) return;
-    const hop = { panelNodeId, portId };
+    const hop = { panelNodeId, portId, orientation: newHopOrientation };
     const mismatch = checkHopConnectors(
       assignEdge,
       nodes,
@@ -177,8 +179,15 @@ export default function PatchPanelRenderer() {
             Patching <b className="font-mono">{assignEdge ? baseIdFor(assignEdge) : ""}</b> — click an open port.
             Click a second panel’s port to add another hop.
           </span>
+          <label className="ml-auto flex items-center gap-2 whitespace-nowrap">
+            Direction
+            <select className="text-neutral-900 rounded px-1 py-1" value={newHopOrientation} onChange={(e) => setNewHopOrientation(e.target.value as "rear-to-front" | "front-to-rear")}>
+              <option value="rear-to-front">Rear → Front</option>
+              <option value="front-to-rear">Front → Rear</option>
+            </select>
+          </label>
           <button
-            className="ml-auto bg-white/20 hover:bg-white/30 rounded px-2 py-0.5"
+            className="bg-white/20 hover:bg-white/30 rounded px-2 py-0.5"
             onClick={() => setPatchAssignEdge(null)}
           >
             Done
@@ -282,7 +291,7 @@ export default function PatchPanelRenderer() {
                         onMouseLeave={() => { if (display) setPatchTracedEdge(null); }}
                       >
                         <text x={cx} y={cy - 34} textAnchor="middle" fill="#b9bcc4" fontSize={11} fontWeight={600} fontFamily="ui-monospace, monospace">
-                          {String(i + 1).padStart(2, "0")}
+                          {port.label || String(i + 1).padStart(2, "0")}
                         </text>
                         <circle
                           cx={cx} cy={cy} r={21}
@@ -322,6 +331,15 @@ export default function PatchPanelRenderer() {
                           <>
                             {renderChip(display, display.rear, "◀")}
                             {renderChip(display, display.front, "▶")}
+                            {display.kind === "hop" && (() => {
+                              const edge = edges.find((e) => e.id === display.edgeId);
+                              const index = edge?.data?.patchHops?.findIndex((h) => h.panelNodeId === panel.id && h.portId === port.id) ?? -1;
+                              if (index < 0) return null;
+                              return <select aria-label={`Direction for ${port.label || port.id}`} title="Physical patch direction" className="w-full text-[9px] border rounded bg-white" value={edge?.data?.patchHops?.[index]?.orientation ?? "rear-to-front"} onChange={(e) => setEdgePatchHopOrientation(display.edgeId, index, e.target.value as "rear-to-front" | "front-to-rear")}>
+                                <option value="rear-to-front">Rear → Front</option>
+                                <option value="front-to-rear">Front → Rear</option>
+                              </select>;
+                            })()}
                           </>
                         ) : assigning ? (
                           <button
