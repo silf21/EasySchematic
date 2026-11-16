@@ -468,6 +468,14 @@ export default function EdgeContextMenu() {
     ) ?? edge;
   })();
   const isPatched = ((patchEdge?.data?.patchHops?.length ?? 0) as number) > 0;
+  const patchHopsHidden = patchEdge?.data?.hidePatchHops === true;
+
+  const togglePatchHops = () => {
+    if (!patchEdge) return;
+    const s = useSchematicStore.getState();
+    s.patchEdgeData(patchEdge.id, { hidePatchHops: patchHopsHidden ? undefined : true });
+    useSchematicStore.setState({ edgeContextMenu: null });
+  };
 
   const patchViaPanel = () => {
     const s = useSchematicStore.getState();
@@ -663,7 +671,12 @@ export default function EdgeContextMenu() {
             label={isPatched ? "Patch via Panel (Add Hop)..." : "Patch via Panel..."}
             onClick={patchViaPanel}
           />
-          {isPatched && <MenuItem label="Remove Patching" onClick={removePatching} />}
+          {isPatched && (
+            <>
+              <MenuItem label={patchHopsHidden ? "Show Patch Hops" : "Hide Patch Hops"} onClick={togglePatchHops} />
+              <MenuItem label="Remove Patching" onClick={removePatching} />
+            </>
+          )}
         </>
       )}
       {canBundleSelection && (
