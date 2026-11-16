@@ -414,8 +414,8 @@ function DeviceNodeComponent({ id, data, selected }: NodeProps<DeviceNodeType>) 
         </> : <Handle type={p.direction === "input" ? "target" : "source"} id={p.id} position={position} style={style} />}
         <div className="nodrag nopan" onPointerDown={e => onCableEndDown(e, side)} onPointerMove={onCableEndMove}
           onPointerUp={onCableEndUp} onPointerCancel={onCableEndUp}
-          title="Drag cable end to reposition; use the port handle to connect"
-          style={{ position: "absolute", left: pt.x - 11, top: pt.y - 11, width: 22, height: 22,
+          title="Drag this grip to move the cable end; drag the circular port below to connect"
+          style={{ position: "absolute", left: pt.x - 7, top: pt.y - 27, width: 14, height: 14,
             borderRadius: "50%", border: selected ? "1px dashed #60a5fa" : "1px solid transparent",
             cursor: "move", touchAction: "none", zIndex: 2, pointerEvents: "auto" }} />
         <span style={{ position: "absolute", left: pt.x + (side === "left" ? -8 : 8), top: pt.y + 12,
