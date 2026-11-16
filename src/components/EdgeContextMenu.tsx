@@ -553,6 +553,22 @@ export default function EdgeContextMenu() {
     useSchematicStore.setState({ edgeContextMenu: null });
   };
 
+  const showPatchPanelDevice = () => {
+    if (!patchEdge?.data?.patchHops?.length || !menu) return;
+    const store = useSchematicStore.getState();
+    const panelId = patchEdge.data.patchHops[0].panelNodeId;
+    const panel = store.nodes.find(n => n.id === panelId);
+    if (!panel || panel.type !== "device") return;
+    // Reuse the original patch-panel node: the Patch Bay and schematic then
+    // share exactly the same port objects, labels and assignments.
+    if (panel.data.offCanvas) {
+      store.setPanelOffCanvas(panelId, false);
+      store.moveDevice(panelId, { x: menu.flowX + 24, y: menu.flowY + 24 });
+    }
+    store.patchEdgeData(patchEdge.id, { hidePatchHops: true });
+    useSchematicStore.setState({ edgeContextMenu: null });
+  };
+
   const removePatching = () => {
     const s = useSchematicStore.getState();
     if (patchEdge) s.clearEdgePatchHops(patchEdge.id);
@@ -762,6 +778,7 @@ export default function EdgeContextMenu() {
           />
           {isPatched && (
             <>
+              <MenuItem label="Show Linked Patch Panel Device" onClick={showPatchPanelDevice} />
               <MenuItem label={patchHopsHidden ? "Show Patch Hops" : "Hide Patch Hops"} onClick={togglePatchHops} />
               <MenuItem label="Remove Patching" onClick={removePatching} />
             </>
