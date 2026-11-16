@@ -836,8 +836,7 @@ function OffsetEdgeComponent({
   const edgeLabelsPortal = hasPortalContent ? (
     <EdgeLabelRenderer>
       {cableIdLabels}
-      {patchConnector}
-      {patchHopBadge}
+      {patchHopMarkers}
       {adapterCableBadge}
       {customLabels}
       {cableLengthBadge}
