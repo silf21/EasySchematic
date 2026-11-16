@@ -721,10 +721,14 @@ function OffsetEdgeComponent({
   // labels since they have pointer-events: none). These HTML elements are purely decorative.
   const RECONNECT_OFFSET = 12; // matches reconnectRadius prop on <ReactFlow>
   const showReconnect = (selected || isHovered) && routeStr;
-  const srcVisualX = sourceX + srcDx * RECONNECT_OFFSET;
-  const srcVisualY = sourceY + srcDy * RECONNECT_OFFSET;
-  const tgtVisualX = targetX - tgtDx * RECONNECT_OFFSET;
-  const tgtVisualY = targetY - tgtDy * RECONNECT_OFFSET;
+  // Virtual adapter edges can have React Flow endpoints different from the
+  // effective routed path. Anchor reconnect visuals to the actual route.
+  const routedStart = totalLen > 0 ? pointAtDistance(RECONNECT_OFFSET) : null;
+  const routedEnd = totalLen > 0 ? pointAtDistance(totalLen - RECONNECT_OFFSET) : null;
+  const srcVisualX = routedStart?.x ?? sourceX + srcDx * RECONNECT_OFFSET;
+  const srcVisualY = routedStart?.y ?? sourceY + srcDy * RECONNECT_OFFSET;
+  const tgtVisualX = routedEnd?.x ?? targetX - tgtDx * RECONNECT_OFFSET;
+  const tgtVisualY = routedEnd?.y ?? targetY - tgtDy * RECONNECT_OFFSET;
 
   const reconnectVisuals = showReconnect ? (
     <>
@@ -795,7 +799,7 @@ function OffsetEdgeComponent({
       setLiveHop(null);
     } else setLiveHop({ index, fraction });
   };
-  const patchHopMarkers = patchHopData && routeStr && totalLen > 0 ? patchHopData.rows.map(([panel, port, direction], index) => {
+  const patchHopMarkers = patchHopData && routeStr && totalLen > 0 ? patchHopData.rows.map(([panel, port], index) => {
     const point = pointAtDistance(hopFraction(index) * totalLen);
     return (
       <div key={index} className="nodrag nopan nowheel"
@@ -803,18 +807,18 @@ function OffsetEdgeComponent({
         onPointerMove={e => { if (liveHop?.index === index) moveHop(e, index, false); }}
         onPointerUp={e => { if (liveHop?.index === index) moveHop(e, index, true); }}
         onPointerCancel={() => setLiveHop(null)}
-        title={`${panel} · ${port} · ${direction} — drag along connection`}
-        style={{ position: "absolute", transform: `translate(${point.x}px, ${point.y}px) translate(-50%, -50%)`,
+        title={`${panel} · ${port} — drag along connection`}
+        style={{ position: "absolute", left: point.x, top: point.y, transform: "translate(-50%, -100%)",
           display: "flex", flexDirection: "column", alignItems: "center", cursor: "grab",
           touchAction: "none", pointerEvents: "all", userSelect: "none", zIndex: 3 }}>
         <div style={{ background: "var(--color-surface)", border: "1px solid var(--color-border)",
           borderRadius: 4, padding: "3px 6px", fontSize: 10, textAlign: "center",
-          boxShadow: "0 1px 5px #0005", whiteSpace: "nowrap", marginBottom: 5 }}>
+          boxShadow: "0 1px 5px #0005", whiteSpace: "nowrap", marginBottom: 3 }}>
           <div style={{ fontWeight: 600 }}>{panel}</div>
-          <div>{port} <span style={{ opacity: 0.65 }}>· {direction}</span></div>
+          <div>{port}</div>
         </div>
         <div style={{ width: 11, height: 11, borderRadius: "50%", border: "2px solid var(--color-surface)",
-          background: "var(--color-accent, #60a5fa)", boxShadow: "0 0 0 1px var(--color-border)" }} />
+          background: "var(--color-accent, #60a5fa)", boxShadow: "0 0 0 1px var(--color-border)", marginBottom: -5.5 }} />
       </div>
     );
   }) : null;
