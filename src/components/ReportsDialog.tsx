@@ -2474,6 +2474,8 @@ function PackListTabInline() {
   type SubTab = "devices" | "cables" | "accessories" | "racks";
   const [subTab, setSubTab] = useState<SubTab>("devices");
   const [groupDevicesByRoom, setGroupDevicesByRoom] = useState(false);
+  const [groupBySupplier, setGroupBySupplier] = useState(false);
+  const [supplierFilter, setSupplierFilter] = useState("");
   type CableGrouping = "" | "path" | "category";
   const [cableGrouping, setCableGrouping] = useState<CableGrouping>("category");
 
@@ -2484,6 +2486,11 @@ function PackListTabInline() {
   const pages = useSchematicStore((s) => s.pages);
   const data = useMemo(() => computePackList(nodes, edges, pages), [nodes, edges, pages]);
   const docSummary = useMemo(() => computeDocumentSummary(nodes, edges, pages), [nodes, edges, pages]);
+  const suppliers = useMemo(() => [...new Set([...data.devices.map(d => d.supplier), ...data.summary.map(c => c.supplier), ...data.adapters.map(a => a.supplier)].filter(Boolean))].sort(), [data]);
+  const matches = (v: string) => !supplierFilter || (supplierFilter === "__unassigned__" ? !v : v === supplierFilter);
+  const filteredDevices = data.devices.filter(d => matches(d.supplier));
+  const filteredCables = data.summary.filter(c => matches(c.supplier));
+  const filteredAdapters = data.adapters.filter(a => matches(a.supplier));
 
   const totalCost = useMemo(() => {
     let sum = 0;
@@ -2545,6 +2552,7 @@ function PackListTabInline() {
             Group by Room
           </label>
         )}
+        {(subTab === "devices" || subTab === "cables") && <label className="flex items-center gap-1 text-[10px] text-[var(--color-text-muted)]"><input type="checkbox" checked={groupBySupplier} onChange={e => setGroupBySupplier(e.target.checked)} />Group by Supplier</label>}
         {subTab === "cables" && (
           <label className="flex items-center gap-1.5 text-[10px] text-[var(--color-text-muted)] select-none">
             Group by
@@ -2561,6 +2569,7 @@ function PackListTabInline() {
         )}
       </div>
 
+      <div className="mb-2 flex items-center gap-2 text-xs"><label htmlFor="supplier-filter">Supplier</label><select id="supplier-filter" value={supplierFilter} onChange={e => setSupplierFilter(e.target.value)} className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded px-2 py-1"><option value="">All suppliers</option>{suppliers.map(v => <option key={v} value={v}>{v}</option>)}<option value="__unassigned__">Not assigned</option></select></div>
       {totalCost > 0 && (
         <div className="mb-3 bg-[var(--color-surface)] border border-[var(--color-border)] rounded px-3 py-2 inline-block">
           <div className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wide">Project Total</div>
@@ -2572,7 +2581,7 @@ function PackListTabInline() {
 
       {subTab === "devices" && (
         <>
-          {data.devices.length === 0 ? (
+          {filteredDevices.length === 0 ? (
             <div className="text-sm text-[var(--color-text-muted)] text-center py-8">
               No devices in this schematic.
             </div>
@@ -2582,16 +2591,14 @@ function PackListTabInline() {
                 <tr>
                   <th className={plThClass}>Qty</th>
                   <th className={plThClass}>Device</th>
+                  <th className={plThClass}>Supplier</th>
                   <th className={plThClass}>Type</th>
                   <th className={plThClass}>Unit Cost</th>
                   <th className={plThClass}>Ext. Cost</th>
                 </tr>
               </thead>
               <tbody>
-                {(groupDevicesByRoom
-                  ? renderGroupedDevices(data.devices, currency)
-                  : renderDeviceRows(mergeDevicesByModel(data.devices), "", currency)
-                )}
+                {groupBySupplier ? [...new Set(filteredDevices.map(d => d.supplier))].sort().map(v => <React.Fragment key={v}><tr><td colSpan={99} className="pt-3 pb-1 px-2 text-xs font-semibold border-b border-[var(--color-border)]">{v || "Not assigned"}</td></tr>{groupDevicesByRoom ? renderGroupedDevices(filteredDevices.filter(d => d.supplier === v), currency) : renderDeviceRows(mergeDevicesByModel(filteredDevices.filter(d => d.supplier === v)), v, currency)}</React.Fragment>) : groupDevicesByRoom ? renderGroupedDevices(filteredDevices, currency) : renderDeviceRows(mergeDevicesByModel(filteredDevices), "", currency)}
               </tbody>
             </table>
           )}
@@ -2600,7 +2607,7 @@ function PackListTabInline() {
 
       {subTab === "cables" && (
         <>
-          {data.summary.length === 0 && data.adapters.length === 0 ? (
+          {filteredCables.length === 0 && filteredAdapters.length === 0 ? (
             <div className="text-sm text-[var(--color-text-muted)] text-center py-8">
               No connections in this schematic.
             </div>
@@ -2608,7 +2615,7 @@ function PackListTabInline() {
             <>
               {(() => {
                 const showPath = cableGrouping === "path";
-                const cableRows = showPath ? data.summary : mergeCablesByType(data.summary);
+                const cableRows = showPath ? filteredCables : mergeCablesByType(filteredCables);
                 const renderRow = (s: PackListSummaryRow, i: number) => {
                   const key = cableCostKey(s.cableType, s.signalType, s.cableLength);
                   const uc = cableCosts?.[key] ?? 0;
@@ -2617,6 +2624,7 @@ function PackListTabInline() {
                     <tr key={i} className={rowClass(i)}>
                       <td className={tdClass}>{s.count}&times;</td>
                       <td className={tdClass}>{s.cableType}</td>
+                       <td className={tdClass}>{s.supplier || "—"}</td>
                       <td className={tdClass}>{s.signalType}</td>
                       <td className={tdClass}>{s.cableLength}</td>
                       {showPath && <td className={tdClass}>{s.route}</td>}
@@ -2628,7 +2636,7 @@ function PackListTabInline() {
                   );
                 };
 
-                const categories = cableGrouping === "category" ? groupCablesByCategory(cableRows) : null;
+                const categories = cableGrouping === "category" && !groupBySupplier ? groupCablesByCategory(cableRows) : null;
                 let rowIdx = 0;
 
                 return (
@@ -2637,6 +2645,7 @@ function PackListTabInline() {
                       <tr>
                         <th className={plThClass}>Qty</th>
                         <th className={plThClass}>Cable Type</th>
+                         <th className={plThClass}>Supplier</th>
                         <th className={plThClass}>Signal</th>
                         <th className={plThClass}>Length</th>
                         {showPath && <th className={plThClass}>Route</th>}
@@ -2645,7 +2654,7 @@ function PackListTabInline() {
                       </tr>
                     </thead>
                     <tbody>
-                      {categories
+                      {groupBySupplier ? [...new Set([...cableRows.map(c => c.supplier), ...filteredAdapters.map(a => a.supplier)])].sort().map(v => <React.Fragment key={v}><tr><td colSpan={99} className="pt-3 pb-1 px-2 text-xs font-semibold border-b border-[var(--color-border)]">{v || "Not assigned"}</td></tr>{cableRows.filter(c => c.supplier === v).map(c => renderRow(c, rowIdx++))}{filteredAdapters.filter(a => a.supplier === v).map((a,i) => <tr key={`adapter-${i}`}><td className={tdClass}>{a.count}×</td><td className={tdClass}>{a.model}</td><td className={tdClass}>{a.supplier || "—"}</td><td className={tdClass}>Adapter</td><td className={tdClass}></td>{showPath && <td className={tdClass}></td>}<td className={tdClass}></td><td className={tdClass}></td></tr>)}</React.Fragment>) : categories
                         ? categories.map((group) => {
                             const rows = group.rows.map((s) => renderRow(s, rowIdx++));
                             return categories.length > 1 ? (
@@ -2664,20 +2673,21 @@ function PackListTabInline() {
                           })
                         : cableRows.map((s, i) => renderRow(s, i))
                       }
-                      {data.adapters.length > 0 && (
+                      {!groupBySupplier && filteredAdapters.length > 0 && (
                         <>
                           <tr>
                             <td
                               colSpan={99}
                               className="pt-3 pb-1 px-2 text-xs font-semibold text-[var(--color-text-heading)] border-b border-[var(--color-border)]"
                             >
-                              Adapters ({data.adapters.reduce((sum, a) => sum + a.count, 0)})
+                              Adapters ({filteredAdapters.reduce((sum, a) => sum + a.count, 0)})
                             </td>
                           </tr>
-                          {data.adapters.map((a, i) => (
+                          {filteredAdapters.map((a, i) => (
                             <tr key={`adapter-${i}`} className={rowClass(i)}>
                               <td className={tdClass}>{a.count}&times;</td>
                               <td className={tdClass}>{a.model}</td>
+                               <td className={tdClass}>{a.supplier || "—"}</td>
                               <td className={tdClass}></td>
                               <td className={tdClass}></td>
                               {showPath && <td className={tdClass}></td>}
@@ -2777,6 +2787,7 @@ function renderDeviceRows(devices: PackListDevice[], keyPrefix = "", currency = 
       <tr key={`${keyPrefix}${idx}`} className={rowClass(idx)}>
         <td className={tdClass}>{d.count}&times;</td>
         <td className={tdClass}>{d.model}</td>
+        <td className={tdClass}>{d.supplier || "—"}</td>
         <td className={tdClass}>{deviceTypeDisplay(d.deviceType)}</td>
         <td className={tdClass}>{d.unitCost > 0 ? formatCurrency(d.unitCost, currency) : "—"}</td>
         <td className={tdClass}>{extCost > 0 ? formatCurrency(extCost, currency) : "—"}</td>
@@ -2792,6 +2803,7 @@ function renderDeviceRows(devices: PackListDevice[], keyPrefix = "", currency = 
           <td className={`${tdClass} text-[var(--color-text-muted)]`}>
             <span className="pl-3">{c.cardLabel}</span>
           </td>
+          <td className={tdClass} />
           <td className={tdClass} />
           <td className={`${tdClass} text-[var(--color-text-muted)]`}>{c.cardUnitCost > 0 ? formatCurrency(c.cardUnitCost, currency) : ""}</td>
           <td className={`${tdClass} text-[var(--color-text-muted)]`}>{cardExt > 0 ? formatCurrency(cardExt, currency) : ""}</td>
