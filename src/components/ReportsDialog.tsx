@@ -1,3 +1,6 @@
+import { useReportSort } from "../useReportSort";
+import { readReportSort, reportSortKey, sortReportRows, reportSortValue } from "../reportSort";
+import { reportColumnId } from "../reportColumnOrder";
 import { useOrderedReportColumns } from "../useOrderedReportColumns";
 import { ReportTable, ReportRow } from "./ReportTable";
 import LightingReport from "./LightingReport";
@@ -112,7 +115,7 @@ function ReportsDialog({ initialTab, onClose }: ReportsDialogProps) {
   const handleCsvExport = useCallback(() => {
     const ownedGear = useSchematicStore.getState().ownedGear;
     if (tab === "lighting") {
-      downloadCsv(buildLightingReportCsv(computeLightingReport(nodes)), `${schematicName} - Lighting.csv`);
+      downloadCsv(buildLightingReportCsv(sortReportRows(computeLightingReport(nodes), readReportSort(useSchematicStore.getState().reportLayouts[reportSortKey("lighting")]))), `${schematicName} - Lighting.csv`);
     } else if (tab === "network") {
       exportNetworkCsv(nodes, edges, schematicName);
     } else if (tab === "devices") {
@@ -123,22 +126,33 @@ function ReportsDialog({ initialTab, onClose }: ReportsDialogProps) {
         roomDistances: s.roomDistances,
         distanceSettings: s.distanceSettings,
       }, s.bundles);
-      exportCableScheduleCsv(rows, schematicName);
+      exportCableScheduleCsv(sortReportRows(rows, readReportSort(s.reportLayouts[reportSortKey("cableSchedule")])), schematicName);
     } else if (tab === "patchPanel") {
       const s = useSchematicStore.getState();
       const rows = computePatchPanelSchedule(nodes, edges, s.cableNamingScheme, {
         roomDistances: s.roomDistances,
         distanceSettings: s.distanceSettings,
       });
-      exportPatchPanelScheduleCsv(rows, schematicName);
+      exportPatchPanelScheduleCsv(sortReportRows(rows, readReportSort(s.reportLayouts[reportSortKey("patchPanelSchedule")]), (row, id) => {
+        const column = PATCH_PANEL_SCHEDULE_COLUMNS.find(c => reportColumnId(c.header) === id);
+        return column ? patchPanelCellText(row, column.key) : "";
+      }), schematicName);
     } else if (tab === "power") {
       const data = computePowerReport(nodes, edges);
-      exportPowerReportCsv(data, schematicName);
+      const layouts = useSchematicStore.getState().reportLayouts;
+      exportPowerReportCsv({ ...data, devices: sortReportRows(data.devices, readReportSort(layouts[reportSortKey("powerDevices")])), distros: sortReportRows(data.distros, readReportSort(layouts[reportSortKey("powerDistros")])) }, schematicName);
     } else {
       const pages = useSchematicStore.getState().pages;
       const data = computePackList(nodes, edges, pages);
       const cableCosts = useSchematicStore.getState().cableCosts;
-      exportPackListCsv(data, schematicName, cableCosts, computeDocumentSummary(nodes, edges, pages));
+      const layouts = useSchematicStore.getState().reportLayouts;
+      exportPackListCsv({ ...data,
+        devices: sortReportRows(data.devices, readReportSort(layouts[reportSortKey("devices")])),
+        summary: sortReportRows(data.summary, readReportSort(layouts[reportSortKey("cables")]), (row, id) => id === "unitcost" ? cableUnitCost(row, cableCosts) : id === "extcost" ? row.count * cableUnitCost(row, cableCosts) : reportSortValue(row, id)),
+        adapters: sortReportRows(data.adapters, readReportSort(layouts[reportSortKey("cables")])),
+        accessories: sortReportRows(data.accessories, readReportSort(layouts[reportSortKey("accessories")])),
+        racks: sortReportRows(data.racks, readReportSort(layouts[reportSortKey("racks")])),
+      }, schematicName, cableCosts, computeDocumentSummary(nodes, edges, pages));
     }
   }, [tab, nodes, edges, schematicName]);
 
@@ -428,8 +442,8 @@ function NetworkReportTab() {
 
   const rows = useMemo(() => computeNetworkReport(nodes, edges), [nodes, edges]);
   const duplicateIps = useMemo(() => findDuplicateIps(nodes), [nodes]);
-  const dhcpServers = useMemo(() => computeDhcpServerSummary(nodes), [nodes]);
-  const poeBudgets = useMemo(() => computePoeBudget(nodes, edges), [nodes, edges]);
+  const dhcpServers = useReportSort("dhcpServers", useMemo(() => computeDhcpServerSummary(nodes), [nodes]));
+  const poeBudgets = useReportSort("poeBudget", useMemo(() => computePoeBudget(nodes, edges), [nodes, edges]));
   const dhcpWarnings = useMemo(() => {
     const warnings: DhcpWarning[] = [
       ...computeDhcpWarnings(rows, nodes, edges),
@@ -462,7 +476,7 @@ function NetworkReportTab() {
     );
   }, [rows, filter]);
 
-  const sorted = useMemo(() => {
+  const defaultSorted = useMemo(() => {
     const copy = [...filtered];
     copy.sort((a, b) => {
       let cmp: number;
@@ -477,6 +491,7 @@ function NetworkReportTab() {
     });
     return copy;
   }, [filtered, sortKey, sortAsc]);
+  const sorted = useReportSort("network", defaultSorted);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc(!sortAsc);
@@ -1189,7 +1204,7 @@ function DeviceReportTab() {
     );
   }, [rows, filter]);
 
-  const sorted = useMemo(() => {
+  const defaultSorted = useMemo(() => {
     const copy = [...filtered];
     copy.sort((a, b) => {
       let cmp: number;
@@ -1202,6 +1217,7 @@ function DeviceReportTab() {
     });
     return copy;
   }, [filtered, sortKey, sortAsc]);
+  const sorted = useReportSort("deviceReport", defaultSorted, (row, id) => id === "type" ? deviceTypeDisplay(row.deviceType) : reportSortValue(row, id));
 
   const toggleSort = (key: DeviceSortKey) => {
     if (sortKey === key) setSortAsc(!sortAsc);
@@ -1350,10 +1366,10 @@ function DeviceReportTab() {
               <th className={thClass} onClick={() => toggleSort("manufacturer")}>
                 Manufacturer{sortArrow("manufacturer")}
               </th>
-              <th className={thClass} onClick={() => toggleSort("model")}>
+              <th className={thClass} onClick={() => toggleSort("model")} title="Permanent device / template model, retained on rename">
                 Model{sortArrow("model")}
               </th>
-              <th className={thClass} onClick={() => toggleSort("modelNumber")}>
+              <th className={thClass} onClick={() => toggleSort("modelNumber")} title="Manufacturer model or part number">
                 Model #{sortArrow("modelNumber")}
               </th>
               <th className={thClass} onClick={() => toggleSort("room")}>
@@ -1618,7 +1634,7 @@ function CableScheduleTabInline() {
     );
   }, [rows, filter]);
 
-  const sorted = useMemo(() => {
+  const defaultSorted = useMemo(() => {
     const copy = [...filtered];
     copy.sort((a, b) => {
       const cmp = (a[sortKey] ?? "").localeCompare(b[sortKey] ?? "");
@@ -1626,6 +1642,9 @@ function CableScheduleTabInline() {
     });
     return copy;
   }, [filtered, sortKey, sortAsc]);
+  const multiSorted = useReportSort("cableSchedule", defaultSorted);
+  const rules = readReportSort(useSchematicStore.getState().reportLayouts[reportSortKey("cableSchedule")]);
+  const sorted = groupByKey ? [...groupCableScheduleRows(defaultSorted, groupByKey).values()].flatMap(group => sortReportRows(group, rules)) : multiSorted;
 
   const toggleSort = (key: CableSortKey) => {
     if (sortKey === key) setSortAsc(!sortAsc);
@@ -2249,10 +2268,14 @@ function PatchPanelScheduleTabInline({ onViewChange }: { onViewChange: (v: Patch
   // invisible field with no arrow on any header; fall back to the panel column.
   const effectiveSortKey: PatchPanelSortKey = hiddenCols.has(sortKey) ? "panel" : sortKey;
 
-  const sorted = useMemo(
+  const defaultSorted = useMemo(
     () => sortPatchPanelScheduleRows(filtered, effectiveSortKey, sortAsc),
     [filtered, effectiveSortKey, sortAsc],
   );
+  const sorted = useReportSort("patchPanelSchedule", defaultSorted, (row, id) => {
+    const column = PATCH_PANEL_SCHEDULE_COLUMNS.find(c => reportColumnId(c.header) === id);
+    return column ? patchPanelCellText(row, column.key) : "";
+  });
 
   // Columns the table is actually rendering, in order — the PDF is built from this same
   // list so the two surfaces show the same columns in the same order (#362).
@@ -2297,7 +2320,14 @@ function PatchPanelScheduleTabInline({ onViewChange }: { onViewChange: (v: Patch
     );
   }
 
-  const grouped = groupPatchPanelScheduleRows(sorted, groupByKey || null);
+  const grouped = groupPatchPanelScheduleRows(groupByKey ? defaultSorted : sorted, groupByKey || null);
+  if (grouped) {
+    const rules = readReportSort(useSchematicStore.getState().reportLayouts[reportSortKey("patchPanelSchedule")]);
+    for (const [label, list] of grouped) grouped.set(label, sortReportRows(list, rules, (row, id) => {
+      const column = PATCH_PANEL_SCHEDULE_COLUMNS.find(c => reportColumnId(c.header) === id);
+      return column ? patchPanelCellText(row, column.key) : "";
+    }));
+  }
   const groups: { label: string; rows: PatchPanelScheduleRow[] }[] = grouped
     ? [...grouped].map(([label, list]) => ({ label, rows: list }))
     : [{ label: "", rows: sorted }];
@@ -2510,6 +2540,13 @@ function PackListTabInline() {
 
   const pages = useSchematicStore((s) => s.pages);
   const data = useMemo(() => computePackList(nodes, edges, pages), [nodes, edges, pages]);
+  const deviceRows = useReportSort("devices", useMemo(() => mergeDevicesByModel(data.devices), [data.devices]));
+  const groupedDeviceRows = data.devices;
+  const accessoryRows = useReportSort("accessories", data.accessories);
+  const rackRows = useReportSort("racks", data.racks);
+  const adapterRows = useReportSort("cables", data.adapters);
+  const cableRowsBase = useMemo(() => cableGrouping === "path" ? data.summary : mergeCablesByType(data.summary), [cableGrouping, data.summary]);
+  const orderedCableRows = useReportSort("cables", cableRowsBase, (row, id) => id === "unitcost" ? cableUnitCost(row, cableCosts) : id === "extcost" ? row.count * cableUnitCost(row, cableCosts) : reportSortValue(row, id));
   const docSummary = useMemo(() => computeDocumentSummary(nodes, edges, pages), [nodes, edges, pages]);
 
   const totalCost = useMemo(() => {
@@ -2616,8 +2653,8 @@ function PackListTabInline() {
               </thead>
               <tbody>
                 {(groupDevicesByRoom
-                  ? renderGroupedDevices(data.devices, currency)
-                  : renderDeviceRows(mergeDevicesByModel(data.devices), "", currency)
+                  ? renderGroupedDevices(groupedDeviceRows, currency)
+                  : renderDeviceRows(deviceRows, "", currency)
                 )}
               </tbody>
             </ReportTable>
@@ -2635,7 +2672,7 @@ function PackListTabInline() {
             <>
               {(() => {
                 const showPath = cableGrouping === "path";
-                const cableRows = showPath ? data.summary : mergeCablesByType(data.summary);
+                const cableRows = orderedCableRows;
                 const renderRow = (s: PackListSummaryRow, i: number) => {
                   const key = cableCostKey(s.cableType, s.signalType, s.cableLength, s.supplier);
                   const uc = cableUnitCost(s, cableCosts);
@@ -2701,7 +2738,7 @@ function PackListTabInline() {
                               Adapters ({data.adapters.reduce((sum, a) => sum + a.count, 0)})
                             </td>
                           </ReportRow>
-                          {data.adapters.map((a, i) => (
+                          {adapterRows.map((a, i) => (
                             <ReportRow key={`adapter-${i}`} className={rowClass(i)}>
                               <td className={tdClass}>{a.count}&times;</td>
                               <td className={tdClass}>{a.model}</td>
@@ -2738,7 +2775,7 @@ function PackListTabInline() {
                 </ReportRow>
               </thead>
               <tbody>
-                {data.accessories.map((a, i) => (
+                {accessoryRows.map((a, i) => (
                   <ReportRow key={i} className={rowClass(i)}>
                     <td className={tdClass}>{a.count}&times;</td>
                     <td className={tdClass}>{a.model}</td>
@@ -2772,7 +2809,7 @@ function PackListTabInline() {
                 </ReportRow>
               </thead>
               <tbody>
-                {data.racks.map((r, i) => {
+                {rackRows.map((r, i) => {
                   const ext = r.unitCost > 0 ? r.unitCost * r.count : 0;
                   return (
                     <ReportRow key={i} className={rowClass(i)}>
@@ -2849,7 +2886,7 @@ function renderGroupedDevices(devices: PackListDevice[], currency = "USD") {
         </td>
       </ReportRow>,
     );
-    elements.push(...renderDeviceRows(rows, `${room}-`, currency));
+    elements.push(...renderDeviceRows(sortReportRows(rows, readReportSort(useSchematicStore.getState().reportLayouts[reportSortKey("devices")])), `${room}-`, currency));
   }
   return elements;
 }
@@ -2857,13 +2894,13 @@ function renderGroupedDevices(devices: PackListDevice[], currency = "USD") {
 // ─── CSV export helpers ────────────────────────────────────────
 
 function exportNetworkCsv(nodes: SchematicNode[], edges: import("../types").ConnectionEdge[], schematicName: string) {
-  const rows = computeNetworkReport(nodes, edges);
+  const rows = sortReportRows(computeNetworkReport(nodes, edges), readReportSort(useSchematicStore.getState().reportLayouts[reportSortKey("network")]));
   downloadCsv(buildNetworkReportCsv(rows), `${schematicName} - Network Report.csv`);
 }
 
 function exportDevicesCsv(nodes: SchematicNode[], ownedGear: OwnedGearItem[], schematicName: string) {
   const showInventoryColumns = useSchematicStore.getState().showOwnedGearPane || ownedGear.length > 0;
-  const rows = computeDeviceReport(nodes, ownedGear);
+  const rows = sortReportRows(computeDeviceReport(nodes, ownedGear), readReportSort(useSchematicStore.getState().reportLayouts[reportSortKey("deviceReport")]));
   // Group identical devices (same model, manufacturer, type, room) for quantity column
   const grouped = new Map<string, { row: DeviceReportRow; count: number; owned: number; need: number }>();
   for (const r of rows) {
@@ -2920,6 +2957,8 @@ function PowerReportTab() {
   const edges = useSchematicStore((s) => s.edges);
 
   const report = useMemo(() => computePowerReport(nodes, edges), [nodes, edges]);
+  const powerDistros = useReportSort("powerDistros", report.distros);
+  const powerDevices = useReportSort("powerDevices", report.devices);
 
   if (report.devices.length === 0) {
     return (
@@ -2979,7 +3018,7 @@ function PowerReportTab() {
               </ReportRow>
             </thead>
             <tbody>
-              {report.distros.map((d, i) => (
+              {powerDistros.map((d, i) => (
                 <ReportRow key={d.nodeId} className={rowClass(i)}>
                   <td className={tdClass}>{d.label}</td>
                   <td className={tdClass}>{d.room}</td>
@@ -3022,7 +3061,7 @@ function PowerReportTab() {
             </ReportRow>
           </thead>
           <tbody>
-            {report.devices.map((d, i) => {
+            {powerDevices.map((d, i) => {
               const thermalTitle = d.thermalDerived ? "Auto-derived from power draw (× 3.412)" : undefined;
               const thermalCls = d.thermalDerived ? `${tdClass} italic text-[var(--color-text-muted)]` : tdClass;
               return (

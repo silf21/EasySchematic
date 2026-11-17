@@ -1,9 +1,11 @@
+import { ReportSortEditor } from "./ReportSortEditor";
+import { readReportSort, reportSortKey, toggleReportSort, type ReportSortRule } from "../reportSort";
 import { Children, cloneElement, createContext, isValidElement, useCallback, useContext, useLayoutEffect, useMemo, useState, type HTMLAttributes, type ReactElement, type ReactNode } from "react";
 import { useSchematicStore } from "../store";
 import { mergeVisibleColumnOrder, orderReportColumns, readReportColumnOrder, reportColumnId, reportColumnOrderKey } from "../reportColumnOrder";
 
-interface Column { id: string; label: string }
-const Context = createContext<{ columns: Column[]; order: string[]; register: (columns: Column[]) => void } | null>(null);
+interface Column { id: string; label: string; defaultDirection?: "asc" | "desc" }
+const Context = createContext<{ columns: Column[]; order: string[]; sorting: ReportSortRule[]; setSorting: (rules: ReportSortRule[]) => void; register: (columns: Column[]) => void } | null>(null);
 function textContent(node: ReactNode): string {
   if (typeof node === "string" || typeof node === "number") return String(node);
   if (Array.isArray(node)) return node.map(textContent).join("");
@@ -16,9 +18,12 @@ export function ReportTable({ tableId, children, ...props }: HTMLAttributes<HTML
   const key = reportColumnOrderKey(tableId);
   const saved = useSchematicStore(s => s.reportLayouts[key]);
   const setLayout = useSchematicStore(s => s.setReportLayout);
+  const savedSort = useSchematicStore(s => s.reportLayouts[reportSortKey(tableId)]);
+  const sorting = useMemo(() => readReportSort(savedSort), [savedSort]);
+  const setSorting = useCallback((rules: ReportSortRule[]) => setLayout(reportSortKey(tableId), rules), [setLayout, tableId]);
   const order = useMemo(() => readReportColumnOrder(saved), [saved]);
   const register = useCallback((next: Column[]) => setColumns(previous => JSON.stringify(previous) === JSON.stringify(next) ? previous : next), []);
-  const context = useMemo(() => ({ columns, order, register }), [columns, order, register]);
+  const context = useMemo(() => ({ columns, order, register, sorting, setSorting }), [columns, order, register, sorting, setSorting]);
   const shown = orderReportColumns(columns, order, c => c.id);
   const move = (id: string, index: number) => {
     const ids = shown.map(c => c.id); const from = ids.indexOf(id);
@@ -27,6 +32,7 @@ export function ReportTable({ tableId, children, ...props }: HTMLAttributes<HTML
     setLayout(key, mergeVisibleColumnOrder(order, columns.map(c => c.id), ids));
   };
   return <Context.Provider value={context}>
+    <ReportSortEditor tableId={tableId} columns={columns} />
     <details className="mb-2 text-xs" data-testid={`column-order-${tableId}`} onKeyDown={e => e.stopPropagation()}>
       <summary className="cursor-pointer text-[var(--color-text-muted)]">Column order</summary>
       <div className="p-2 border border-[var(--color-border)] rounded bg-[var(--color-surface)] max-w-md max-h-64 overflow-y-auto">
@@ -47,12 +53,26 @@ export function ReportRow({ children, header: headerProp = false, ...props }: HT
   const context = useContext(Context);
   const cells = Children.toArray(children).filter(isValidElement) as ReactElement<{ children?: ReactNode; colSpan?: number }>[];
   const header = headerProp || (cells.length > 0 && cells.every(cell => cell.type === "th"));
-  const signature = header ? JSON.stringify(cells.map((cell, i) => { const label = textContent(cell.props.children).replace(/[▴▾▲▼↑↓]/g, "").trim() || "Actions"; return { id: reportColumnId(label) || `column${i}`, label }; })) : "";
+  const signature = header ? JSON.stringify(cells.map((cell, i) => { const label = textContent(cell.props.children).replace(/[▴▾▲▼↑↓]/g, "").trim() || "Actions"; return { id: reportColumnId(label) || `column${i}`, label, ...(/[▴▲↑]/.test(textContent(cell.props.children)) ? { defaultDirection: "asc" } : /[▾▼↓]/.test(textContent(cell.props.children)) ? { defaultDirection: "desc" } : {}) }; })) : "";
   const register = context?.register;
   useLayoutEffect(() => { if (signature && register) register(JSON.parse(signature) as Column[]); }, [signature, register]);
   if (!context || !cells.length || cells.some(cell => (cell.props.colSpan ?? 1) > 1) || !context.columns.length) return <tr {...props}>{children}</tr>;
   const ids = header ? (JSON.parse(signature) as Column[]).map(c => c.id) : context.columns.map(c => c.id);
   if (cells.length > ids.length) return <tr {...props}>{children}</tr>;
   const indexed = ids.map((id, i) => ({ id, cell: cells[i] ?? <td key={id} /> }));
-  return <tr {...props}>{orderReportColumns(indexed, context.order, c => c.id).map(c => cloneElement(c.cell, { key: c.id }))}</tr>;
+  return <tr {...props}>{orderReportColumns(indexed, context.order, c => c.id).map(c => {
+    if (!header || c.id === "label" || c.id === "actions") return cloneElement(c.cell, { key: c.id });
+    const index = context.sorting.findIndex(rule => rule.id === c.id);
+    const rule = context.sorting[index];
+    const label = context.columns.find(col => col.id === c.id)?.label ?? c.id;
+    return cloneElement(c.cell as ReactElement<HTMLAttributes<HTMLTableCellElement>>, {
+      key: c.id, title: `${(c.cell.props as HTMLAttributes<HTMLTableCellElement>).title ?? ""} Click to sort; Shift-click to add a level.`,
+      onClick: event => {
+        const defaultColumn = context.columns.find(column => column.defaultDirection);
+        const implicit = defaultColumn?.defaultDirection ? { id: defaultColumn.id, label: defaultColumn.label, direction: defaultColumn.defaultDirection } : undefined;
+        context.setSorting(toggleReportSort(context.sorting, { id: c.id, label }, event.shiftKey, implicit));
+      },
+      children: <>{context.sorting.length ? label : c.cell.props.children}{rule ? ` ${rule.direction === "asc" ? "▴" : "▾"}${index + 1}` : ""}</>,
+    });
+  })}</tr>;
 }

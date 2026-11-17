@@ -1,3 +1,5 @@
+import { ReportSortEditor } from "./ReportSortEditor";
+import { readReportSort, reportSortKey, reportSortValue, reportSortDisplayValue, sortReportBlocks } from "../reportSort";
 import { mergeVisibleColumnOrder, orderReportColumns, readReportColumnOrder, reportColumnId, reportColumnOrderKey } from "../reportColumnOrder";
 import { memo, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import type { TitleBlock, TitleBlockLayout, TitleBlockCell } from "../types";
@@ -193,7 +195,16 @@ function ReportPreviewDialog({
     return resolveLayout(defaultLayout, saved, mirrorScreen);
   });
 
-  const tables = getTableData(layout);
+  const tables = getTableData(layout).map(table => {
+    const rules = readReportSort(reportOrders[reportSortKey(table.id)]);
+    if (!rules.length) return table;
+    const definition = layout.tables.find(t => t.id === table.id);
+    const value = (row: Record<string, string>, id: string) => {
+      const column = definition?.columns.find(c => reportColumnId(c.header) === id);
+      return reportSortDisplayValue(column ? row[column.key] ?? "" : reportSortValue(row, id), id);
+    };
+    return { ...table, rows: sortReportBlocks(table.rows, rules, value), groupedRows: table.groupedRows ? new Map([...table.groupedRows].map(([group, rows]) => [group, sortReportBlocks(rows, rules, value)])) : undefined };
+  });
   const [textMetrics, setTextMetrics] = useState(() => {
     const doc = new jsPDF();
     doc.setFontSize(8);
@@ -515,9 +526,10 @@ function ReportPreviewDialog({
                     </select>
                   </div>
                 )}
+                <ReportSortEditor tableId={tableDef.id} columns={tableDef.columns.filter(c => c.visible).map(c => ({ id: reportColumnId(c.header), label: c.header }))} />
                 <div className="mt-2">
                   <label className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wide">
-                    Sort by
+                    Fallback sort
                   </label>
                   <div className="flex gap-1 mt-0.5">
                     <select

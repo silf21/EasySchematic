@@ -1,3 +1,4 @@
+import { useReportSort } from "../useReportSort";
 import { ReportTable, ReportRow } from "./ReportTable";
 import { useState } from "react";
 import { useSchematicStore } from "../store";
@@ -6,7 +7,7 @@ import { computeLightingReport, LIGHTING_COLUMNS } from "../lightingReport";
 export default function LightingReport({ onEdit }: { onEdit: (nodeId: string) => void }) {
   const nodes = useSchematicStore(s => s.nodes);
   const [filter, setFilter] = useState("");
-  const rows = computeLightingReport(nodes).filter(row => LIGHTING_COLUMNS.some(c => row[c.key].toLowerCase().includes(filter.toLowerCase())));
+  const rows = useReportSort("lighting", computeLightingReport(nodes).filter(row => LIGHTING_COLUMNS.some(c => row[c.key].toLowerCase().includes(filter.toLowerCase()))));
   return <div className="text-xs">
     <p className="text-[var(--color-text-muted)] mb-3">Virtual channels and individually configured lighting ports. Art-Net universes start at 0; sACN and logical local DMX universes start at 1. IP configuration and DMX addressing are independent. Virtual channel fields depend on their protocol; universe mappings are entered explicitly.</p>
     <input className="w-full border border-[var(--color-border)] rounded p-2 mb-3" aria-label="Filter lighting report" value={filter} onChange={e => setFilter(e.target.value)} placeholder="Filter device, universe, mode or IP…" />

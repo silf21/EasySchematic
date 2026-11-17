@@ -1,7 +1,7 @@
 /** Stable column identities shared by report tables and their print layouts. */
 export const reportColumnOrderKey = (tableId: string) => `column-order:${tableId}`;
 export function reportColumnId(label: string): string {
-  return label.replace(/[▴▾▲▼↑↓]/g, "").trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
+  return label.replace(/#/g, " number ").replace(/[▴▾▲▼↑↓]/g, "").trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
 }
 export function readReportColumnOrder(value: unknown): string[] {
   return Array.isArray(value) ? [...new Set(value.filter((id): id is string => typeof id === "string"))] : [];
