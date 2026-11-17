@@ -392,3 +392,11 @@ describe("PDF off-page continuation labels — a crossing in the margin strip", 
     expect(computePdfCrossingLabels(pageAt(1, 1), pages, routed, edges, grid, SCALE)).toEqual([]);
   });
 });
+
+it("provides structured destinations for ordered PDF boundary references", () => {
+  const nodes = [topDevice, bottomDevice];
+  const pages = pagesFor(nodes);
+  const labels = computePdfCrossingLabels(pages[0], pages, { e1: verticalRoute(150, 164, 1200) }, [edge(topDevice.id, bottomDevice.id)], nodes, SCALE, true);
+  expect(labels[0].reference).toEqual({ device: "Lobby Display", port: expect.any(String), room: "", sameRoom: false });
+  expect(labels[0].pageNum).toBe(2);
+});

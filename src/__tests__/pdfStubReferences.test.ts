@@ -2,13 +2,19 @@ import { expect, it } from "vitest";
 import { formatPdfReference, referencePageAt } from "../pdfStubReferences";
 import type { PageRect } from "../printPageGrid";
 
-it("uses a consistent cable / destination / port / room / page order", () => {
-  expect(formatPdfReference("DX035-B", "FOH", "DMX1 / rear", "Technikturm", 1)).toBe("DX035-B · → FOH · DMX1 / rear · Technikturm · Pg 1");
-  expect(formatPdfReference("DX035-B", "Stage", "DMX1 / front", "Hauptbühne", 2)).toContain("DX035-B · → Stage");
+it("uses page / room / device / port order", () => {
+  expect(formatPdfReference("FOH", "DMX1 / rear", "Technikturm", 1, 2)).toBe("Pg 1 / Technikturm / FOH / DMX1 (Rear)");
 });
-it("does not invent page numbers or missing identifiers", () => {
-  expect(formatPdfReference("", "Desk", "", "", 0)).toBe("→ Desk");
-  expect(formatPdfReference("D001", "", "", "", 0)).toBe("D001 · → ?");
+it.each([
+  [1, false, "Hauptbühne / Stage / DMX1 (Front)"],
+  [2, true, "Pg 1 / Stage / DMX1 (Front)"],
+  [1, true, "Stage / DMX1 (Front)"],
+])("omits matching page/room independently (%s, %s)", (ownPage, sameRoom, expected) => {
+  expect(formatPdfReference("Stage", "DMX1 / front", "Hauptbühne", 1, ownPage as number, sameRoom as boolean)).toBe(expected);
+});
+it("does not invent unknown pages, rooms, ports or identifiers", () => {
+  expect(formatPdfReference("Desk", "", "", 0)).toBe("Desk");
+  expect(formatPdfReference("", "", "", 0)).toBe("?");
 });
 it("looks up actual emitted page indices, including empty skipped grid cells", () => {
   const pages = [{ index: 0, x: 0, y: 0, widthPx: 100, heightPx: 100 }, { index: 1, x: 200, y: 0, widthPx: 100, heightPx: 100 }] as PageRect[];
@@ -29,8 +35,18 @@ it("resolves distributed panel references using their own room and physical face
   ] as import("../types").SchematicNode[];
   const pages = [{ index: 0, x: 0, y: 0, widthPx: 200, heightPx: 200 }, { index: 1, x: 200, y: 0, widthPx: 200, heightPx: 200 }] as PageRect[];
   const references = collectPdfStubReferences(root, nodes, [], pages, new Set(), {});
-  expect(references.get(element as unknown as Element)).toEqual({ text: "DX035-B · → FOH Panel · DMX1 / rear · Stage · Pg 2", targetPage: 2, align: "left" });
+  expect(references.get(element as unknown as Element)).toEqual({ text: "Pg 2 / Stage / FOH Panel / DMX1 (Rear)", targetPage: 2, align: "left" });
   expect(nodes[2].position).toEqual({ x: 0, y: 0 });
+  // Room equality is based on identity, not its displayed name.
+  const near = { ...nodes[2], id: "near", position: { x: 16, y: 0 } };
+  nodes.push(near);
+  Object.assign(element.dataset, { pdfSourceNode: "near" });
+  expect(collectPdfStubReferences(root, nodes, [], pages, new Set(), {}).get(element as unknown as Element)?.text).toBe("FOH Panel / DMX1 (Rear)");
+  nodes.push({ id: "other-room", type: "room", position: { x: 0, y: 0 }, data: { label: "Stage" } } as import("../types").SchematicNode);
+  near.parentId = "other-room";
+  expect(collectPdfStubReferences(root, nodes, [], pages, new Set(), {}).get(element as unknown as Element)?.text).toBe("Pg 2 / Stage / FOH Panel / DMX1 (Rear)");
+  // The page being exported takes precedence if a tag straddles a sheet edge.
+  expect(collectPdfStubReferences(root, nodes, [], pages, new Set(), {}, 2).get(element as unknown as Element)?.text).toBe("Stage / FOH Panel / DMX1 (Rear)");
 });
 
 it("keeps cable-ID-only stub preferences and still links to the other page", async () => {

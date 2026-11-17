@@ -1,5 +1,7 @@
 import { buildPdfVectorScene } from "./pdfVectorScene";
-import { collectPdfStubReferences } from "./pdfStubReferences";
+import { findPortByHandle } from "./portHandles";
+import { resolveStubLabelPartsForMode } from "./stubLabelResolve";
+import { collectPdfStubReferences, formatPdfReference } from "./pdfStubReferences";
 import { type ReactFlowInstance } from "@xyflow/react";
 import { jsPDF } from "jspdf";
 import { suspendExportSelection } from "./exportSelection";
@@ -314,6 +316,7 @@ function drawContentBorder(
 }
 
 export interface PdfCrossingLabel {
+  reference?: { device: string; port: string; room: string; sameRoom: boolean };
   /** X position in inches */
   x: number;
   /** Y position in inches */
@@ -343,6 +346,7 @@ export function computePdfCrossingLabels(
   edges: ConnectionEdge[],
   nodes: SchematicNode[],
   scale: number,
+  orderedReferences = false,
 ): PdfCrossingLabel[] {
   if (pages.length <= 1) return [];
 
@@ -408,6 +412,21 @@ export function computePdfCrossingLabels(
     if (!sourceInfo || !targetInfo) continue;
 
     const edgeColor = resolveColor(edge);
+    const labelFor = (info: typeof sourceInfo): Pick<PdfCrossingLabel, "text" | "reference"> => {
+      const text = crossingLabelText(info);
+      if (!orderedReferences) return { text };
+      const isTarget = info === targetInfo;
+      const node = nodes.find(n => n.id === (isTarget ? edge.target : edge.source));
+      const near = nodes.find(n => n.id === (isTarget ? edge.source : edge.target));
+      const handle = isTarget ? edge.targetHandle : edge.sourceHandle;
+      if (node?.type === "stub-label") {
+        const parts = resolveStubLabelPartsForMode(node.id, node.data, { nodes, edges, hiddenAdapterIds: useSchematicStore.getState().hiddenAdapterNodeIds, includePhysicalFace: true });
+        return { text, reference: { device: info.label, room: parts?.farRoom ?? info.room ?? "", port: parts?.farPort ?? "", sameRoom: parts?.sameRoom ?? false } };
+      }
+      const port = node?.type === "device" && handle ? findPortByHandle(node.data, handle) : undefined;
+      const face = port?.direction === "passthrough" ? handle === `${port.id}-front` ? "front" : handle === `${port.id}-rear` ? "rear" : "" : "";
+      return { text, reference: { device: info.label, room: info.room ?? "", port: [transformLabelNow(port?.label ?? handle ?? ""), face].filter(Boolean).join(" / "), sameRoom: !!node?.parentId && node.parentId === near?.parentId } };
+    };
 
     for (const seg of route.segments) {
       if (seg.axis === "h") {
@@ -434,12 +453,12 @@ export function computePdfCrossingLabels(
             const leftPageNum = pdfPageAtPoint(bx - 1, y, pages);
 
             if (leftPx >= drawnLeft && leftPx <= drawnRight) {
-              const text = crossingLabelText(rightwardTarget);
-              labels.push({ x: toPageX(leftPx), y: toPageY(y), text, anchor: "left", color: edgeColor, pageNum: rightPageNum });
+              const label = labelFor(rightwardTarget);
+              labels.push({ x: toPageX(leftPx), y: toPageY(y), ...label, anchor: "left", color: edgeColor, pageNum: rightPageNum });
             }
             if (rightPx >= drawnLeft && rightPx <= drawnRight) {
-              const text = crossingLabelText(leftwardTarget);
-              labels.push({ x: toPageX(rightPx), y: toPageY(y), text, anchor: "right", color: edgeColor, pageNum: leftPageNum });
+              const label = labelFor(leftwardTarget);
+              labels.push({ x: toPageX(rightPx), y: toPageY(y), ...label, anchor: "right", color: edgeColor, pageNum: leftPageNum });
             }
           }
         }
@@ -462,12 +481,12 @@ export function computePdfCrossingLabels(
             const upPageNum = pdfPageAtPoint(x, by - 1, pages);
 
             if (upPx >= drawnTop && upPx <= drawnBottom) {
-              const text = crossingLabelText(downwardTarget);
-              labels.push({ x: toPageX(x), y: toPageY(upPx), text, anchor: "up", color: edgeColor, pageNum: downPageNum });
+              const label = labelFor(downwardTarget);
+              labels.push({ x: toPageX(x), y: toPageY(upPx), ...label, anchor: "up", color: edgeColor, pageNum: downPageNum });
             }
             if (downPx >= drawnTop && downPx <= drawnBottom) {
-              const text = crossingLabelText(upwardTarget);
-              labels.push({ x: toPageX(x), y: toPageY(downPx), text, anchor: "down", color: edgeColor, pageNum: upPageNum });
+              const label = labelFor(upwardTarget);
+              labels.push({ x: toPageX(x), y: toPageY(downPx), ...label, anchor: "down", color: edgeColor, pageNum: upPageNum });
             }
           }
         }
@@ -484,6 +503,7 @@ function drawCrossingLabels(
   titleBlockBand: TitleBlockBand | null,
   pageWIn: number,
   pageHIn: number,
+  ownPage: number,
 ) {
   if (labels.length === 0) return;
   doc.saveGraphicsState();
@@ -505,7 +525,7 @@ function drawCrossingLabels(
   const acrossSheet = { min: PAGE_MARGIN_IN, max: pageWIn - PAGE_MARGIN_IN };
   const downSheet = { min: PAGE_MARGIN_IN, max: pageHIn - PAGE_MARGIN_IN };
 
-  const texts = labels.map((l) => continuationPillText(l.text, l.pageNum));
+  const texts = labels.map(l => l.reference ? formatPdfReference(l.reference.device, l.reference.port, l.reference.room, l.pageNum, ownPage, l.reference.sameRoom) : continuationPillText(l.text, l.pageNum));
   const boxH = fontSize / 72 + pad * 2;
 
   // Grows inward from the boundary along its own wire — top/bottom-edge pills come
@@ -751,7 +771,7 @@ export async function exportPdf(
       if (!viewportEl) continue;
 
       const captureState = useSchematicStore.getState();
-      const references = collectPdfStubReferences(viewportEl, captureState.nodes, captureState.edges, pages, captureState.hiddenAdapterNodeIds, captureState.cableIdMap);
+      const references = collectPdfStubReferences(viewportEl, captureState.nodes, captureState.edges, pages, captureState.hiddenAdapterNodeIds, captureState.cableIdMap, page.index + 1);
       const { scene, links } = buildPdfVectorScene(viewportEl, container, contentWPx, contentHPx, references);
       const { svg2pdf } = await import("svg2pdf.js");
       // SVG primitives preserve the browser's layout and the routed curves, while
@@ -771,7 +791,7 @@ export async function exportPdf(
       // Draw crossing labels
       const storeState = useSchematicStore.getState();
       const pdfLabels = computePdfCrossingLabels(
-        page, pages, storeState.routedEdges, storeState.edges, storeState.nodes, scale,
+        page, pages, storeState.routedEdges, storeState.edges, storeState.nodes, scale, true,
       );
       drawCrossingLabels(
         doc,
@@ -779,6 +799,7 @@ export async function exportPdf(
         titleBlockBandInches(pageWIn, pageHIn, layout.widthIn, layout.heightIn),
         pageWIn,
         pageHIn,
+        page.index + 1,
       );
 
       // Draw color key / signal legend
