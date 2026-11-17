@@ -34,6 +34,8 @@ create additional devices or edges, or move the existing diagram layout.
 Patch Bay labels use the actual port name/position. Existing legacy paired-port
 panels remain in the Patch Panel Schedule, as before.
 
+![Physical signal path editor](/physical-path-editor.png)
+
 ## DMX example
 
 Route the logical DMX connection through PP1 and PP2. Configure:
