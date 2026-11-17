@@ -241,7 +241,24 @@ export interface InstalledSlot {
   portIds: string[];            // tracks which ports in device.ports belong to this slot
 }
 
+export type Provision = "bring" | "installed" | "provided";
+
+/** A real cable, including an adapter cable, in a physical run. No device or dummy edge required. */
+export interface PhysicalCable {
+  id: string;
+  cableId?: string;
+  label?: string;
+  cableLength?: string;
+  sourceConnector?: ConnectorType;
+  targetConnector?: ConnectorType;
+  supplier?: string;
+  unitCost?: number;
+  provision?: Provision;
+}
+
 export interface DeviceData {
+  supplier?: string;
+  provision?: Provision;
   [key: string]: unknown;
   label: string;
   /** Short alternative name (e.g. "HDC-5500" instead of "Sony HDC-5500 Studio Camera").
@@ -491,6 +508,8 @@ export type SchematicNode = DeviceNode | RoomNode | NoteNode | AnnotationNode | 
 /** One intermediate patch-panel hop on a connection's physical path (source → target order).
  *  The panel is a real device node (deviceType "patch-panel"), possibly off-canvas. */
 export interface PatchHop {
+  /** Signal enters this face; omitted means rear for existing files. */
+  entryFace?: "rear" | "front";
   panelNodeId: string;
   /** Passthrough port id on that panel. */
   portId: string;
@@ -499,11 +518,21 @@ export interface PatchHop {
 /** Per-segment user overrides for a patched connection. Index i = physical segment i
  *  (0 = source-side). Cleared wholesale whenever patchHops change (indices would shift). */
 export interface PatchSegmentOverride {
+  supplier?: string;
+  unitCost?: number;
+  provision?: Provision;
+  cables?: PhysicalCable[];
   label?: string;
   cableLength?: string;
 }
 
 export interface ConnectionData {
+  supplier?: string;
+  unitCost?: number;
+  provision?: Provision;
+  /** Ordered inline cables for an unpatched connection. */
+  cables?: PhysicalCable[];
+  physicalPathExpanded?: boolean;
   [key: string]: unknown;
   signalType: SignalType;
   manualWaypoints?: { x: number; y: number }[];

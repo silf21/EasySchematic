@@ -7220,6 +7220,8 @@ export const useSchematicStore = create<SchematicState>((set, get) => ({
     // double-book the panel ports and orphan them when the source leg unpatches.
     delete (tgtLegData as Record<string, unknown>).patchHops;
     delete (tgtLegData as Record<string, unknown>).patchSegments;
+    delete (tgtLegData as Record<string, unknown>).cables;
+    delete (tgtLegData as Record<string, unknown>).physicalPathExpanded;
     // The custom middle label (data.label) is intentionally KEPT on the target
     // leg (#201): each leg carries the same logical connection's custom label so
     // it shows on both halves, between the cable ID and the stub-label box. Cable

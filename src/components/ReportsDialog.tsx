@@ -1,3 +1,9 @@
+import { physicalMaterialEdit } from "../physicalMaterialEdit";
+import SupplierReport from "./SupplierReport";
+import SupplierInput from "./SupplierInput";
+import { openPhysicalPath } from "../physicalPathEvents";
+import { buildSupplierCsv, computeSupplierMaterials, createSupplierLayout, supplierTableData } from "../supplierReport";
+import { supplierKey } from "../suppliers";
 import React, { memo, useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { useSchematicStore } from "../store";
 import { computeNetworkReport, computeDhcpServerSummary, computePoeBudget, buildNetworkReportCsv, type NetworkReportRow } from "../networkReport";
@@ -14,6 +20,7 @@ import {
   type PackListSummaryRow,
   groupCablesByCategory,
   cableCostKey,
+  cableUnitCost,
 } from "../packList";
 import {
   computeCableSchedule,
@@ -53,7 +60,7 @@ import type { SpreadsheetColumn } from "../spreadsheet/types";
 import FillSeriesDialog from "../spreadsheet/FillSeriesDialog";
 import { deviceTypeDisplay } from "../typeRegistry";
 
-export type ReportsTab = "network" | "devices" | "packList" | "cableSchedule" | "patchPanel" | "power";
+export type ReportsTab = "suppliers" | "network" | "devices" | "packList" | "cableSchedule" | "patchPanel" | "power";
 
 interface ReportsDialogProps {
   initialTab: ReportsTab;
@@ -69,6 +76,7 @@ const POWER_LAYOUT_KEY = "easyschematic-power-report-layout";
 function ReportsDialog({ initialTab, onClose }: ReportsDialogProps) {
   const [tab, setTab] = useState<ReportsTab>(initialTab);
   const [maximized, setMaximized] = useState(false);
+  const [showSupplierPreview, setShowSupplierPreview] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [showNetworkPreview, setShowNetworkPreview] = useState(false);
   const [showCableSchedulePreview, setShowCableSchedulePreview] = useState(false);
@@ -103,7 +111,10 @@ function ReportsDialog({ initialTab, onClose }: ReportsDialogProps) {
 
   const handleCsvExport = useCallback(() => {
     const ownedGear = useSchematicStore.getState().ownedGear;
-    if (tab === "network") {
+    if (tab === "suppliers") {
+      const s = useSchematicStore.getState();
+      downloadCsv(buildSupplierCsv(computeSupplierMaterials(nodes, edges, s.pages, s.cableCosts)), `${schematicName} - Suppliers.csv`);
+    } else if (tab === "network") {
       exportNetworkCsv(nodes, edges, schematicName);
     } else if (tab === "devices") {
       exportDevicesCsv(nodes, ownedGear, schematicName);
@@ -138,6 +149,7 @@ function ReportsDialog({ initialTab, onClose }: ReportsDialogProps) {
   const powerDefaultLayout = useMemo(() => createDefaultPowerReportLayout(), []);
 
   const tabLabels: Record<ReportsTab, string> = {
+    suppliers: "By Supplier",
     devices: "Devices",
     cableSchedule: "Cable Schedule",
     patchPanel: "Patch Panels",
@@ -169,6 +181,7 @@ function ReportsDialog({ initialTab, onClose }: ReportsDialogProps) {
             <button onClick={handleCsvExport} className={btnClass}>
               CSV
             </button>
+            {tab === "suppliers" && <button onClick={() => setShowSupplierPreview(true)} className={btnClass}>PDF</button>}
             {tab === "network" && (
               <button onClick={() => setShowNetworkPreview(true)} className={btnClass}>
                 PDF
@@ -229,6 +242,7 @@ function ReportsDialog({ initialTab, onClose }: ReportsDialogProps) {
 
           {/* Body */}
           <div className="overflow-auto flex-1 p-4">
+            {tab === "suppliers" && <SupplierReport />}
             {tab === "network" && <NetworkReportTab />}
             {tab === "devices" && <DeviceReportTab />}
             {tab === "packList" && <PackListTabInline />}
@@ -239,6 +253,7 @@ function ReportsDialog({ initialTab, onClose }: ReportsDialogProps) {
         </div>
       </div>
 
+      {showSupplierPreview && <ReportPreviewDialog reportKey="easyschematic-supplier-layout" defaultLayout={createSupplierLayout()} titleBlock={titleBlock} getTableData={() => { const s = useSchematicStore.getState(); return supplierTableData(computeSupplierMaterials(nodes, edges, s.pages, s.cableCosts)); }} onClose={() => setShowSupplierPreview(false)} filename={`${schematicName} - Suppliers.pdf`} />}
       {showNetworkPreview && (
         <ReportPreviewDialog
           reportKey={NETWORK_LAYOUT_KEY}
@@ -348,6 +363,8 @@ const CABLE_COLUMNS: { id: string; label: string }[] = [
   { id: "targetConnector", label: "Tgt Conn" },
   { id: "cableType", label: "Cable Type" },
   { id: "signalType", label: "Signal" },
+  { id: "supplier", label: "Supplier" },
+  { id: "provision", label: "Provision" },
   { id: "cableLength", label: "Length" },
   { id: "computedLength", label: "Est. Length" },
   { id: "gaugeAwg", label: "Gauge" },
@@ -1071,6 +1088,7 @@ function SpreadsheetCell({
 // ─── Device Report Tab ─────────────────────────────────────────
 
 interface DeviceReportRow {
+  supplier: string;
   nodeId: string;
   label: string;
   shortName: string;
@@ -1118,6 +1136,7 @@ function computeDeviceReport(nodes: SchematicNode[], ownedGear: OwnedGearItem[])
     const neededCount = Math.max((usedCounts.get(inventoryKey) ?? 0) - ownedCount, 0);
 
     rows.push({
+      supplier: data.supplier ?? "",
       nodeId: node.id,
       label: data.label,
       shortName: data.shortName ?? "",
@@ -1136,7 +1155,7 @@ function computeDeviceReport(nodes: SchematicNode[], ownedGear: OwnedGearItem[])
   return rows;
 }
 
-type DeviceSortKey = "label" | "shortName" | "deviceType" | "manufacturer" | "model" | "modelNumber" | "room" | "portCount" | "unitCost" | "ownedCount" | "neededCount";
+type DeviceSortKey = "supplier" | "label" | "shortName" | "deviceType" | "manufacturer" | "model" | "modelNumber" | "room" | "portCount" | "unitCost" | "ownedCount" | "neededCount";
 
 const deviceColumns: SpreadsheetColumn<DeviceReportRow>[] = [
   { id: "label", header: "Device", getValue: (r) => r.label, editable: true, fillType: "deviceName" },
@@ -1165,7 +1184,7 @@ function DeviceReportTab() {
         r.label.toLowerCase().includes(q) ||
         r.shortName.toLowerCase().includes(q) ||
         r.deviceType.toLowerCase().includes(q) ||
-        r.manufacturer.toLowerCase().includes(q) ||
+        r.supplier.toLowerCase().includes(q) || r.manufacturer.toLowerCase().includes(q) ||
         r.model.toLowerCase().includes(q) ||
         r.room.toLowerCase().includes(q),
     );
@@ -1323,6 +1342,7 @@ function DeviceReportTab() {
               <th className={thClass} onClick={() => toggleSort("label")}>
                 Device{sortArrow("label")}
               </th>
+              <th className={thClass} onClick={() => toggleSort("supplier")}>Supplier{sortArrow("supplier")}</th>
               <th className={thClass} onClick={() => toggleSort("shortName")}>
                 Short Name{sortArrow("shortName")}
               </th>
@@ -1436,6 +1456,7 @@ const DeviceRow = memo(function DeviceRow({
           <span className="text-[10px] px-1 select-none">{row.label}</span>
         </td>
       )}
+      <td className={tdClass}><SupplierInput value={row.supplier} onChange={supplier => useSchematicStore.getState().patchDeviceData(row.nodeId, { supplier })} /></td>
       {(() => {
         const sn = spreadsheet.getCellProps(rowIndex, "shortName");
         if (sn.isEditing) {
@@ -1530,8 +1551,8 @@ const DeviceRow = memo(function DeviceRow({
 
 // ─── Cable Schedule Tab ────────────────────────────────────────
 
-type CableSortKey = "cableId" | "sourceDevice" | "sourcePort" | "sourceConnector" | "targetDevice" | "targetPort" | "targetConnector" | "cableType" | "signalType" | "cableLength" | "computedLength" | "gaugeAwg" | "cableAlias" | "tested" | "cableUse" | "sourceRoom" | "targetRoom" | "multicableLabel";
-type CableGroupBy = "" | "sourceRoom" | "signalType" | "cableType" | "multicableLabel" | "cableUse";
+type CableSortKey = "supplier" | "provision" | "cableId" | "sourceDevice" | "sourcePort" | "sourceConnector" | "targetDevice" | "targetPort" | "targetConnector" | "cableType" | "signalType" | "cableLength" | "computedLength" | "gaugeAwg" | "cableAlias" | "tested" | "cableUse" | "sourceRoom" | "targetRoom" | "multicableLabel";
+type CableGroupBy = "supplier" | "" | "sourceRoom" | "signalType" | "cableType" | "multicableLabel" | "cableUse";
 
 const cableScheduleColumns: SpreadsheetColumn<CableScheduleRow>[] = [
   { id: "label", header: "Label", getValue: () => "", editable: false },
@@ -1581,7 +1602,7 @@ function CableScheduleTabInline() {
     if (!q) return rows;
     return rows.filter(
       (r) =>
-        r.cableId.toLowerCase().includes(q) ||
+        (r.supplier ?? "").toLowerCase().includes(q) || r.cableId.toLowerCase().includes(q) ||
         r.sourceDevice.toLowerCase().includes(q) ||
         r.sourcePort.toLowerCase().includes(q) ||
         r.sourceConnector.toLowerCase().includes(q) ||
@@ -1623,6 +1644,11 @@ function CableScheduleTabInline() {
       const row = sorted[rowIndex];
       if (!row) return;
       const v = value.trim();
+      if (row.materialIndex !== undefined && (columnId === "cableLength" || columnId === "cableId")) {
+        const data = useSchematicStore.getState().edges.find(e => e.id === row.edgeId)?.data;
+        if (data) patchEdgeData(row.edgeId, physicalMaterialEdit(data, row, columnId, v));
+        return;
+      }
       // Patch-segment rows (one physical cable of a patched connection): Cable ID and
       // Length are PER-SEGMENT overrides — writing the parent edge's fields here would
       // rebase the whole run / silently no-op. Route them to the segment override.
@@ -1652,6 +1678,12 @@ function CableScheduleTabInline() {
           const row = sorted[c.rowIndex];
           if (!row) return null;
           const v = c.value.trim();
+          if (row.materialIndex !== undefined && (c.columnId === "cableLength" || c.columnId === "cableId")) {
+            const state = useSchematicStore.getState();
+            const data = state.edges.find(e => e.id === row.edgeId)?.data;
+            if (data) state.patchEdgeData(row.edgeId, physicalMaterialEdit(data, row, c.columnId, v));
+            return null;
+          }
           // Segment rows route Cable ID / Length to per-segment overrides (see onCellChange).
           if (row.segIndex !== undefined && (c.columnId === "cableLength" || c.columnId === "cableId")) {
             setPatchSegmentOverride(row.edgeId, row.segIndex,
@@ -1829,6 +1861,7 @@ function CableScheduleTabInline() {
           onChange={(e) => setGroupByKey(e.target.value as CableGroupBy)}
         >
           <option value="">No Grouping</option>
+          <option value="supplier">Supplier</option>
           <option value="sourceRoom">Source Room</option>
           <option value="signalType">Signal Type</option>
           <option value="cableType">Cable Type</option>
@@ -1877,6 +1910,8 @@ function CableScheduleTabInline() {
               {!hiddenCols.has("signalType") && (
                 <th className={thClass} onClick={() => toggleSort("signalType")}>Signal{sortArrow("signalType")}</th>
               )}
+              {!hiddenCols.has("supplier") && <th className={thClass} onClick={() => toggleSort("supplier")}>Supplier{sortArrow("supplier")}</th>}
+              {!hiddenCols.has("provision") && <th className={thClass} onClick={() => toggleSort("provision")}>Provision{sortArrow("provision")}</th>}
               {!hiddenCols.has("cableLength") && (
                 <th className={thClass} onClick={() => toggleSort("cableLength")}>Length{sortArrow("cableLength")}</th>
               )}
@@ -1911,7 +1946,7 @@ function CableScheduleTabInline() {
               ? renderGroupedCableSchedule(grouped, spreadsheet, onToggleLabel, onToggleTested, onSetCableUse, hiddenCols)
               : sorted.map((r, i) => (
                   <CableScheduleRow_
-                    key={r.edgeId}
+                    key={`${r.edgeId}:${r.segIndex ?? ""}:${r.materialIndex ?? ""}`}
                     row={r}
                     rowIndex={i}
                     altClass={rowClass(i)}
@@ -2077,6 +2112,8 @@ const CableScheduleRow_ = memo(function CableScheduleRow_({
       {!hiddenCols.has("targetConnector") && <td className={tdClass}>{row.targetConnector}</td>}
       {!hiddenCols.has("cableType") && <td className={tdClass}>{row.cableType}</td>}
       {!hiddenCols.has("signalType") && <td className={tdClass}>{row.signalType}</td>}
+      {!hiddenCols.has("supplier") && <td className={tdClass}><button title="Edit physical cable / supplier" onClick={() => openPhysicalPath(row.edgeId)}>{row.supplier || "Set supplier…"}</button></td>}
+      {!hiddenCols.has("provision") && <td className={tdClass}><button onClick={() => openPhysicalPath(row.edgeId)}>{row.provision ?? "bring"}</button></td>}
       {!hiddenCols.has("cableLength") && (
         <EditableCell spreadsheet={spreadsheet} rowIndex={rowIndex} columnId="cableLength" value={row.cableLength} />
       )}
@@ -2125,7 +2162,7 @@ const CableScheduleRow_ = memo(function CableScheduleRow_({
 function groupCableScheduleRows(rows: CableScheduleRow[], key: CableGroupBy): Map<string, CableScheduleRow[]> {
   const map = new Map<string, CableScheduleRow[]>();
   for (const r of rows) {
-    const groupKey = key === "sourceRoom" ? r.sourceRoom : key === "signalType" ? r.signalType : key === "multicableLabel" ? (r.multicableLabel || "Ungrouped") : key === "cableUse" ? (r.cableUse ? r.cableUse.charAt(0).toUpperCase() + r.cableUse.slice(1) : "Unspecified") : r.cableType;
+    const groupKey = key === "supplier" ? r.supplier || "Unassigned" : key === "sourceRoom" ? r.sourceRoom : key === "signalType" ? r.signalType : key === "multicableLabel" ? (r.multicableLabel || "Ungrouped") : key === "cableUse" ? (r.cableUse ? r.cableUse.charAt(0).toUpperCase() + r.cableUse.slice(1) : "Unspecified") : r.cableType;
     const arr = map.get(groupKey);
     if (arr) arr.push(r);
     else map.set(groupKey, [r]);
@@ -2158,7 +2195,7 @@ function renderGroupedCableSchedule(
     for (const r of rows) {
       elements.push(
         <CableScheduleRow_
-          key={r.edgeId}
+          key={`${r.edgeId}:${r.segIndex ?? ""}:${r.materialIndex ?? ""}`}
           row={r}
           rowIndex={idx}
           altClass={rowClass(idx)}
@@ -2493,7 +2530,7 @@ function PackListTabInline() {
     }
     // Include cable costs
     for (const s of data.summary) {
-      const uc = cableCosts?.[cableCostKey(s.cableType, s.signalType, s.cableLength)] ?? 0;
+      const uc = cableUnitCost(s, cableCosts);
       sum += uc * s.count;
     }
     // Include rack enclosure costs (#P2-024)
@@ -2610,18 +2647,18 @@ function PackListTabInline() {
                 const showPath = cableGrouping === "path";
                 const cableRows = showPath ? data.summary : mergeCablesByType(data.summary);
                 const renderRow = (s: PackListSummaryRow, i: number) => {
-                  const key = cableCostKey(s.cableType, s.signalType, s.cableLength);
-                  const uc = cableCosts?.[key] ?? 0;
+                  const key = cableCostKey(s.cableType, s.signalType, s.cableLength, s.supplier);
+                  const uc = cableUnitCost(s, cableCosts);
                   const ext = uc > 0 ? uc * s.count : 0;
                   return (
                     <tr key={i} className={rowClass(i)}>
                       <td className={tdClass}>{s.count}&times;</td>
-                      <td className={tdClass}>{s.cableType}</td>
+                      <td className={tdClass}>{s.cableType}{s.supplier && <div className="text-[10px] text-neutral-500">{s.supplier}</div>}</td>
                       <td className={tdClass}>{s.signalType}</td>
                       <td className={tdClass}>{s.cableLength}</td>
                       {showPath && <td className={tdClass}>{s.route}</td>}
                       <td className={`${tdClass} p-0.5`}>
-                        <CableCostCell costKey={key} value={uc} onChange={setCableCost} currency={currency} />
+                        {s.unitCost !== undefined ? <span title="Per-cable price; edit under Physical path / Supplier">{formatCurrency(uc, currency)}</span> : <CableCostCell costKey={key} value={uc} onChange={setCableCost} currency={currency} />}
                       </td>
                       <td className={tdClass}>{ext > 0 ? formatCurrency(ext, currency) : "—"}</td>
                     </tr>
@@ -2776,7 +2813,7 @@ function renderDeviceRows(devices: PackListDevice[], keyPrefix = "", currency = 
     elements.push(
       <tr key={`${keyPrefix}${idx}`} className={rowClass(idx)}>
         <td className={tdClass}>{d.count}&times;</td>
-        <td className={tdClass}>{d.model}</td>
+        <td className={tdClass}>{d.model}{d.supplier && <div className="text-[10px] text-neutral-500">{d.supplier}</div>}</td>
         <td className={tdClass}>{deviceTypeDisplay(d.deviceType)}</td>
         <td className={tdClass}>{d.unitCost > 0 ? formatCurrency(d.unitCost, currency) : "—"}</td>
         <td className={tdClass}>{extCost > 0 ? formatCurrency(extCost, currency) : "—"}</td>
@@ -2840,7 +2877,7 @@ function exportDevicesCsv(nodes: SchematicNode[], ownedGear: OwnedGearItem[], sc
   // Group identical devices (same model, manufacturer, type, room) for quantity column
   const grouped = new Map<string, { row: DeviceReportRow; count: number; owned: number; need: number }>();
   for (const r of rows) {
-    const key = `${r.model}|${r.manufacturer}|${r.deviceType}|${r.room}`;
+    const key = JSON.stringify([r.model, r.manufacturer, r.deviceType, r.room, supplierKey(r.supplier), r.unitCost]);
     const existing = grouped.get(key);
     if (existing) {
       existing.count++;
@@ -2849,8 +2886,8 @@ function exportDevicesCsv(nodes: SchematicNode[], ownedGear: OwnedGearItem[], sc
     }
   }
   const header = showInventoryColumns
-    ? ["Qty", "Device", "Manufacturer", "Model #", "Type", "Room", "Ports", "Owned", "Need", "Unit Cost", "Extended Cost"]
-    : ["Qty", "Device", "Manufacturer", "Model #", "Type", "Room", "Ports", "Unit Cost", "Extended Cost"];
+    ? ["Qty", "Device", "Manufacturer", "Model #", "Type", "Room", "Ports", "Owned", "Need", "Unit Cost", "Extended Cost", "Supplier"]
+    : ["Qty", "Device", "Manufacturer", "Model #", "Type", "Room", "Ports", "Unit Cost", "Extended Cost", "Supplier"];
   const groupedValues = [...grouped.values()];
   const lines = [
     header.join(","),
@@ -2866,6 +2903,7 @@ function exportDevicesCsv(nodes: SchematicNode[], ownedGear: OwnedGearItem[], sc
         r.portCount,
         r.unitCost > 0 ? r.unitCost.toFixed(2) : "",
         extCost > 0 ? extCost.toFixed(2) : "",
+        csvEscape(r.supplier),
       ];
       if (showInventoryColumns) cells.splice(7, 0, owned, need);
       return cells.join(",");

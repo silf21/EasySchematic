@@ -1,3 +1,4 @@
+import { resolvableHops } from "./patchCircuits";
 import type {
   SchematicNode,
   ConnectionEdge,
@@ -236,8 +237,10 @@ export function computePatchPanelSchedule(
               ?? (hopEdge.data?.cableId as string | undefined) ?? "";
             const segs = segmentsForEdge(hopEdge, nodes, edges, baseId);
             const sigRaw = (hopEdge.data?.signalType ?? "custom") as SignalType;
+            const reversed = resolvableHops(hopEdge, nodes)[occ.hopIndex]?.entryFace === "front";
             const inn = segs[occ.hopIndex];
             const outSeg = segs[occ.hopIndex + 1];
+
             if (!rear.edgeId && inn) {
               rear = {
                 edgeId: hopEdge.id,
@@ -256,6 +259,7 @@ export function computePatchPanelSchedule(
                 cableLength: outSeg.cableLength, computedLength: "",
               };
             }
+            if (reversed) { const temp = rear; rear = front; front = temp; }
           }
         }
 

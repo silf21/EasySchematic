@@ -34,6 +34,7 @@ import SignalColorPanel from "./components/SignalColorPanel";
 import ShowInfoPanel from "./components/ShowInfoPanel";
 import ViewOptionsPanel from "./components/ViewOptionsPanel";
 import MenuBar from "./components/MenuBar";
+import PhysicalPathEditorHost from "./components/PhysicalPathEditor";
 import EdgeContextMenu from "./components/EdgeContextMenu";
 import IncompatibleConnectionDialog from "./components/IncompatibleConnectionDialog";
 import PortEditConflictDialog from "./components/PortEditConflictDialog";
@@ -2148,6 +2149,7 @@ export default function App() {
       <RoomEditor />
       <AnnotationEditor />
       <EdgeContextMenu />
+      <PhysicalPathEditorHost />
       <RoomContextMenu />
       <DeviceContextMenu />
       <StubLabelContextMenu />

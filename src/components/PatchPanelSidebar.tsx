@@ -1,3 +1,6 @@
+import { openPhysicalPath } from "../physicalPathEvents";
+import SupplierInput from "./SupplierInput";
+import { ProvisionSelect } from "./PhysicalPathEditor";
 import { useEffect, useMemo, useState } from "react";
 import type { ConnectionEdge, DeviceData, DeviceTemplate } from "../types";
 import { useSchematicStore } from "../store";
@@ -193,6 +196,8 @@ export default function PatchPanelSidebar() {
                 {used}/{passthroughCount} used{offCanvas ? " · virtual" : ""}
               </span>
             </div>
+            <div className="my-1"><SupplierInput value={data.supplier ?? ""} onChange={supplier => useSchematicStore.getState().patchDeviceData(p.id, { supplier })} /></div>
+            <ProvisionSelect value={data.provision} onChange={provision => useSchematicStore.getState().patchDeviceData(p.id, { provision })} />
             <div className="hidden group-hover:flex gap-3 pt-0.5">
               <button
                 className="text-blue-600 hover:underline disabled:text-neutral-300 disabled:no-underline"
@@ -276,6 +281,7 @@ export default function PatchPanelSidebar() {
               <div className="pl-4 text-[10px] text-neutral-400 font-mono truncate">via {via}</div>
             )}
             <div className="pl-4 pt-0.5 flex gap-3">
+              <button className="text-blue-600 hover:underline" onClick={() => openPhysicalPath(e.id)}>Cables / supplier…</button>
               {patched ? (
                 <>
                   <button className="text-blue-600 hover:underline" onClick={() => clearEdgePatchHops(e.id)}>

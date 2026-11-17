@@ -6,6 +6,7 @@ import { LINE_STYLE_LABELS, LINE_STYLE_DASHARRAY, type DeviceData, type LineStyl
 import { isAdapterHidden, toggleAdapterVisibility as nextAdapterVisibility } from "../adapterVisibility";
 import { selectedConnectionEdges, stubbedLinkIdsOf } from "../stubSelection";
 import { useContextMenuPosition } from "../hooks/useContextMenuPosition";
+import { openPhysicalPath } from "../physicalPathEvents";
 import MenuSubmenu from "./MenuSubmenu";
 
 /** Project a point onto the nearest segment and return the projected point. */
@@ -623,6 +624,7 @@ export default function EdgeContextMenu() {
       {isTrunkEdge && (
         <MenuItem label="Set Cable Label..." onClick={setCableLabel} />
       )}
+      <MenuItem label="Physical path / Supplier…" onClick={() => { if (patchEdge) openPhysicalPath(patchEdge.id); useSchematicStore.setState({ edgeContextMenu: null }); }} />
       {!isDirectAttach && (
         <MenuItem label="Set Cable Length..." onClick={setCableLength} />
       )}
@@ -657,6 +659,7 @@ export default function EdgeContextMenu() {
           )}
         </>
       )}
+      <MenuItem label="Physical path / Supplier…" onClick={() => { if (patchEdge) openPhysicalPath(patchEdge.id); useSchematicStore.setState({ edgeContextMenu: null }); }} />
       {!isDirectAttach && (
         <>
           <MenuItem
@@ -692,6 +695,7 @@ export default function EdgeContextMenu() {
           onClick={toggleAdapterVisibility}
         />
       )}
+      <MenuItem label="Physical path / Supplier…" onClick={() => { if (patchEdge) openPhysicalPath(patchEdge.id); useSchematicStore.setState({ edgeContextMenu: null }); }} />
       {!isDirectAttach && (
         <>
           <div className="h-px bg-gray-200 my-1" />

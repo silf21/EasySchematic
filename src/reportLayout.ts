@@ -197,6 +197,7 @@ export function createDefaultPackListLayout(): ReportLayout {
         label: "Devices",
         columns: [
           { key: "count", header: "Qty", widthMm: 12, visible: true },
+          { key: "supplier", header: "Supplier", widthMm: 25, visible: true },
           { key: "model", header: "Device", widthMm: 60, visible: true },
           { key: "manufacturer", header: "Manufacturer", widthMm: 30, visible: false },
           { key: "modelNumber", header: "Model #", widthMm: 30, visible: false },
@@ -223,6 +224,7 @@ export function createDefaultPackListLayout(): ReportLayout {
         label: "Cables",
         columns: [
           { key: "count", header: "Qty", widthMm: 12, visible: true },
+          { key: "supplier", header: "Supplier", widthMm: 25, visible: true },
           { key: "cableType", header: "Cable Type", widthMm: 30, visible: true },
           { key: "signalType", header: "Signal", widthMm: 28, visible: true },
           { key: "cableLength", header: "Length", widthMm: 18, visible: true },
@@ -244,6 +246,7 @@ export function createDefaultPackListLayout(): ReportLayout {
         label: "Cable Accessories",
         columns: [
           { key: "count", header: "Qty", widthMm: 12, visible: true },
+          { key: "supplier", header: "Supplier", widthMm: 25, visible: true },
           { key: "model", header: "Accessory", widthMm: 60, visible: true },
           { key: "accessoryType", header: "Type", widthMm: 40, visible: true },
           { key: "room", header: "Room", widthMm: 50, visible: true },
@@ -310,6 +313,7 @@ export function createDefaultCableScheduleLayout(): ReportLayout {
         id: "cableSchedule",
         label: "Cable Schedule",
         columns: [
+          { key: "provision", header: "Provision", widthMm: 25, visible: false },
           { key: "cableId",         header: "Cable ID",   widthMm: 18, visible: true },
           { key: "sourceDevice",    header: "Source",      widthMm: 30, visible: true },
           { key: "sourcePort",      header: "Src Port",    widthMm: 22, visible: true },
@@ -317,6 +321,7 @@ export function createDefaultCableScheduleLayout(): ReportLayout {
           { key: "targetDevice",    header: "Target",      widthMm: 30, visible: true },
           { key: "targetPort",      header: "Tgt Port",    widthMm: 22, visible: true },
           { key: "targetConnector", header: "Tgt Conn",    widthMm: 18, visible: true },
+          { key: "supplier", header: "Supplier", widthMm: 25, visible: true },
           { key: "cableType",       header: "Cable Type",  widthMm: 22, visible: true },
           { key: "signalType",      header: "Signal",      widthMm: 20, visible: true },
           { key: "cableLength",     header: "Length",      widthMm: 16, visible: true },
@@ -333,6 +338,7 @@ export function createDefaultCableScheduleLayout(): ReportLayout {
         groupBy: null,
         groupByOptions: [
           { key: "",           label: "None" },
+          { key: "supplier", label: "Supplier" },
           { key: "sourceRoom", label: "Source Room" },
           { key: "signalType", label: "Signal Type" },
           { key: "cableType",  label: "Cable Type" },

@@ -1,18 +1,18 @@
+import { computeCableSchedule } from "./cableSchedule";
+import { includedInPackList, supplierKey } from "./suppliers";
 import type {
   SchematicNode,
   ConnectionEdge,
   DeviceData,
   RoomData,
-  SignalType,
   SchematicPage,
 } from "./types";
 import { RACK_TYPE_LABELS } from "./types";
-import { getCableType } from "./cableTypes";
 import { transformLabelNow, labelsAreRaw } from "./labelCaseUtils";
 import { findPortByHandle } from "./portHandles";
 import type { ReportLayout } from "./reportLayout";
 import type { ReportTableData } from "./reportPdf";
-import { deviceTypeDisplay, signalLabel } from "./typeRegistry";
+import { deviceTypeDisplay } from "./typeRegistry";
 
 export type CableCategory = "Video" | "Audio" | "Control" | "Data" | "Power" | "Custom";
 
@@ -88,6 +88,8 @@ export interface PackListDeviceCard {
 }
 
 export interface PackListDevice {
+  supplier?: string;
+
   model: string;
   deviceType: string;
   room: string;
@@ -106,6 +108,9 @@ export interface PackListDevice {
 }
 
 export interface PackListCable {
+  supplier?: string;
+  unitCost?: number;
+
   cableType: string;
   signalType: string;
   cableLength: string;
@@ -118,6 +123,9 @@ export interface PackListCable {
 }
 
 export interface PackListSummaryRow {
+  supplier?: string;
+  unitCost?: number;
+
   cableType: string;
   signalType: string;
   cableLength: string;
@@ -126,6 +134,9 @@ export interface PackListSummaryRow {
 }
 
 export interface PackListAccessory {
+  unitCost?: number;
+  supplier?: string;
+
   model: string;
   accessoryType: string;
   room: string;
@@ -134,6 +145,9 @@ export interface PackListAccessory {
 }
 
 export interface PackListAdapter {
+  unitCost?: number;
+  supplier?: string;
+
   model: string;
   room: string;
   count: number;
@@ -164,7 +178,7 @@ export interface PackListData {
 export function mergeCablesByType(summary: PackListSummaryRow[]): PackListSummaryRow[] {
   const map = new Map<string, PackListSummaryRow>();
   for (const s of summary) {
-    const key = `${s.cableType}|${s.signalType}|${s.cableLength}`;
+    const key = JSON.stringify([s.cableType, s.signalType, s.cableLength, supplierKey(s.supplier), s.unitCost]);
     const existing = map.get(key);
     if (existing) {
       existing.count += s.count;
@@ -181,7 +195,7 @@ export function mergeCablesByType(summary: PackListSummaryRow[]): PackListSummar
 export function mergeDevicesByModel(devices: PackListDevice[]): PackListDevice[] {
   const map = new Map<string, PackListDevice>();
   for (const d of devices) {
-    const key = `${d.manufacturer}|${d.modelNumber}|${d.model}`;
+    const key = JSON.stringify([d.manufacturer, d.modelNumber, d.model, supplierKey(d.supplier), d.unitCost]);
     const existing = map.get(key);
     if (existing) {
       existing.count += d.count;
@@ -274,17 +288,19 @@ export function computePackList(
   for (const n of nodes) {
     if (n.type !== "device") continue;
     const data = n.data as DeviceData;
-    if (data.isVenueProvided) continue;
+    if (data.isVenueProvided || !includedInPackList(data.provision)) continue;
     const model = transformLabelNow(data.model ?? data.baseLabel ?? data.label);
     const room = getRoomLabel(nodes, n.parentId);
 
     if (data.isCableAccessory) {
-      const key = `${model}|${room}`;
+      const key = JSON.stringify([model, room, data.manufacturer, data.modelNumber, data.deviceType, supplierKey(data.supplier), data.unitCost ?? 0]);
       const existing = accessoryMap.get(key);
       if (existing) {
         existing.count++;
       } else {
         accessoryMap.set(key, {
+          supplier: data.supplier,
+          unitCost: data.unitCost,
           model,
           accessoryType: data.deviceType,
           room,
@@ -297,12 +313,14 @@ export function computePackList(
 
     // Passive adapters go to their own section (shown in cables tab)
     if (data.deviceType === "adapter") {
-      const key = `${model}|${room}`;
+      const key = JSON.stringify([model, room, data.manufacturer, data.modelNumber, data.deviceType, supplierKey(data.supplier), data.unitCost ?? 0]);
       const existing = adapterMap.get(key);
       if (existing) {
         existing.count++;
       } else {
         adapterMap.set(key, {
+          supplier: data.supplier,
+          unitCost: data.unitCost,
           model,
           room,
           count: 1,
@@ -317,7 +335,7 @@ export function computePackList(
     const note = (data.note ?? "").trim();
     const isSpare = data.isSpare === true;
 
-    const key = `${model}|${room}`;
+    const key = JSON.stringify([model, room, data.manufacturer, data.modelNumber, data.deviceType, supplierKey(data.supplier), data.unitCost ?? 0]);
     const existing = deviceMap.get(key);
     if (existing) {
       existing.count++;
@@ -326,6 +344,7 @@ export function computePackList(
       if (isSpare) existing.spareCount++;
     } else {
       deviceMap.set(key, {
+        supplier: data.supplier,
         model,
         deviceType: deviceTypeDisplay(data.deviceType),
         room,
@@ -379,71 +398,18 @@ export function computePackList(
     (a, b) => a.room.localeCompare(b.room) || a.model.localeCompare(b.model),
   );
 
-  // Stubbed connections are split into two legs sharing a linkedConnectionId, each
-  // joining a real device to a stub-label node. Emit ONE cable per logical connection:
-  // process only the source-side leg and follow its partner to the real target device.
-  // Without this, every stubbed connection is counted twice and each row shows an
-  // "Unknown" endpoint. (Mirrors computeCableSchedule.)
-  const linkedPartner = new Map<string, ConnectionEdge>();
-  for (const e of edges) {
-    const link = e.data?.linkedConnectionId;
-    if (!link) continue;
-    const partner = edges.find((p) => p.id !== e.id && p.data?.linkedConnectionId === link);
-    if (partner) linkedPartner.set(e.id, partner);
-  }
-  const isSourceLeg = (e: ConnectionEdge): boolean =>
-    nodes.find((n) => n.id === e.source)?.type !== "stub-label";
-
-  // Cables — exclude edges where one side is a direct-attach adapter port
-  const cables: PackListCable[] = edges
-    .filter((e) => {
-      if (!e.data?.signalType) return false;
-      // For a stub pair, only the source-side leg represents the logical cable.
-      if (e.data?.linkedConnectionId && !isSourceLeg(e)) return false;
-      const effectiveTargetEdge = linkedPartner.get(e.id) ?? e;
-      const srcNode = nodes.find((n) => n.id === e.source);
-      const tgtNode = nodes.find((n) => n.id === effectiveTargetEdge.target);
-      const srcPort = resolvePort(srcNode, e.sourceHandle);
-      const tgtPort = resolvePort(tgtNode, effectiveTargetEdge.targetHandle);
-      if (srcNode?.type === "device" && (srcNode.data as DeviceData).deviceType === "adapter" && srcPort?.directAttach) return false;
-      if (tgtNode?.type === "device" && (tgtNode.data as DeviceData).deviceType === "adapter" && tgtPort?.directAttach) return false;
-      if (srcPort?.connectorType === "wireless" || tgtPort?.connectorType === "wireless") return false;
-      return true;
+  // Reuse the complete physical schedule: a panel hop adds one cable, inline adapter
+  // cables add their own material, and installed/provided runs are excluded only here.
+  const cables: PackListCable[] = computeCableSchedule(nodes, edges)
+    .filter(row => includedInPackList(row.provision))
+    .filter(row => {
+      const e = edges.find(e => e.id === row.edgeId);
+      if (!e || row.segIndex !== undefined) return true;
+      const src = resolvePort(nodes.find(n => n.id === e.source), e.sourceHandle);
+      const tgt = resolvePort(nodes.find(n => n.id === e.target), e.targetHandle);
+      return src?.connectorType !== "wireless" && tgt?.connectorType !== "wireless" && !src?.directAttach && !tgt?.directAttach;
     })
-    .map((e) => {
-      const effectiveTargetEdge = linkedPartner.get(e.id) ?? e;
-      const srcNode = nodes.find((n) => n.id === e.source);
-      const tgtNode = nodes.find((n) => n.id === effectiveTargetEdge.target);
-      const signalType = e.data!.signalType as SignalType;
-      const srcPort = resolvePort(srcNode, e.sourceHandle);
-      const tgtPort = resolvePort(tgtNode, effectiveTargetEdge.targetHandle);
-      const srcRoom = srcNode
-        ? getRoomLabel(nodes, srcNode.parentId)
-        : "Unknown";
-      const tgtRoom = tgtNode
-        ? getRoomLabel(nodes, tgtNode.parentId)
-        : "Unknown";
-      return {
-        cableType: getCableType(srcPort, tgtPort, signalType),
-        signalType: signalLabel(signalType),
-        cableLength: (e.data?.cableLength as string) ?? "",
-        sourceDevice: srcNode?.type === "device"
-          ? (srcNode.data as DeviceData).label
-          : "Unknown",
-        sourcePort: srcNode ? resolvePortLabel(srcNode, e.sourceHandle) : "",
-        sourceRoom: srcRoom,
-        targetDevice: tgtNode?.type === "device"
-          ? (tgtNode.data as DeviceData).label
-          : "Unknown",
-        targetPort: tgtNode ? resolvePortLabel(tgtNode, effectiveTargetEdge.targetHandle) : "",
-        targetRoom: tgtRoom,
-      };
-    })
-    .sort(
-      (a, b) =>
-        a.cableType.localeCompare(b.cableType) ||
-        a.signalType.localeCompare(b.signalType),
-    );
+    .map(row => ({ ...row }));
 
   // Summary — group by (cableType, signalType, cableLength, route)
   const summaryMap = new Map<string, PackListSummaryRow>();
@@ -458,12 +424,14 @@ export function computePackList(
           ? `Within ${c.sourceRoom}`
           : ""
         : `${c.sourceRoom} > ${c.targetRoom}`;
-    const key = `${c.cableType}|${c.signalType}|${c.cableLength}|${route}`;
+    const key = JSON.stringify([c.cableType, c.signalType, c.cableLength, route, supplierKey(c.supplier), c.unitCost]);
     const existing = summaryMap.get(key);
     if (existing) {
       existing.count++;
     } else {
       summaryMap.set(key, {
+        supplier: c.supplier,
+        unitCost: c.unitCost,
         cableType: c.cableType,
         signalType: c.signalType,
         cableLength: c.cableLength,
@@ -514,8 +482,14 @@ export function computePackList(
 }
 
 /** Generate a lookup key for cable costs: "cableType|signalType|cableLength" */
-export function cableCostKey(cableType: string, signalType: string, cableLength: string): string {
-  return `${cableType}|${signalType}|${cableLength}`;
+export function cableCostKey(cableType: string, signalType: string, cableLength: string, supplier?: string): string {
+  const base = `${cableType}|${signalType}|${cableLength}`;
+  return supplierKey(supplier) ? `${base}|supplier:${supplierKey(supplier)}` : base;
+}
+
+export function cableUnitCost(row: PackListSummaryRow, costs?: Record<string, number>): number {
+  return row.unitCost ?? costs?.[cableCostKey(row.cableType, row.signalType, row.cableLength, row.supplier)]
+    ?? costs?.[cableCostKey(row.cableType, row.signalType, row.cableLength)] ?? 0;
 }
 
 /** Auto-generated "this document contains…" summary line for report headers (#P3-019). */
@@ -594,7 +568,7 @@ export function buildPackListCsv(
 
   // Device List
   lines.push("DEVICE LIST");
-  lines.push(csvRow(["Qty", "Device", "Manufacturer", "Model #", "Type", "Room", "Unit Cost", "Extended Cost", "Serial #", "Spare", "Note"]));
+  lines.push(csvRow(["Qty", "Device", "Manufacturer", "Model #", "Type", "Room", "Unit Cost", "Extended Cost", "Serial #", "Spare", "Note", "Supplier"]));
   let deviceTotal = 0;
   for (const d of data.devices) {
     const extCost = d.unitCost > 0 ? d.unitCost * d.count : 0;
@@ -605,7 +579,7 @@ export function buildPackListCsv(
       extCost > 0 ? extCost.toFixed(2) : "",
       d.serialNumbers.join(", "),
       d.spareCount > 0 ? `${d.spareCount}` : "",
-      d.notes.join(" | "),
+      d.notes.join(" | "), d.supplier ?? "",
     ]));
     for (const c of d.cards) {
       const cardExt = c.cardUnitCost > 0 ? c.cardUnitCost * c.count : 0;
@@ -625,9 +599,9 @@ export function buildPackListCsv(
   // Cable Accessories
   if (data.accessories.length > 0) {
     lines.push("CABLE ACCESSORIES");
-    lines.push(csvRow(["Qty", "Accessory", "Type", "Room"]));
+    lines.push(csvRow(["Qty", "Accessory", "Type", "Room", "Supplier"]));
     for (const a of data.accessories) {
-      lines.push(csvRow([`${a.count}`, a.model, a.accessoryType, a.room]));
+      lines.push(csvRow([`${a.count}`, a.model, a.accessoryType, a.room, a.supplier ?? ""]));
     }
     lines.push("");
   }
@@ -635,9 +609,9 @@ export function buildPackListCsv(
   // Adapters
   if (data.adapters.length > 0) {
     lines.push("ADAPTERS");
-    lines.push(csvRow(["Qty", "Adapter", "Manufacturer", "Model #", "Room"]));
+    lines.push(csvRow(["Qty", "Adapter", "Manufacturer", "Model #", "Room", "Supplier"]));
     for (const a of data.adapters) {
-      lines.push(csvRow([`${a.count}`, a.model, a.manufacturer, a.modelNumber, a.room]));
+      lines.push(csvRow([`${a.count}`, a.model, a.manufacturer, a.modelNumber, a.room, a.supplier ?? ""]));
     }
     lines.push("");
   }
@@ -664,17 +638,16 @@ export function buildPackListCsv(
 
   // Cable List
   lines.push("CABLE LIST");
-  lines.push(csvRow(["Qty", "Cable Type", "Signal", "Length", "Route", "Unit Cost", "Extended Cost"]));
+  lines.push(csvRow(["Qty", "Cable Type", "Signal", "Length", "Route", "Unit Cost", "Extended Cost", "Supplier"]));
   let cableTotal = 0;
   for (const s of data.summary) {
-    const key = cableCostKey(s.cableType, s.signalType, s.cableLength);
-    const uc = cableCosts?.[key] ?? 0;
+    const uc = cableUnitCost(s, cableCosts);
     const ext = uc > 0 ? uc * s.count : 0;
     cableTotal += ext;
     lines.push(csvRow([
       `${s.count}`, s.cableType, s.signalType, s.cableLength, s.route,
       uc > 0 ? uc.toFixed(2) : "",
-      ext > 0 ? ext.toFixed(2) : "",
+      ext > 0 ? ext.toFixed(2) : "", s.supplier ?? "",
     ]));
   }
   if (cableTotal > 0) {
@@ -744,6 +717,7 @@ export function getPackListTableData(
   for (const d of deviceSource) {
     deviceRows.push({
       count: `${d.count}x`,
+      supplier: d.supplier ?? "",
       model: d.model,
       manufacturer: d.manufacturer,
       modelNumber: d.modelNumber,
@@ -759,6 +733,7 @@ export function getPackListTableData(
     for (const c of d.cards) {
       deviceRows.push({
         count: `${c.count}x`,
+        supplier: d.supplier ?? "",
         model: c.cardLabel,
         manufacturer: c.manufacturer,
         modelNumber: c.modelNumber,
@@ -785,6 +760,7 @@ export function getPackListTableData(
   const summarySource = useRawCables ? data.summary : mergeCablesByType(data.summary);
   const adapterCableRows = data.adapters.map((a) => ({
     count: `${a.count}x`,
+    supplier: a.supplier ?? "",
     cableType: a.model,
     signalType: "",
     cableLength: "",
@@ -794,10 +770,10 @@ export function getPackListTableData(
   }));
   const cableRows = [
     ...summarySource.map((s) => {
-      const key = cableCostKey(s.cableType, s.signalType, s.cableLength);
-      const uc = cableCosts?.[key] ?? 0;
+      const uc = cableUnitCost(s, cableCosts);
       return {
         count: `${s.count}x`,
+        supplier: s.supplier ?? "",
         cableType: s.cableType,
         signalType: s.signalType,
         cableLength: s.cableLength,
@@ -825,10 +801,11 @@ export function getPackListTableData(
           // Include cost columns here too — the flat and path-grouped rows carry
           // them, and the user-toggleable Unit/Ext Cost columns would otherwise
           // render blank in the category view whenever Sort is None.
-          const uc = cableCosts?.[cableCostKey(s.cableType, s.signalType, s.cableLength)] ?? 0;
+          const uc = cableUnitCost(s, cableCosts);
           return {
             count: `${s.count}x`,
-            cableType: s.cableType,
+            supplier: s.supplier ?? "",
+        cableType: s.cableType,
             signalType: s.signalType,
             cableLength: s.cableLength,
             route: s.route,
@@ -888,6 +865,7 @@ export function getPackListTableData(
   const accessoriesTableDef = layout.tables.find((t) => t.id === "accessories");
   const accessoryRows = data.accessories.map((a) => ({
     count: `${a.count}x`,
+    supplier: a.supplier ?? "",
     model: a.model,
     accessoryType: a.accessoryType,
     room: a.room,

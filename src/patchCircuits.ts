@@ -44,6 +44,9 @@ export interface PatchSegmentInfo {
   cableLength: string;
 }
 
+export function entryFace(hop: PatchHop): "rear" | "front" { return hop.entryFace ?? "rear"; }
+export function exitFace(hop: PatchHop): "rear" | "front" { return entryFace(hop) === "rear" ? "front" : "rear"; }
+
 const SUFFIXES = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 /** Build a PatchPointInfo for a real device endpoint of an edge. */
@@ -132,8 +135,8 @@ export function getPatchSegments(
   const segs: PatchSegmentInfo[] = [];
   const segCount = hops.length + 1;
   for (let i = 0; i < segCount; i++) {
-    const from = i === 0 ? srcPoint : panelPoint(nodes, hops[i - 1], "front")!;
-    const to = i === segCount - 1 ? tgtPoint : panelPoint(nodes, hops[i], "rear")!;
+    const from = i === 0 ? srcPoint : panelPoint(nodes, hops[i - 1], exitFace(hops[i - 1]))!;
+    const to = i === segCount - 1 ? tgtPoint : panelPoint(nodes, hops[i], entryFace(hops[i]))!;
     const suffix = SUFFIXES[i] ?? `Z${i}`;
     const autoLabel = `${baseCableId}-${suffix}`;
     const ov = overrides[i];
@@ -177,18 +180,18 @@ export function checkHopConnectors(
   srcPoint: PatchPointInfo,
   tgtPoint: PatchPointInfo,
 ): HopConnectorMismatch | null {
-  const newRear = panelPoint(nodes, hop, "rear");
-  const newFront = panelPoint(nodes, hop, "front");
+  const newRear = panelPoint(nodes, hop, entryFace(hop));
+  const newFront = panelPoint(nodes, hop, exitFace(hop));
   if (!newRear || !newFront) return null;
 
   const hops = resolvableHops(edge, nodes);
   const prev = hops.length === 0
     ? srcPoint
-    : panelPoint(nodes, hops[hops.length - 1], "front") ?? srcPoint;
+    : panelPoint(nodes, hops[hops.length - 1], exitFace(hops[hops.length - 1])) ?? srcPoint;
 
   const checks = [
-    { face: "rear" as const, panel: newRear, other: prev },
-    { face: "front" as const, panel: newFront, other: tgtPoint },
+    { face: entryFace(hop), panel: newRear, other: prev },
+    { face: exitFace(hop), panel: newFront, other: tgtPoint },
   ];
   for (const c of checks) {
     const panelConnector = c.panel.port?.connectorType;
@@ -286,6 +289,7 @@ export function segmentsForEdge(
 }
 
 export interface PortFaceDisplay {
+  incoming?: boolean;
   /** Segment (or wired-cable) label shown on the chip / strip. */
   cableLabel: string;
   /** Far-end device/panel name. */
@@ -332,12 +336,12 @@ export function resolvePortDisplay(
       kind: "hop",
       edgeId: edge.id,
       signalType: edge.data?.signalType as string | undefined,
-      rear: {
-        cableLabel: inn.label, farLabel: inn.from.label, farPortLabel: inn.from.portLabel,
+      [entryFace(resolvableHops(edge, nodes)[occupant.hopIndex])]: {
+        incoming: true, cableLabel: inn.label, farLabel: inn.from.label, farPortLabel: inn.from.portLabel,
         segIndex: inn.index, overridden: inn.overridden,
       },
-      front: {
-        cableLabel: outSeg.label, farLabel: outSeg.to.label, farPortLabel: outSeg.to.portLabel,
+      [exitFace(resolvableHops(edge, nodes)[occupant.hopIndex])]: {
+        incoming: false, cableLabel: outSeg.label, farLabel: outSeg.to.label, farPortLabel: outSeg.to.portLabel,
         segIndex: outSeg.index, overridden: outSeg.overridden,
       },
     };

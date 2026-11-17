@@ -1,3 +1,4 @@
+import PhysicalPathLabel from "./PhysicalPathLabel";
 import { memo, useState, useRef, useEffect } from "react";
 import {
   BaseEdge,
@@ -720,9 +721,9 @@ function OffsetEdgeComponent({
   ) : null;
 
   // All labels + reconnect visuals rendered via EdgeLabelRenderer (HTML layer above all SVG edges)
-  const hasPortalContent = customLabels || cableIdLabels || reconnectVisuals || usbcWarningBadge || cableLengthBadge || pathEditHint;
-  const edgeLabelsPortal = hasPortalContent ? (
+  const edgeLabelsPortal = (
     <EdgeLabelRenderer>
+      <PhysicalPathLabel edgeId={id} x={customMidPt.x} y={customMidPt.y} />
       {cableIdLabels}
       {customLabels}
       {cableLengthBadge}
@@ -730,7 +731,7 @@ function OffsetEdgeComponent({
       {reconnectVisuals}
       {pathEditHint}
     </EdgeLabelRenderer>
-  ) : null;
+  );
 
   // Log routing data when debug mode is active
   const prevDebugRef = useRef(false);
