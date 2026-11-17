@@ -1858,6 +1858,7 @@ function SchematicCanvas() {
         useSchematicStore.setState({
           edgeContextMenu: {
             edgeId: canonicalPatchEdgeId(edge.id, edges),
+            segmentIndex: edge.data?.patchReference?.segmentIndex,
             screenX: event.clientX,
             screenY: event.clientY,
             flowX: flowPos.x,

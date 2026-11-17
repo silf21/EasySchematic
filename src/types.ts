@@ -524,6 +524,8 @@ export interface PatchHop {
 /** Per-segment user overrides for a patched connection. Index i = physical segment i
  *  (0 = source-side). Cleared wholesale whenever patchHops change (indices would shift). */
 export interface PatchSegmentOverride {
+  /** Presentation only: show this section as paired endpoint stubs. */
+  stubbed?: boolean;
   supplier?: string;
   unitCost?: number;
   label?: string;
@@ -537,6 +539,7 @@ export interface ConnectionData {
   showPatchReferences?: boolean;
   /** Presentation-only segment metadata; never persisted as a material connection. */
   patchReference?: { edgeId: string; segmentIndex: number };
+  patchSectionStubbed?: boolean;
   [key: string]: unknown;
   signalType: SignalType;
   manualWaypoints?: { x: number; y: number }[];

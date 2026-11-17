@@ -570,7 +570,7 @@ export default function DeviceEditor() {
     const apply = () => {
       updateCustomTemplate(templateId, template);
       // Persist the edited device with the bumped version so it doesn't read as drifted.
-      const data = buildDeviceData({ templateVersion: nextVersion });
+      const data = buildDeviceData({ templateVersion: nextVersion, model: template.label });
       if (data) updateDevice(editingNodeId, data);
       setCreatingNodeId(null);
       if (others > 0) {

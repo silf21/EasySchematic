@@ -80,6 +80,7 @@ export function patchReferenceEdges(nodes: SchematicNode[], edges: ConnectionEdg
           ...edge.data!, patchHops: undefined, manualWaypoints: undefined, bundleId: undefined,
           patchReference: { edgeId: edge.id, segmentIndex: i },
           directAttach: sections[i]?.directAttach,
+          patchSectionStubbed: override?.stubbed === true,
           cableId: sections[i]?.directAttach ? "" : override?.label?.trim() || `${baseId}-${String.fromCharCode(65 + i)}`,
           cableLength: override?.cableLength ?? "", supplier: override?.supplier ?? edge.data?.supplier,
         },

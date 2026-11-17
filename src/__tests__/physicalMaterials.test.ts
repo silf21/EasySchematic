@@ -160,3 +160,24 @@ it("counts adapter plug attachments as no cable while retaining a fixed virtual 
   const diagram = patchReferenceEdges(reconcilePatchReferences(all, edges), edges).filter(e => e.data?.patchReference);
   expect(diagram.map(e => !!e.data?.directAttach)).toEqual([true, false, true]);
 });
+
+it("stubs an individual patch section without changing quantities, and supports undo", async () => {
+  const { useSchematicStore: store } = await import("../store");
+  const before = store.getState();
+  try {
+    const e = patched();
+    store.setState({ nodes, edges: [e] });
+    const materials = computePackList(store.getState().nodes, store.getState().edges);
+    store.getState().setPatchSegmentOverride(e.id, 1, { stubbed: true });
+    const diagram = patchReferenceEdges(store.getState().nodes, store.getState().edges);
+    expect(diagram.map(e => e.data?.patchSectionStubbed)).toEqual([false, true, false]);
+    expect(computePackList(store.getState().nodes, store.getState().edges)).toEqual(materials);
+    expect(store.getState().edges[0].data?.patchSegments?.[1].supplier).toBe(" FestINSTALLIERT ");
+    store.getState().undo();
+    expect(store.getState().edges[0].data?.patchSegments?.[1].stubbed).toBeUndefined();
+    store.getState().redo();
+    expect(store.getState().edges[0].data?.patchSegments?.[1].stubbed).toBe(true);
+    store.getState().setPatchSegmentOverride(e.id, 1, { stubbed: false });
+    expect(patchReferenceEdges(store.getState().nodes, store.getState().edges).every(e => !e.data?.patchSectionStubbed)).toBe(true);
+  } finally { store.setState(before); }
+});

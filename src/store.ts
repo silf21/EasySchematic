@@ -560,7 +560,7 @@ interface SchematicState {
   clearAllManualWaypoints: () => void;
   deviceContextMenu: { nodeId: string; screenX: number; screenY: number } | null;
   setDeviceContextMenu: (menu: { nodeId: string; screenX: number; screenY: number } | null) => void;
-  edgeContextMenu: { edgeId: string; screenX: number; screenY: number; flowX: number; flowY: number; initialEdit?: "length" } | null;
+  edgeContextMenu: { segmentIndex?: number; edgeId: string; screenX: number; screenY: number; flowX: number; flowY: number; initialEdit?: "length" } | null;
   roomContextMenu: { nodeId: string; screenX: number; screenY: number } | null;
   stubLabelContextMenu: { nodeId: string; screenX: number; screenY: number } | null;
   textStubContextMenu: { nodeId: string; screenX: number; screenY: number } | null;

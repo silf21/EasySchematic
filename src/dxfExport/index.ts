@@ -1,3 +1,4 @@
+import { patchSectionStubEnds } from "../patchSectionStubs";
 import { PATCH_REFERENCE_WIDTH, PATCH_REFERENCE_HEIGHT, PATCH_REFERENCE_HANDLE_Y, patchReferenceEdges } from "../patchReferences";
 import { entryFace, exitFace } from "../patchCircuits";
 import type { ReactFlowInstance } from "@xyflow/react";
@@ -137,6 +138,20 @@ export function buildDxf(rfInstance: ReactFlowInstance): string | null {
       lineWeight: 25,
     };
 
+    if (edge.data?.patchSectionStubbed && routed.waypoints.length >= 2) {
+      const source = routed.waypoints[0];
+      const target = routed.waypoints[routed.waypoints.length - 1];
+      const next = routed.waypoints[1];
+      const prev = routed.waypoints[routed.waypoints.length - 2];
+      const ends = patchSectionStubEnds(edge, state.nodes,
+        { ...source, side: next.x < source.x ? "left" : "right" },
+        { ...target, side: prev.x > target.x ? "right" : "left" });
+      for (const end of ends) {
+        writer.addLine(layer, pxToIn(end.x), -pxToIn(end.y), pxToIn(end.endX), -pxToIn(end.endY), entityStyle);
+        writer.addText(CANONICAL_LAYERS.LABELS, pxToIn(end.endX), -pxToIn(end.endY), end.text, { height: pxToIn(9), align: end.side === "right" ? "left" : "right" });
+      }
+      continue;
+    }
     emitEdgeGeometry(writer, routed, layer, entityStyle, allArcCrossings);
     drawnEdges.push({ edge, routed, trueColor });
   }

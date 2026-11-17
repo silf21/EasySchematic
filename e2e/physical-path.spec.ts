@@ -49,7 +49,7 @@ test("distributed references route to physical faces, remain independently movab
   const box = await first.boundingBox();
   if (!box) throw new Error("Reference not visible");
   await page.mouse.move(box.x + 30, box.y + 10);
-  await page.mouse.down(); await page.mouse.move(box.x + 50, box.y + 90, { steps: 8 }); await page.mouse.up();
+  await page.mouse.down(); await page.mouse.move(box.x + 50, box.y - 54, { steps: 8 }); await page.mouse.up();
   await expect.poll(() => first.getAttribute("style")).not.toBe(before);
   expect(await refs.nth(1).getAttribute("style")).toBe(secondBefore);
   const saved = await first.getAttribute("style");
@@ -79,4 +79,26 @@ test("distributed references route to physical faces, remain independently movab
   await expect(page.getByRole("button", { name: "By Supplier", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: /Venue Rental · 2 items/ })).toBeVisible();
   expect(errors).toEqual([]);
+});
+
+
+test("stubs only the selected patch section and restores it after reload", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("easyschematic-skip-landing", "1"));
+  await page.goto("/");
+  await expect(page.locator(".react-flow")).toBeVisible({ timeout: 30000 });
+  await page.locator('input[type="file"][accept=".json"]').first().setInputFiles({ name: "references.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(fixture)) });
+  await expect(page.getByTestId("patch-reference")).toHaveCount(4);
+  // Only the middle physical section is cut; the canonical connection survives reload/undo.
+  const middle = page.locator('.react-flow__edge-patch-reference-edge[data-id="dmx1:patch-section:1"]');
+  await middle.dispatchEvent("contextmenu", { button: 2, clientX: 450, clientY: 280 });
+  await page.getByText("Stub Connection", { exact: true }).click();
+  await expect(page.getByTestId("patch-section-stub")).toHaveCount(2);
+  await expect(page.getByTestId("patch-section-stub").first()).toContainText("PP2 [DMX1 · rear]");
+  await expect(page.getByTestId("patch-section-stub").nth(1)).toContainText("PP1 [DMX1 · rear]");
+  await page.reload();
+  await expect(page.getByTestId("patch-section-stub")).toHaveCount(2);
+  await page.getByTestId("patch-section-stub").first().dispatchEvent("contextmenu", { button: 2, clientX: 450, clientY: 280 });
+  await page.getByText("Show Full Connection", { exact: true }).click();
+  await expect(page.getByTestId("patch-section-stub")).toHaveCount(0);
+  await expect(page.locator(".react-flow__edge-patch-reference-edge")).toHaveCount(6);
 });

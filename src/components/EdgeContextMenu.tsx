@@ -326,7 +326,10 @@ export default function EdgeContextMenu() {
     if (!menu) return;
     const store = useSchematicStore.getState();
     const edge = store.edges.find((e) => e.id === menu.edgeId);
-    if (edge?.data?.linkedConnectionId) {
+    if (menu.segmentIndex != null) {
+      const stubbed = edge?.data?.patchSegments?.[menu.segmentIndex]?.stubbed === true;
+      store.setPatchSegmentOverride(menu.edgeId, menu.segmentIndex, { stubbed: !stubbed });
+    } else if (edge?.data?.linkedConnectionId) {
       store.collapseStubsForEdge(menu.edgeId);
     } else {
       store.convertEdgeToStubs(menu.edgeId);
@@ -446,7 +449,7 @@ export default function EdgeContextMenu() {
   const store = useSchematicStore.getState();
   const edge = liveEdges.find((e) => e.id === menu.edgeId);
   const hasManual = !!(edge?.data?.manualWaypoints?.length);
-  const isStubbed = !!edge?.data?.linkedConnectionId;
+  const isStubbed = menu.segmentIndex != null ? edge?.data?.patchSegments?.[menu.segmentIndex]?.stubbed === true : !!edge?.data?.linkedConnectionId;
   const isCableIdHidden = edge?.data?.hideCableId === true;
   const edgeCableIdMode = (edge?.data?.cableIdLabelMode as string) ?? useSchematicStore.getState().cableIdLabelMode;
   // NOTE: Stub label show-port / page-mode overrides moved to StubLabelNode.data

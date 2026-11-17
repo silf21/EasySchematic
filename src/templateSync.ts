@@ -184,7 +184,7 @@ export function syncDeviceWithTemplate(
   const factualChanges: FactualChange[] = [];
   for (const field of FACTUAL_FIELDS) {
     const before = (device as Record<string, unknown>)[field];
-    const after = (template as unknown as Record<string, unknown>)[field];
+    const after = field === "model" ? template.label : (template as unknown as Record<string, unknown>)[field];
     if (before !== after) {
       factualChanges.push({ field, before, after });
     }
@@ -193,7 +193,7 @@ export function syncDeviceWithTemplate(
   // Apply factual overwrites.
   const updatedData: DeviceData = { ...device, ports: updatedPorts };
   for (const field of FACTUAL_FIELDS) {
-    const value = (template as unknown as Record<string, unknown>)[field];
+    const value = field === "model" ? template.label : (template as unknown as Record<string, unknown>)[field];
     if (value == null) {
       delete (updatedData as Record<string, unknown>)[field];
     } else {

@@ -91,3 +91,9 @@ intentionally omitted; schema 46 adds only the distributed-reference representat
 As in the original virtual patch model, adding/removing panel hops clears positional
 section overrides. Set the route first, then enter section labels, lengths and suppliers.
 Flipping the physical face does not clear those overrides.
+
+## Stubbing an individual patch section
+
+In the distributed schematic view, right-click the cable section to split and choose **Stub Connection**. Only that section is replaced with two endpoint-attached labels naming its opposite device or panel, panel position and used Front/Rear face. The labels follow their endpoint devices. Other sections remain visible; physical patch assignments, supplier information, quantities and costs are unchanged.
+
+Right-click either short leg or label and choose **Show Full Connection** to restore that section. Section stubs survive save/reload and support undo/redo. Changing the patch-hop sequence resets section overrides, including stubs, so an index never points at a different physical section. In compact view the complete circuit remains visible; the per-section presentation is retained for the distributed view.
