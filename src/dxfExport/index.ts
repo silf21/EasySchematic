@@ -1,5 +1,10 @@
+import { isPortConnected } from "../portVisibility";
+import { patchReferenceDisplay } from "../patchReferenceDisplay";
+import { auxRowHeight, resolveAuxiliaryLine } from "../auxiliaryData";
+import { wrapDeviceLabelLines } from "../displayName";
+import { transformLabelNow } from "../labelCaseUtils";
 import { patchSectionStubEnds } from "../patchSectionStubs";
-import { PATCH_REFERENCE_WIDTH, PATCH_REFERENCE_HEIGHT, PATCH_REFERENCE_HANDLE_Y, patchReferenceEdges } from "../patchReferences";
+import { PATCH_REFERENCE_WIDTH, patchReferenceEdges } from "../patchReferences";
 import { entryFace, exitFace } from "../patchCircuits";
 import type { ReactFlowInstance } from "@xyflow/react";
 import { useSchematicStore } from "../store";
@@ -98,14 +103,35 @@ export function buildDxf(rfInstance: ReactFlowInstance): string | null {
     const internal = rfInstance.getInternalNode(node.id);
     if (!internal) continue;
     const panel = state.nodes.find(n => n.id === node.data.panelNodeId);
+    if (panel?.type !== "device") continue;
+    const layout = patchReferenceDisplay(panel.data, state);
+    const handles = new Set<string>();
+    for (const edge of state.edges) {
+      if (edge.source === panel.id && edge.sourceHandle) handles.add(edge.sourceHandle);
+      if (edge.target === panel.id && edge.targetHandle) handles.add(edge.targetHandle);
+    }
+    const connectedCount = state.showPortCounts && panel.data.ports.length ? panel.data.ports.filter(port => isPortConnected(port, handles)).length : undefined;
     const port = panel?.type === "device" ? panel.data.ports.find(p => p.id === node.data.portId) : undefined;
     const hop = state.edges.find(e => e.id === node.data.connectionId)?.data?.patchHops?.find(h => h.panelNodeId === node.data.panelNodeId && h.portId === node.data.portId);
     const { x, y } = internal.internals.positionAbsolute;
-    writer.addRect(CANONICAL_LAYERS.DEVICES, pxToIn(x), -pxToIn(y + PATCH_REFERENCE_HEIGHT), pxToIn(PATCH_REFERENCE_WIDTH), pxToIn(PATCH_REFERENCE_HEIGHT));
-    writer.addText(CANONICAL_LAYERS.LABELS, pxToIn(x + PATCH_REFERENCE_WIDTH / 2), -pxToIn(y + 20), String(panel?.data.label ?? "Panel"), { height: pxToIn(11), align: "center" });
-    writer.addText(CANONICAL_LAYERS.PORTS, pxToIn(x + PATCH_REFERENCE_WIDTH / 2), -pxToIn(y + PATCH_REFERENCE_HANDLE_Y + 3), port?.label ?? node.data.portId, { height: pxToIn(10), align: "center" });
-    writer.addText(CANONICAL_LAYERS.PORTS, pxToIn(x + 6), -pxToIn(y + PATCH_REFERENCE_HANDLE_Y + 3), hop ? entryFace(hop) : "Rear", { height: pxToIn(8) });
-    writer.addText(CANONICAL_LAYERS.PORTS, pxToIn(x + PATCH_REFERENCE_WIDTH - 6), -pxToIn(y + PATCH_REFERENCE_HANDLE_Y + 3), hop ? exitFace(hop) : "Front", { height: pxToIn(8), align: "right" });
+    writer.addRect(CANONICAL_LAYERS.DEVICES, pxToIn(x), -pxToIn(y + layout.height), pxToIn(PATCH_REFERENCE_WIDTH), pxToIn(layout.height));
+    const name = transformLabelNow(layout.label.text);
+    const lines = layout.label.wrapsInHeader ? wrapDeviceLabelLines(name) : [name];
+    const topPadding = Math.floor(layout.headerPadding / 2);
+    lines.forEach((line, i) => writer.addText(CANONICAL_LAYERS.LABELS, pxToIn(x + PATCH_REFERENCE_WIDTH / 2), -pxToIn(y + topPadding + (layout.labelZone - lines.length * 14) / 2 + 12 + i * 14), line, { height: pxToIn(11), align: "center" }));
+    const emitAux = (rows: typeof layout.headerRows, start: number) => {
+      let rowY = start;
+      for (const row of rows) {
+        if (row.text.trim()) writer.addText(CANONICAL_LAYERS.LABELS, pxToIn(x + PATCH_REFERENCE_WIDTH / 2), -pxToIn(y + rowY + 9), transformLabelNow(resolveAuxiliaryLine(row.text, panel.data, { currency: state.currency, connectedCount })), { height: pxToIn(9), align: "center" });
+        rowY += auxRowHeight(row);
+      }
+    };
+    emitAux(layout.headerRows, topPadding + layout.labelZone);
+    const footerPadding = layout.footerHeight - 1 - layout.footerRows.reduce((sum, row) => sum + auxRowHeight(row), 0);
+    emitAux(layout.footerRows, layout.headerHeight + 32 + 1 + Math.floor(footerPadding / 2));
+    writer.addText(CANONICAL_LAYERS.PORTS, pxToIn(x + PATCH_REFERENCE_WIDTH / 2), -pxToIn(y + layout.handleY + 3), port?.label ?? node.data.portId, { height: pxToIn(10), align: "center" });
+    writer.addText(CANONICAL_LAYERS.PORTS, pxToIn(x + 6), -pxToIn(y + layout.handleY + 3), hop ? entryFace(hop) : "Rear", { height: pxToIn(8) });
+    writer.addText(CANONICAL_LAYERS.PORTS, pxToIn(x + PATCH_REFERENCE_WIDTH - 6), -pxToIn(y + layout.handleY + 3), hop ? exitFace(hop) : "Front", { height: pxToIn(8), align: "right" });
   }
 
   // ─── Annotations ────────────────────────────────────────────────────

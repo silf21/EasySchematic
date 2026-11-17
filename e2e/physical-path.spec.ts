@@ -102,3 +102,27 @@ test("stubs only the selected patch section and restores it after reload", async
   await expect(page.getByTestId("patch-section-stub")).toHaveCount(0);
   await expect(page.locator(".react-flow__edge-patch-reference-edge")).toHaveCount(6);
 });
+
+test("panel references mirror the real panel's name and auxiliary fields", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("easyschematic-skip-landing", "1"));
+  await page.goto("/");
+  await expect(page.locator(".react-flow")).toBeVisible({ timeout: 30000 });
+  const mirrored = { ...fixture, nodes: fixture.nodes.map(n => n.id === "PP1" ? { ...n, hidden: false, data: { ...n.data, offCanvas: false, shortName: "MZH FOH", useShortName: true, supplier: "Festinstalliert", hostname: "panel-foh-01", auxiliaryData: [{ text: "{{deviceType}}", position: "header" }, { text: "Festinstalliert", position: "header" }, { text: "{{hostname}}", position: "footer" }] } } : n) };
+  await page.locator('input[type="file"][accept=".json"]').first().setInputFiles({ name: "panel-display.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(mirrored)) });
+  const reference = page.locator('.react-flow__node[data-id="patch-ref:dmx1:PP1:p1"]');
+  await expect(reference.getByText("MZH FOH", { exact: true })).toBeVisible();
+  await expect(reference.getByText("Patch Panel", { exact: true })).toBeVisible();
+  await expect(reference.getByText("Festinstalliert", { exact: true })).toBeVisible();
+  await expect(reference.getByText("panel-foh-01", { exact: true })).toBeVisible();
+  await expect(reference.getByTestId("patch-reference")).toHaveCSS("height", "96px");
+  await expect.poll(() => reference.locator('.react-flow__handle').first().evaluate(handle => {
+    const box = handle.getBoundingClientRect();
+    const node = handle.closest('.react-flow__node')!.getBoundingClientRect();
+    const scale = node.width / 144;
+    return Math.round((box.top + box.height / 2 - node.top) / scale);
+  })).toBe(64);
+  await reference.screenshot({ path: test.info().outputPath("panel-reference-display.png") });
+  await page.reload();
+  await expect(reference.getByText("MZH FOH", { exact: true })).toBeVisible();
+  await expect(reference.getByText("panel-foh-01", { exact: true })).toBeVisible();
+});

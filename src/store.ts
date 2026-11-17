@@ -8058,7 +8058,7 @@ if (typeof window !== "undefined") {
 // References are presentation nodes. Reconcile from canonical patch assignments after
 // edits/load/undo; never turn reference wiring into extra material or port occupancy.
 useSchematicStore.subscribe((state, previous) => {
-  if (state.nodes === previous.nodes && state.edges === previous.edges) return;
-  const nodes = reconcilePatchReferences(state.nodes, state.edges);
+  if (state.nodes === previous.nodes && state.edges === previous.edges && state.useShortNames === previous.useShortNames && state.wrapDeviceLabels === previous.wrapDeviceLabels) return;
+  const nodes = reconcilePatchReferences(state.nodes, state.edges, state);
   if (nodes !== state.nodes) useSchematicStore.setState({ nodes });
 });

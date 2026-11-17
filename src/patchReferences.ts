@@ -1,3 +1,5 @@
+import { patchReferenceDisplay } from "./patchReferenceDisplay";
+import type { SchematicDisplayDefaults } from "./displayName";
 import { GRID_SIZE } from "./gridConstants";
 import type { ConnectionEdge, PatchReferenceNode, SchematicNode } from "./types";
 import { entryFace, exitFace, resolvableHops, segmentsForEdge } from "./patchCircuits";
@@ -10,7 +12,7 @@ export function patchReferenceId(edgeId: string, panelId: string, portId: string
 }
 
 /** Keep diagram references in sync, retaining their positions while the compact view is active. */
-export function reconcilePatchReferences(nodes: SchematicNode[], edges: ConnectionEdge[]): SchematicNode[] {
+export function reconcilePatchReferences(nodes: SchematicNode[], edges: ConnectionEdge[], defaults: SchematicDisplayDefaults = {}): SchematicNode[] {
   const existing = new Map(nodes.filter((n): n is PatchReferenceNode => n.type === "patch-reference").map(n => [n.id, n]));
   const wanted = new Set<string>();
   const additions: PatchReferenceNode[] = [];
@@ -33,20 +35,22 @@ export function reconcilePatchReferences(nodes: SchematicNode[], edges: Connecti
     for (const [i, hop] of resolvableHops(edge, nodes).entries()) {
       const id = patchReferenceId(edge.id, hop.panelNodeId, hop.portId);
       const old = existing.get(id);
+      const panel = nodes.find(n => n.id === hop.panelNodeId);
+      const height = panel?.type === "device" ? patchReferenceDisplay(panel.data, defaults).height : PATCH_REFERENCE_HEIGHT;
       
       wanted.add(id);
       const hidden = edge.data?.showPatchReferences === false;
       if (old) {
         const position = { x: Math.round(old.position.x / GRID_SIZE) * GRID_SIZE, y: Math.round(old.position.y / GRID_SIZE) * GRID_SIZE };
         const moved = position.x !== old.position.x || position.y !== old.position.y;
-        const resized = old.width !== PATCH_REFERENCE_WIDTH || old.height !== PATCH_REFERENCE_HEIGHT;
+        const resized = old.width !== PATCH_REFERENCE_WIDTH || old.height !== height;
         if (!!old.hidden !== hidden || resized || moved) updates.set(id, {
-          ...old, position, hidden, width: PATCH_REFERENCE_WIDTH, height: PATCH_REFERENCE_HEIGHT,
+          ...old, position, hidden, width: PATCH_REFERENCE_WIDTH, height,
           ...(resized ? { measured: undefined } : {}),
         });
       } else additions.push({
         id, type: "patch-reference", position: { x: Math.round((sourcePosition.x + 220 + i * 260) / GRID_SIZE) * GRID_SIZE, y: Math.round((sourcePosition.y + 140 + lane * 100) / GRID_SIZE) * GRID_SIZE },
-        width: PATCH_REFERENCE_WIDTH, height: PATCH_REFERENCE_HEIGHT, hidden, zIndex: 5,
+        width: PATCH_REFERENCE_WIDTH, height, hidden, zIndex: 5,
         data: { connectionId: edge.id, panelNodeId: hop.panelNodeId, portId: hop.portId },
       });
     }
