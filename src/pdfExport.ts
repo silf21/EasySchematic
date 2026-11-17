@@ -1,6 +1,7 @@
 import { type ReactFlowInstance } from "@xyflow/react";
 import { jsPDF } from "jspdf";
 import { toBlob } from "html-to-image";
+import { suspendExportSelection } from "./exportSelection";
 import { freezeSvgColors } from "./freezeSvgColors";
 import { capExportPixelRatio } from "./exportUtils";
 import { describeExportError, scrubXmlIllegalDom } from "./exportCapturePrep";
@@ -731,14 +732,7 @@ export async function exportPdf(
   const savedWidth = container.style.width;
   const savedHeight = container.style.height;
 
-  // Save selection state
-  const selectedNodeIds = nodes.filter((n) => n.selected).map((n) => n.id);
-  const edges = rfInstance.getEdges();
-  const selectedEdgeIds = edges.filter((e) => e.selected).map((e) => e.id);
-
-  // Deselect all
-  rfInstance.setNodes(nodes.map((n) => ({ ...n, selected: false })));
-  rfInstance.setEdges(edges.map((e) => ({ ...e, selected: false })));
+  const restoreSelection = suspendExportSelection();
 
   // Add capturing attribute to hide overlays
   document.documentElement.setAttribute("data-export-capturing", "");
@@ -873,13 +867,7 @@ export async function exportPdf(
     container.style.height = savedHeight;
     rfInstance.setViewport(savedViewport, { duration: 0 });
 
-    // Restore selection
-    rfInstance.setNodes((nds) =>
-      nds.map((n) => ({ ...n, selected: selectedNodeIds.includes(n.id) })),
-    );
-    rfInstance.setEdges((eds) =>
-      eds.map((e) => ({ ...e, selected: selectedEdgeIds.includes(e.id) })),
-    );
+    restoreSelection();
 
     removeLoadingOverlay();
   }

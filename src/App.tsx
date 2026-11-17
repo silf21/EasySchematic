@@ -24,7 +24,7 @@ import { useShallow } from "zustand/react/shallow";
 import { normalizeShortcutKey } from "./keyUtils";
 import { warmupRoutingWorker } from "./routing/routingClient";
 import { useMcpBridge } from "./mcpBridge";
-import { patchReferenceEdges, patchReferenceNodes, canonicalPatchEdgeId } from "./patchReferences";
+import { patchReferenceEdges, patchReferenceNodes, canonicalPatchEdgeId, canonicalPatchEdgeChanges } from "./patchReferences";
 import { nodeTypes, edgeTypes } from "./nodeTypes";
 import SnapGuides from "./components/SnapGuides";
 import PageBoundaryOverlay from "./components/PageBoundaryOverlay";
@@ -1769,7 +1769,7 @@ function SchematicCanvas() {
       onNodeDragStart={onNodeDragStart}
       onNodeDrag={onNodeDrag}
       onNodeDragStop={onNodeDragStop}
-      onEdgesChange={changes => onEdgesChange(changes.map(change => "id" in change ? { ...change, id: canonicalPatchEdgeId(change.id, edges) } : change))}
+      onEdgesChange={changes => onEdgesChange(canonicalPatchEdgeChanges(changes, edges))}
       onConnect={(connection) => {
         // React Flow validated and accepted this one; the end handlers must not
         // re-check it once the port is occupied and re-enter the mismatch branch.

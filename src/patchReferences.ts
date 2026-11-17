@@ -1,3 +1,4 @@
+import type { EdgeChange } from "@xyflow/react";
 import { patchReferenceDisplay } from "./patchReferenceDisplay";
 import type { SchematicDisplayDefaults } from "./displayName";
 import { GRID_SIZE } from "./gridConstants";
@@ -106,4 +107,19 @@ export function patchReferenceNodes(nodes: SchematicNode[], edges: ConnectionEdg
   const expanded = new Set(edges.filter(e => e.data?.showPatchReferences !== false && e.data?.patchHops?.length).map(e => e.id));
   if (!expanded.size) return nodes;
   return nodes.map(n => n.type === "waypoint" && expanded.has(n.data.edgeId) ? { ...n, hidden: true } : n);
+}
+
+/** Presentation sections may forward selection/removal, never their derived
+ * endpoints/data as replacements of a canonical connection. */
+export function canonicalPatchEdgeChanges(changes: EdgeChange<ConnectionEdge>[], edges: ConnectionEdge[]): EdgeChange<ConnectionEdge>[] {
+  return changes.flatMap((change): EdgeChange<ConnectionEdge>[] => {
+    if (change.type === "add") return change.item.data?.patchReference || change.item.type === "patch-reference-edge" ? [] : [change];
+    const id = canonicalPatchEdgeId(change.id, edges);
+    if (change.type === "replace" && (id !== change.id || change.item.data?.patchReference || change.item.type === "patch-reference-edge")) {
+      return typeof change.item.selected === "boolean" && edges.some(e => e.id === id)
+        ? [{ type: "select", id, selected: change.item.selected }]
+        : [];
+    }
+    return [{ ...change, id }];
+  });
 }
