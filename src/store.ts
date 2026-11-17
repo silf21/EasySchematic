@@ -1621,8 +1621,8 @@ function nodeCenterFromAbsolute(
   absolutePosition: { x: number; y: number },
 ): { x: number; y: number } {
   const isRoom = node.type === "room";
-  const w = node.measured?.width ?? (isRoom ? (node.style?.width as number) ?? node.width ?? 400 : 144);
-  const h = node.measured?.height ?? (isRoom ? (node.style?.height as number) ?? node.height ?? 300 : 48);
+  const w = node.measured?.width ?? (isRoom ? (node.style?.width as number) ?? node.width ?? 400 : node.width ?? 144);
+  const h = node.measured?.height ?? (isRoom ? (node.style?.height as number) ?? node.height ?? 300 : node.height ?? 48);
   return { x: absolutePosition.x + w / 2, y: absolutePosition.y + h / 2 };
 }
 
@@ -4165,7 +4165,7 @@ export const useSchematicStore = create<SchematicState>((set, get) => ({
       // Waypoints belong to edges, not rooms — reparenting them turns their
       // .position into relative-to-room coords, which downstream sync code
       // mistakes for absolute and corrupts manualWaypoints.
-      if (node.type === "waypoint" || node.type === "patch-reference") continue;
+      if (node.type === "waypoint") continue;
 
       const absPos = getAbsolutePosition(node.id, nodeMap);
       const center = nodeCenterFromAbsolute(node, absPos);
@@ -8074,5 +8074,10 @@ useSchematicStore.subscribe((state, previous) => {
   }
   if (state.nodes === previous.nodes && state.edges === previous.edges && state.useShortNames === previous.useShortNames && state.wrapDeviceLabels === previous.wrapDeviceLabels) return;
   const nodes = reconcilePatchReferences(state.nodes, state.edges, state);
-  if (nodes !== state.nodes) useSchematicStore.setState({ nodes });
+  if (nodes !== state.nodes) {
+    const previousIds = new Set(state.nodes.map(n => n.id));
+    const addedReference = nodes.some(n => n.type === "patch-reference" && !previousIds.has(n.id));
+    useSchematicStore.setState({ nodes });
+    if (addedReference) useSchematicStore.getState().reparentAllDevices({ skipUndo: true });
+  }
 });

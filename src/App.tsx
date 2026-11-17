@@ -1437,9 +1437,12 @@ function SchematicCanvas() {
       // Waypoint and bundle-junction nodes are simple router anchors: grid-snap, no
       // overlap or reparent logic. (The router grid-snaps the bundle spine column too,
       // so snapping the junction keeps the box aligned with the drawn trunk.)
-      if (draggedNode.type === "patch-reference" || draggedNode.type === "waypoint" || draggedNode.type === "bundle-junction") {
-        const sx = Math.round(draggedNode.position.x / GRID_SIZE) * GRID_SIZE;
-        const sy = Math.round(draggedNode.position.y / GRID_SIZE) * GRID_SIZE;
+      if ((draggedNode.type === "patch-reference" && draggedNodes.length <= 1) || draggedNode.type === "waypoint" || draggedNode.type === "bundle-junction") {
+        const offset = draggedNode.type === "patch-reference"
+          ? parentOffsetFromMap(draggedNode as SchematicNode, new Map(state.nodes.map(n => [n.id, n])))
+          : { dx: 0, dy: 0 };
+        const sx = Math.round((draggedNode.position.x + offset.dx) / GRID_SIZE) * GRID_SIZE - offset.dx;
+        const sy = Math.round((draggedNode.position.y + offset.dy) / GRID_SIZE) * GRID_SIZE - offset.dy;
         if (sx !== draggedNode.position.x || sy !== draggedNode.position.y) {
           const updated = state.nodes.map((n) =>
             n.id === draggedNode.id ? { ...n, position: { x: sx, y: sy } } : n,
@@ -1510,9 +1513,12 @@ function SchematicCanvas() {
       // Grid-snap the final position and bail; for waypoints store.onNodesChange syncs
       // manualWaypoints from the resting position, and for junctions the node-digest
       // reroute redraws the comb through the new break-in/out position.
-      if (draggedNode.type === "patch-reference" || draggedNode.type === "waypoint" || draggedNode.type === "bundle-junction") {
-        const sx = Math.round(draggedNode.position.x / GRID_SIZE) * GRID_SIZE;
-        const sy = Math.round(draggedNode.position.y / GRID_SIZE) * GRID_SIZE;
+      if ((draggedNode.type === "patch-reference" && draggedNodes.length <= 1) || draggedNode.type === "waypoint" || draggedNode.type === "bundle-junction") {
+        const offset = draggedNode.type === "patch-reference"
+          ? parentOffsetFromMap(draggedNode as SchematicNode, new Map(state.nodes.map(n => [n.id, n])))
+          : { dx: 0, dy: 0 };
+        const sx = Math.round((draggedNode.position.x + offset.dx) / GRID_SIZE) * GRID_SIZE - offset.dx;
+        const sy = Math.round((draggedNode.position.y + offset.dy) / GRID_SIZE) * GRID_SIZE - offset.dy;
         if (sx !== draggedNode.position.x || sy !== draggedNode.position.y) {
           const updated = state.nodes.map((n) =>
             n.id === draggedNode.id ? { ...n, position: { x: sx, y: sy } } : n,
@@ -1524,6 +1530,10 @@ function SchematicCanvas() {
           });
         } else {
           useSchematicStore.setState({ isDragging: false, overlapNodeId: null });
+        }
+        if (draggedNode.type === "patch-reference") {
+          reparentNode(draggedNode.id, { x: sx + offset.dx, y: sy + offset.dy }, { skipUndo: true });
+          useSchematicStore.getState().saveToLocalStorage();
         }
         flushPendingSnapshot();
         return;

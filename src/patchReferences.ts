@@ -41,7 +41,9 @@ export function reconcilePatchReferences(nodes: SchematicNode[], edges: Connecti
       wanted.add(id);
       const hidden = edge.data?.showPatchReferences === false;
       if (old) {
-        const position = { x: Math.round(old.position.x / GRID_SIZE) * GRID_SIZE, y: Math.round(old.position.y / GRID_SIZE) * GRID_SIZE };
+        // Room-relative coordinates need not be grid multiples. Room/drag settling
+        // snaps in absolute space; reconciliation must retain the child offset.
+        const position = old.parentId ? old.position : { x: Math.round(old.position.x / GRID_SIZE) * GRID_SIZE, y: Math.round(old.position.y / GRID_SIZE) * GRID_SIZE };
         const moved = position.x !== old.position.x || position.y !== old.position.y;
         const resized = old.width !== PATCH_REFERENCE_WIDTH || old.height !== height;
         if (!!old.hidden !== hidden || resized || moved) updates.set(id, {
