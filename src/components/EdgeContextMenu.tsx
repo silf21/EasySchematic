@@ -623,6 +623,23 @@ export default function EdgeContextMenu() {
       }}
       onClick={(e) => e.stopPropagation()}
     >
+      {edge && !isPatched && <div data-testid="connection-properties" className="px-3 py-2 border-b border-gray-200 space-y-2 text-xs w-72" onKeyDown={e => { e.stopPropagation(); if (e.key === "Escape") useSchematicStore.setState({ edgeContextMenu: null }); }}>
+        <div className="font-semibold">Connection properties</div>
+        {isDirectAttach ? <p className="text-[10px] text-gray-500">Direct attachment — no separate cable.</p> : <>
+          <label className="block">Cable ID<input aria-label="Cable ID" className="w-full border rounded px-2 py-1 text-xs" value={edge.data?.cableId ?? ""} onChange={e => store.patchEdgeData(edge.id, { cableId: e.target.value || undefined })} /></label>
+          <label className="block">Cable length<input aria-label="Cable length" className="w-full border rounded px-2 py-1 text-xs" value={edge.data?.cableLength ?? ""} placeholder="e.g. 10m" onChange={e => store.patchEdgeData(edge.id, { cableLength: e.target.value || undefined })} /></label>
+          <div>Supplier<SupplierInput value={edge.data?.supplier ?? ""} onChange={supplier => store.patchEdgeData(edge.id, { supplier })} /></div>
+          <label className="block">Unit cost<input aria-label="Unit cost" className="w-full border rounded px-2 py-1 text-xs" type="number" min={0} step="0.01" value={edge.data?.unitCost ?? ""} onChange={e => { const value = e.target.value === "" ? undefined : Number(e.target.value); if (value === undefined || Number.isFinite(value) && value >= 0) store.patchEdgeData(edge.id, { unitCost: value }); }} /></label>
+        </>}
+      </div>}
+      {isPatched && !section && patchEdge && <div className="px-3 py-2 border-b border-gray-200 text-xs w-72">
+        <label>Physical cable section
+          <select aria-label="Physical cable section" className="w-full border rounded px-2 py-1 mt-1" value="" onChange={e => useSchematicStore.setState({ edgeContextMenu: { ...menu, edgeId: patchEdge.id, segmentIndex: Number(e.target.value) } })}>
+            <option value="" disabled>Select section to edit…</option>
+            {segmentsForEdge(patchEdge, store.nodes, store.edges, patchEdge.data?.cableId ?? patchEdge.id).map(segment => <option key={segment.index} value={segment.index}>{segment.suffix || segment.index + 1}: {segment.from.label} → {segment.to.label}</option>)}
+          </select>
+        </label>
+      </div>}
       {section && patchEdge && <div onKeyDownCapture={e => { if (e.key === "Escape") { e.stopPropagation(); useSchematicStore.setState({ edgeContextMenu: null }); } }} data-testid="patch-section-properties" className="px-3 py-2 border-b border-gray-200 space-y-2 text-xs w-72">
         <div className="font-semibold">Patch section {section.suffix || section.index + 1}</div>
         <div className="text-[10px] text-gray-500">{section.from.label} [{section.from.portLabel}] → {section.to.label} [{section.to.portLabel}]</div>

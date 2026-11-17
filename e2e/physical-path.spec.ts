@@ -161,3 +161,21 @@ test("each physical patch section has independent cable properties", async ({ pa
   await expect(properties.getByLabel("Supplier", { exact: true })).toHaveValue("Supplier A");
   await expect(properties.getByLabel("Section unit cost", { exact: true })).toHaveValue("12.5");
 });
+
+test("compact patched connections let users choose the physical section to edit", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("easyschematic-skip-landing", "1"));
+  await page.goto("/");
+  await expect(page.locator(".react-flow")).toBeVisible();
+  const compact = { ...fixture, edges: fixture.edges.map(edge => ({ ...edge, data: { ...edge.data, showPatchReferences: false } })) };
+  await page.locator('input[type=file][accept=".json"]').first().setInputFiles({ name: "compact.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(compact)) });
+  await page.locator('.react-flow__edge[data-id="dmx1"]').dispatchEvent("contextmenu", { button: 2, clientX: 450, clientY: 280 });
+  await page.getByLabel("Physical cable section", { exact: true }).selectOption("1");
+  const properties = page.getByTestId("patch-section-properties");
+  await expect(properties).toContainText("PP1");
+  await expect(properties).toContainText("PP2");
+  await properties.getByLabel("Section cable length", { exact: true }).fill("50m");
+  await page.keyboard.press("Escape");
+  await page.locator('.react-flow__edge[data-id="dmx1"]').dispatchEvent("contextmenu", { button: 2, clientX: 450, clientY: 280 });
+  await page.getByLabel("Physical cable section", { exact: true }).selectOption("1");
+  await expect(properties.getByLabel("Section cable length", { exact: true })).toHaveValue("50m");
+});
