@@ -50,6 +50,7 @@ export * as LightingConfig from "./lightingConfig";
 export * as VirtualChannels from "./virtualChannels";
 export * as PowerReport from "./powerReport";
 export * as PatchPanelSchedule from "./patchPanelSchedule";
+export * as PatchPanelOrigin from "./patchPanelOrigin";
 export * as Thermal from "./thermal";
 export * as RackStats from "./rackStats";
 export * as InventoryKey from "./inventoryKey";

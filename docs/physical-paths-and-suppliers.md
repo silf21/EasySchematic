@@ -109,3 +109,13 @@ Generated panel references have a subtle neutral background and a dashed outline
 Right-click the required section in the distributed schematic. **Patch section A/B/…** identifies its endpoints and exposes its cable ID, length, Supplier and unit cost. Each field updates only that section. Unspecified suppliers/prices inherit the compact connection's defaults; a section can have a different supplier and price, or be marked Festinstalliert. Quantities, cable schedule and supplier totals use the section values. Direct plug attachments are identified as such and do not expose properties for a nonexistent cable.
 
 The older **Venue provided** device checkbox also excludes that device from the pack list, but is a separate legacy flag. It does not assign a Supplier and does not mark the device's attached cables as installed. Use **Supplier = Festinstalliert** to describe fixed devices and each relevant fixed cable section consistently.
+
+## Origin devices in the patch list
+
+In **Reports → Patch Panels → Columns**, select **Origin Device / Origin Port** for legacy single-face panels or **Rear Origin Device / Rear Origin Port** and **Front Origin Device / Front Origin Port** for passthrough panels.
+
+Remote Device/Port still describes the immediately connected neighbor. Origin Device/Port follows the passive path to its actual endpoint: for example Remote Device `DMX5p M → 3p` can have Origin Device `grandMA3 onPC` and Origin Port `DMX OUT A`. Adapter visibility does not affect the result. Virtual multi-panel assignments, explicit passthrough panels and paired stub legs are supported. Each face is resolved independently; Origin does not imply signal direction.
+
+Only unambiguous two-port adapters and unnormalled panel passthroughs are traversed. Active devices such as switches are endpoints. Open paths, loops and ambiguous/multi-port adapter mappings are marked **Unresolved** instead of guessing an endpoint. Direct attachments can show origins without becoming material cables.
+
+The new fields participate in filtering and sorting. The PDF follows the visible columns; CSV appends the six origin columns after the existing 34 columns, preserving their original positions.

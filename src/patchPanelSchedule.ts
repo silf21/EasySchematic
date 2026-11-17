@@ -1,3 +1,4 @@
+import { patchOriginFields } from "./patchPanelOrigin";
 import { resolvableHops } from "./patchCircuits";
 import type {
   SchematicNode,
@@ -38,6 +39,8 @@ export interface PatchPanelScheduleRow {
   remoteDevice: string;
   remotePort: string;
   remoteRoom: string;
+  originDevice?: string;
+  originPort?: string;
   cableId: string;
   cableType: string;
   signalType: string;
@@ -54,6 +57,8 @@ export interface PatchPanelScheduleRow {
   rearRemoteDevice?: string;
   rearRemotePort?: string;
   rearRemoteRoom?: string;
+  rearOriginDevice?: string;
+  rearOriginPort?: string;
   rearCableId?: string;
   rearCableType?: string;
   rearCableLength?: string;
@@ -65,6 +70,8 @@ export interface PatchPanelScheduleRow {
   frontRemoteDevice?: string;
   frontRemotePort?: string;
   frontRemoteRoom?: string;
+  frontOriginDevice?: string;
+  frontOriginPort?: string;
   frontCableId?: string;
   frontCableType?: string;
   frontCableLength?: string;
@@ -82,7 +89,7 @@ const EMPTY = "—";
  *  rear-/front-face columns instead — so a report made entirely of passthrough panels can
  *  never fill them (#311). */
 export const PATCH_PANEL_LEGACY_COLUMN_IDS = [
-  "connector", "gender", "remoteDevice", "remotePort", "remoteRoom",
+  "connector", "gender", "remoteDevice", "remotePort", "remoteRoom", "originDevice", "originPort",
   "cableId", "cableType", "cableLength", "computedLength", "multicableLabel",
 ] as const;
 
@@ -112,6 +119,8 @@ interface SideInfo {
   remoteDevice: string;
   remotePort: string;
   remoteRoom: string;
+  originDevice?: string;
+  originPort?: string;
   cableId: string;
   cableType: string;
   cableLength: string;
@@ -151,9 +160,10 @@ function resolveSide(
     remoteDevice,
     remotePort,
     remoteRoom,
+    ...patchOriginFields(remoteNodeId, remoteHandle, edge.id, nodes, edges),
     cableId: cableRow?.cableId ?? "",
     cableType: cableRow?.cableType ?? "",
-    cableLength: cableRow?.cableLength ?? (edge.data?.cableLength as string | undefined) ?? "",
+    cableLength: edge.data?.directAttach ? "" : cableRow?.cableLength ?? (edge.data?.cableLength as string | undefined) ?? "",
     computedLength: cableRow?.computedLength ?? "",
   };
 }
@@ -190,7 +200,6 @@ export function computePatchPanelSchedule(
     return `${nodeId}:${port?.id ?? handleId}`;
   };
   for (const e of edges) {
-    if (e.data?.directAttach) continue;
     const sk = key(e.source, e.sourceHandle);
     const tk = key(e.target, e.targetHandle);
     if (sk) {
@@ -245,6 +254,7 @@ export function computePatchPanelSchedule(
               rear = {
                 edgeId: hopEdge.id,
                 remoteDevice: inn.from.label, remotePort: inn.from.portLabel, remoteRoom: inn.from.room,
+                ...patchOriginFields(hopEdge.source, hopEdge.sourceHandle, hopEdge.id, nodes, edges),
                 cableId: inn.label,
                 cableType: getCableType(inn.from.port, inn.to.port, sigRaw),
                 cableLength: inn.cableLength, computedLength: "",
@@ -254,6 +264,7 @@ export function computePatchPanelSchedule(
               front = {
                 edgeId: hopEdge.id,
                 remoteDevice: outSeg.to.label, remotePort: outSeg.to.portLabel, remoteRoom: outSeg.to.room,
+                ...patchOriginFields(hopEdge.target, hopEdge.targetHandle, hopEdge.id, nodes, edges),
                 cableId: outSeg.label,
                 cableType: getCableType(outSeg.from.port, outSeg.to.port, sigRaw),
                 cableLength: outSeg.cableLength, computedLength: "",
@@ -296,6 +307,8 @@ export function computePatchPanelSchedule(
           remoteDevice: EMPTY,
           remotePort: EMPTY,
           remoteRoom: EMPTY,
+          originDevice: EMPTY,
+          originPort: EMPTY,
           cableId: "",
           cableType: "",
           signalType,
@@ -308,6 +321,8 @@ export function computePatchPanelSchedule(
           rearRemoteDevice: rear.remoteDevice,
           rearRemotePort: rear.remotePort,
           rearRemoteRoom: rear.remoteRoom,
+          rearOriginDevice: rear.originDevice,
+          rearOriginPort: rear.originPort,
           rearCableId: rear.cableId,
           rearCableType: rear.cableType,
           rearCableLength: rear.cableLength,
@@ -317,6 +332,8 @@ export function computePatchPanelSchedule(
           frontRemoteDevice: front.remoteDevice,
           frontRemotePort: front.remotePort,
           frontRemoteRoom: front.remoteRoom,
+          frontOriginDevice: front.originDevice,
+          frontOriginPort: front.originPort,
           frontCableId: front.cableId,
           frontCableType: front.cableType,
           frontCableLength: front.cableLength,
@@ -377,7 +394,7 @@ export function computePatchPanelSchedule(
           signalType = edge.data?.signalType
             ? signalLabel(edge.data.signalType)
             : "";
-          cableLength = (edge.data?.cableLength as string | undefined) ?? "";
+          cableLength = edge.data?.directAttach ? "" : (edge.data?.cableLength as string | undefined) ?? "";
         }
 
         void resolvePort; // (kept to avoid unused import if gender computation moves)
@@ -399,6 +416,7 @@ export function computePatchPanelSchedule(
         remoteDevice,
         remotePort,
         remoteRoom,
+        ...(edge ? patchOriginFields(edge.source === node.id ? edge.target : edge.source, edge.source === node.id ? edge.targetHandle : edge.sourceHandle, edge.id, nodes, edges) : {}),
         cableId,
         cableType,
         signalType,
@@ -443,12 +461,14 @@ export function buildPatchPanelScheduleCsv(
 
   // Legacy columns (1-15) are unchanged from prior versions for back-compat.
   // Passthrough columns (16-34) are appended; legacy rows leave them empty.
+  // Origin columns (35-40) extend the CSV without shifting any existing column.
   lines.push(csvRow([
     "Panel", "Panel Room", "Face", "Position", "Signal",
     "Connector", "M/F", "Remote Device", "Remote Port", "Remote Room", "Cable ID", "Cable Type", "Length", "Est. Length", "Snake",
     "Rear Connector", "Rear M/F", "Rear Remote Device", "Rear Remote Port", "Rear Remote Room", "Rear Cable ID", "Rear Cable Type", "Rear Length", "Rear Est. Length",
     "Front Connector", "Front M/F", "Front Remote Device", "Front Remote Port", "Front Remote Room", "Front Cable ID", "Front Cable Type", "Front Length", "Front Est. Length",
     "Normalling",
+    "Origin Device", "Origin Port", "Rear Origin Device", "Rear Origin Port", "Front Origin Device", "Front Origin Port",
   ]));
 
   for (const r of rows) {
@@ -460,6 +480,7 @@ export function buildPatchPanelScheduleCsv(
         r.rearConnector ?? "", r.rearGender ?? "", r.rearRemoteDevice ?? "", r.rearRemotePort ?? "", r.rearRemoteRoom ?? "", r.rearCableId ?? "", r.rearCableType ?? "", r.rearCableLength ?? "", r.rearComputedLength ?? "",
         r.frontConnector ?? "", r.frontGender ?? "", r.frontRemoteDevice ?? "", r.frontRemotePort ?? "", r.frontRemoteRoom ?? "", r.frontCableId ?? "", r.frontCableType ?? "", r.frontCableLength ?? "", r.frontComputedLength ?? "",
         r.normalling ?? "None",
+        "", "", r.rearOriginDevice ?? "", r.rearOriginPort ?? "", r.frontOriginDevice ?? "", r.frontOriginPort ?? "",
       ]));
     } else {
       lines.push(csvRow([
@@ -473,6 +494,7 @@ export function buildPatchPanelScheduleCsv(
         "", "", "", "", "", "", "", "", "",
         "", "", "", "", "", "", "", "", "",
         "",
+        r.originDevice ?? "", r.originPort ?? "", "", "", "", "",
       ]));
     }
   }
@@ -515,6 +537,7 @@ export function patchPanelCellText(row: PatchPanelScheduleRow, key: string): str
  *  the descriptive columns, not the M/F, estimated-length or normalling ones. */
 const PATCH_PANEL_FILTER_FIELDS = [
   "panel", "panelRoom", "face", "position", "signalType",
+  "originDevice", "originPort", "rearOriginDevice", "rearOriginPort", "frontOriginDevice", "frontOriginPort",
   "connector", "remoteDevice", "remotePort", "remoteRoom",
   "cableId", "cableType", "cableLength", "computedLength", "multicableLabel",
   "rearConnector", "rearRemoteDevice", "rearRemotePort", "rearRemoteRoom", "rearCableId",

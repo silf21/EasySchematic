@@ -2,7 +2,7 @@
  * The Patch Panel Schedule PDF is WYSIWYG with the on-screen table (#362).
  *
  * The two surfaces used to diverge on everything: the PDF printed the five unfillable
- * single-face columns the screen had just auto-hidden (#311), omitted all 19 passthrough
+ * single-face columns the screen had just auto-hidden (#311), omitted all 23 passthrough
  * columns, ordered Signal twelfth instead of fifth, ignored the tab's filter, "Hide empty",
  * grouping and clicked sort, and printed "" where the table printed an em dash.
  *
@@ -11,7 +11,7 @@
  * below computes — and hands that same view to the print layout, so these assertions are
  * assertions about both surfaces at once.
  *
- * The CSV deliberately does NOT follow: it stays the maximal 34-column export, pinned at
+ * The CSV deliberately does NOT follow: it stays the maximal 40-column export, pinned at
  * the bottom of this file.
  */
 import { describe, it, expect } from "vitest";
@@ -141,10 +141,10 @@ describe("patch panel schedule — PDF/table parity (#362)", () => {
   it("prints exactly the columns the table shows, in the table's order", () => {
     const rows = computePatchPanelSchedule(ALL_NODES, ALL_EDGES);
     const view = tabView(rows);
-    // A legacy row is in view, so nothing is auto-hidden: all 34 columns, both surfaces.
+    // A legacy row is in view, so nothing is auto-hidden: all 40 columns, both surfaces.
     expect(view.hiddenColumns).toEqual([]);
     expect(pdfColumns(view)).toEqual(onScreenColumns(new Set()));
-    expect(pdfColumns(view)).toHaveLength(34);
+    expect(pdfColumns(view)).toHaveLength(40);
     expect(Object.keys(pdfTable(rows, view).rows[0])).toEqual(onScreenColumns(new Set()));
   });
 
@@ -155,17 +155,17 @@ describe("patch panel schedule — PDF/table parity (#362)", () => {
 
     const printed = pdfColumns(view);
     expect(printed).toEqual(onScreenColumns(new Set(view.hiddenColumns)));
-    expect(printed).toHaveLength(24);
+    expect(printed).toHaveLength(28);
     for (const id of PATCH_PANEL_LEGACY_COLUMN_IDS) expect(printed).not.toContain(id);
     // …and the rows carry no data for them either.
     expect(Object.keys(pdfTable(rows, view).rows[0])).toEqual(printed);
   });
 
-  it("prints all 19 passthrough columns", () => {
+  it("prints all 23 passthrough columns", () => {
     const rows = computePatchPanelSchedule(PASSTHROUGH_NODES, PASSTHROUGH_EDGES);
     const printed = pdfColumns(tabView(rows));
-    expect(printed.filter((k) => k.startsWith("rear"))).toHaveLength(9);
-    expect(printed.filter((k) => k.startsWith("front"))).toHaveLength(9);
+    expect(printed.filter((k) => k.startsWith("rear"))).toHaveLength(11);
+    expect(printed.filter((k) => k.startsWith("front"))).toHaveLength(11);
     expect(printed).toContain("normalling");
   });
 
@@ -191,7 +191,7 @@ describe("patch panel schedule — PDF/table parity (#362)", () => {
     const offered = (Object.keys(PATCH_PANEL_COLUMN_GROUP_LABELS) as PatchPanelColumnGroup[])
       .flatMap((g) => PATCH_PANEL_SCHEDULE_COLUMNS.filter((c) => c.group === g).map((c) => c.key));
     expect([...offered].sort()).toEqual(PATCH_PANEL_SCHEDULE_COLUMNS.map((c) => c.key).sort());
-    expect(offered).toHaveLength(34);
+    expect(offered).toHaveLength(40);
 
     // The user unchecks passthrough columns until 8 are left. The tab stores the resolved
     // set, so the ten auto-hidden single-face columns stay in it rather than springing back.
@@ -200,7 +200,7 @@ describe("patch panel schedule — PDF/table parity (#362)", () => {
     for (const col of PATCH_PANEL_SCHEDULE_COLUMNS) {
       if (!keep.includes(col.key) && !stored.includes(col.key)) stored = [...stored, col.key];
     }
-    expect(stored).toHaveLength(26);
+    expect(stored).toHaveLength(PATCH_PANEL_SCHEDULE_COLUMNS.length - keep.length);
     for (const id of PATCH_PANEL_LEGACY_COLUMN_IDS) expect(stored).toContain(id);
 
     // That preference lives on the document, so the next export gets the same 8 columns
@@ -266,7 +266,7 @@ describe("patch panel schedule — PDF/table parity (#362)", () => {
 });
 
 describe("patch panel schedule — the CSV stays maximal (#362)", () => {
-  it("exports all 34 columns and every row, whatever the tab is showing", () => {
+  it("exports all 40 columns and every row, whatever the tab is showing", () => {
     const rows = computePatchPanelSchedule(ALL_NODES, ALL_EDGES);
     // A tab filtered to one row with 10 columns hidden…
     const view = tabView(rows, { filter: "stage display", hideUnconnected: true });
@@ -275,7 +275,7 @@ describe("patch panel schedule — the CSV stays maximal (#362)", () => {
     // …still exports the whole schedule. The CSV is the machine-readable copy.
     const csv = buildPatchPanelScheduleCsv(rows, "Parity Test", "2026-01-01");
     const lines = csv.replace("﻿", "").split("\n");
-    expect(splitCsvLine(lines[3])).toHaveLength(34);
+    expect(splitCsvLine(lines[3])).toHaveLength(40);
     expect(lines).toHaveLength(4 + rows.length);
     expect(splitCsvLine(lines[3])!.slice(0, 5)).toEqual(["Panel", "Panel Room", "Face", "Position", "Signal"]);
   });
@@ -299,13 +299,13 @@ function pdfGeometry(view: PatchPanelTableView) {
 }
 
 describe("patch panel schedule — the printed page stays legible (#362)", () => {
-  it("fits the columns and their gutters inside the page, at 24 columns and at 34", () => {
+  it("fits the columns and their gutters inside the page, at 28 columns and at 40", () => {
     const passthrough = computePatchPanelSchedule(PASSTHROUGH_NODES, PASSTHROUGH_EDGES);
     const mixed = computePatchPanelSchedule(ALL_NODES, ALL_EDGES);
 
     for (const [label, view, count] of [
-      ["passthrough-only", tabView(passthrough), 24],
-      ["mixed", tabView(mixed), 34],
+      ["passthrough-only", tabView(passthrough), 28],
+      ["mixed", tabView(mixed), 40],
     ] as const) {
       const { cols, gapMm, contentWidthMm } = pdfGeometry(view);
       expect(cols).toHaveLength(count);
@@ -317,7 +317,7 @@ describe("patch panel schedule — the printed page stays legible (#362)", () =>
     }
   });
 
-  it("gives the mixed 34-column print more than twice the column width Letter did", () => {
+  it("gives the mixed 40-column print more than twice the column width Letter did", () => {
     const mixed = computePatchPanelSchedule(ALL_NODES, ALL_EDGES);
     const view = tabView(mixed);
     const panel = pdfGeometry(view).cols.find((c) => c.key === "panel")!;

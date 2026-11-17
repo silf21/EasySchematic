@@ -2435,7 +2435,7 @@ function PatchPanelScheduleTabInline({ onViewChange }: { onViewChange: (v: Patch
           <div className="fixed inset-0 z-40" onClick={() => setColMenu(null)} />
           <div
             className="fixed z-50 bg-white border border-[var(--color-border)] rounded shadow-lg py-1 text-xs overflow-y-auto"
-            // All 34 columns are listed now, so bound the menu to whatever is left below
+            // All available columns are listed, so bound the menu to whatever is left below
             // the click rather than a flat 70vh that can run off the bottom of the window.
             style={{ left: colMenu.x, top: colMenu.y, maxHeight: `calc(100vh - ${colMenu.y + 16}px)` }}
           >

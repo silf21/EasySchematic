@@ -4356,7 +4356,7 @@
   },
   "patchPanelSchedule": {
     "rows": [],
-    "csv": "﻿Patch Panel Schedule — defaultSchematic\nGenerated 2026-01-01\n\nPanel,Panel Room,Face,Position,Signal,Connector,M/F,Remote Device,Remote Port,Remote Room,Cable ID,Cable Type,Length,Est. Length,Snake,Rear Connector,Rear M/F,Rear Remote Device,Rear Remote Port,Rear Remote Room,Rear Cable ID,Rear Cable Type,Rear Length,Rear Est. Length,Front Connector,Front M/F,Front Remote Device,Front Remote Port,Front Remote Room,Front Cable ID,Front Cable Type,Front Length,Front Est. Length,Normalling",
+    "csv": "﻿Patch Panel Schedule — defaultSchematic\nGenerated 2026-01-01\n\nPanel,Panel Room,Face,Position,Signal,Connector,M/F,Remote Device,Remote Port,Remote Room,Cable ID,Cable Type,Length,Est. Length,Snake,Rear Connector,Rear M/F,Rear Remote Device,Rear Remote Port,Rear Remote Room,Rear Cable ID,Rear Cable Type,Rear Length,Rear Est. Length,Front Connector,Front M/F,Front Remote Device,Front Remote Port,Front Remote Room,Front Cable ID,Front Cable Type,Front Length,Front Est. Length,Normalling,Origin Device,Origin Port,Rear Origin Device,Rear Origin Port,Front Origin Device,Front Origin Port",
     "printTables": [
       {
         "id": "patchPanelSchedule",
