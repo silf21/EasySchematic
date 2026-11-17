@@ -13,3 +13,13 @@ For a gateway, configure each DMX output's universe separately. For example, its
 For optional schematic labels, use the **DMX / Universe Patch** auxiliary field (`{{lightingPatch}}`). Port tooltips also include configured lighting addresses.
 
 Universe assignments are explicit per port. They are not propagated through the topology. Modes are free text; footprints are entered manually. Shared addresses are allowed, and overlapping fixture ranges are not automatically treated as errors.
+
+## Logical lighting channels and pixel-controller terminals
+
+In Device Properties, use **Lighting Channels → + Add Lighting Channel** for outputs whose configuration applies to several terminals. Select, for example, B1, A1/D1, C1 and GND for Channel 1 and B2, A2/D2, C2 and the same GND for Channel 2. Membership is independent of the port's visual Section. A shared terminal may belong to more than one channel.
+
+Each logical channel has its own source protocol, start universe, DMX start address and mode. Optionally enter pixel count and channels per pixel (3 for RGB, 4 for RGBW); otherwise enter a manual channel footprint. The calculated end includes its universe. Choose **Continuous** for 512-channel addressing or **Whole pixels per universe** to avoid splitting a pixel across universes (for example 170 RGB pixels / 510 channels per full universe). Set this to match the actual controller; it is not inferred from its model. Art-Net universe numbers start at 0 and sACN at 1.
+
+Physical outputs may use the **SPI** signal type. Their terminals remain individually connectable. A grouped port's lighting configuration is edited in its channel; IP settings stay on the network port. The Lighting report lists a group once with its terminals and calculated range, and omits separate per-port lighting rows for its members. CSV/PDF and the optional `{{lightingPatch}}` auxiliary field include logical channels. Port tooltips show their shared mapping.
+
+Mappings are retained by schematic save/reload, user templates, project presets, device copying and template placement. Template synchronization remaps terminal IDs and preserves each existing channel's instance addressing. Deleting a terminal removes it from the saved membership; a group with no remaining ports is flagged for review.

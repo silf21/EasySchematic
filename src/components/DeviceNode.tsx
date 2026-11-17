@@ -1,3 +1,4 @@
+import { lightingChannelLabel } from "../lightingChannels";
 import { lightingAddressLabel } from "../lightingConfig";
 import { openPatchBay } from "../patchBayNavigation";
 import { memo, useMemo, useCallback } from "react";
@@ -58,6 +59,10 @@ function DeviceNodeComponent({ id, data, selected }: NodeProps<DeviceNodeType>) 
   useTypeRegistryVersion(); // community signal labels / colours resolve once registered
   const setEditingNodeId = useSchematicStore((s) => s.setEditingNodeId);
   const displayLabel = useDisplayLabel();
+  const portLightingLabel = (port: Port) => {
+    const channels = data.lightingChannels?.filter(channel => channel.portIds.includes(port.id));
+    return channels?.length ? channels.map(lightingChannelLabel).join("; ") : lightingAddressLabel(port);
+  };
   const useShortNames = useSchematicStore((s) => s.useShortNames);
   const wrapDeviceLabels = useSchematicStore((s) => s.wrapDeviceLabels);
   const resolvedLabel = useMemo(
@@ -294,7 +299,7 @@ function DeviceNodeComponent({ id, data, selected }: NodeProps<DeviceNodeType>) 
         <span
           className="text-[10px] leading-4 truncate"
           style={{ color: signalCssColor(port.signalType) }}
-          title={`${displayLabel(port.label)} (${signalLabel(port.signalType)})${usbcPowerSuffix(port)}${lightingAddressLabel(port) ? ` — ${lightingAddressLabel(port)}` : ""}`}
+          title={`${displayLabel(port.label)} (${signalLabel(port.signalType)})${usbcPowerSuffix(port)}${portLightingLabel(port) ? ` — ${portLightingLabel(port)}` : ""}`}
         >
           {displayLabel(port.label)}
         </span>
@@ -572,7 +577,7 @@ function DeviceNodeComponent({ id, data, selected }: NodeProps<DeviceNodeType>) 
                         <span
                           className="text-[10px] leading-4 truncate"
                           style={{ color: signalCssColor(left.signalType) }}
-                          title={`${displayLabel(left.label)} (${signalLabel(left.signalType)})${usbcPowerSuffix(left)}`}
+                          title={`${displayLabel(left.label)} (${signalLabel(left.signalType)})${usbcPowerSuffix(left)}${portLightingLabel(left) ? ` — ${portLightingLabel(left)}` : ""}`}
                         >
                           {displayLabel(left.label)}
                         </span>
@@ -585,7 +590,7 @@ function DeviceNodeComponent({ id, data, selected }: NodeProps<DeviceNodeType>) 
                         <span
                           className="text-[10px] leading-4 truncate"
                           style={{ color: signalCssColor(right.signalType) }}
-                          title={`${displayLabel(right.label)} (${signalLabel(right.signalType)})${usbcPowerSuffix(right)}`}
+                          title={`${displayLabel(right.label)} (${signalLabel(right.signalType)})${usbcPowerSuffix(right)}${portLightingLabel(right) ? ` — ${portLightingLabel(right)}` : ""}`}
                         >
                           {displayLabel(right.label)}
                         </span>
@@ -694,7 +699,7 @@ function DeviceNodeComponent({ id, data, selected }: NodeProps<DeviceNodeType>) 
                 <span
                   className="text-[10px] leading-4 truncate"
                   style={{ color: signalCssColor(port.signalType) }}
-                  title={`${displayLabel(port.label)} (${signalLabel(port.signalType)}) — bidirectional${usbcPowerSuffix(port)}${lightingAddressLabel(port) ? ` — ${lightingAddressLabel(port)}` : ""}`}
+                  title={`${displayLabel(port.label)} (${signalLabel(port.signalType)}) — bidirectional${usbcPowerSuffix(port)}${portLightingLabel(port) ? ` — ${portLightingLabel(port)}` : ""}`}
                 >
                   ↔ {displayLabel(port.label)}
                 </span>

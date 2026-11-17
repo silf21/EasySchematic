@@ -20,6 +20,7 @@ test("distributed references route to physical faces, remain independently movab
   await expect(page.getByTestId("patch-reference")).toHaveCount(4);
   await expect(page.getByTestId("patch-reference").first()).toHaveCSS("width", "144px");
   await expect(page.getByTestId("patch-reference").first()).toHaveCSS("height", "64px");
+  await expect(page.getByTestId("patch-reference").first()).toHaveCSS("border-style", "dashed");
   await expect(page.locator(".react-flow__edge-patch-reference-edge")).toHaveCount(6);
   // Measure actual rendered centers in flow coordinates, including border offsets.
   await expect.poll(() => page.locator('.react-flow__node-patch-reference .react-flow__handle').evaluateAll(handles => {

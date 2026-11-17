@@ -41,6 +41,17 @@ export interface PortLightingConfig {
   mode?: string;
 }
 
+/** A logical lighting output may own several terminals; terminals may be shared. */
+export interface LightingChannel {
+  id: string;
+  label: string;
+  portIds: string[];
+  config: PortLightingConfig;
+  pixelCount?: number;
+  channelsPerPixel?: number;
+  universePacking?: "continuous" | "whole-pixels";
+}
+
 export interface PortNetworkConfig {
   ip?: string;
   subnetMask?: string;
@@ -120,6 +131,7 @@ export type BuiltinSignalType =
   | "ydif"
   | "rf"
   | "st2110"
+  | "spi"
   | "artnet"
   | "sacn"
   | "ir"
@@ -256,6 +268,7 @@ export interface InstalledSlot {
 }
 
 export interface DeviceData {
+  lightingChannels?: LightingChannel[];
   supplier?: string;
   [key: string]: unknown;
   label: string;
@@ -615,6 +628,7 @@ export interface ConnectionData {
 export type ConnectionEdge = Edge<ConnectionData>;
 
 export interface DeviceTemplate {
+  lightingChannels?: LightingChannel[];
   id?: string;
   version?: number;
   deviceType: string;
@@ -667,6 +681,7 @@ export interface CustomTemplateMeta {
 }
 
 export interface TemplatePreset {
+  lightingChannels?: LightingChannel[];
   ports: Port[];
   hiddenPorts?: string[];
   color?: string;
@@ -1136,6 +1151,7 @@ export const SIGNAL_COLORS: Record<BuiltinSignalType, string> = {
   ydif: "var(--color-ydif)",
   rf: "var(--color-rf)",
   st2110: "var(--color-st2110)",
+  spi: "var(--color-spi)",
   artnet: "var(--color-artnet)",
   sacn: "var(--color-sacn)",
   ir: "var(--color-ir)",
@@ -1315,6 +1331,7 @@ export const SIGNAL_LABELS: Record<BuiltinSignalType, string> = {
   ydif: "YDIF",
   rf: "RF",
   st2110: "ST 2110",
+  spi: "SPI",
   artnet: "Art-Net",
   sacn: "sACN",
   ir: "IR",
@@ -1351,7 +1368,7 @@ export const SIGNAL_GROUPS: Record<string, BuiltinSignalType[]> = {
   "Video over IP": ["ndi", "srt", "hdbaset", "st2110"],
   "Audio": ["analog-audio", "speaker-level", "bluetooth", "aes", "dante", "avb", "aes67", "madi", "spdif", "adat", "ultranet", "aes50", "stageconnect", "ydif", "soundgrid", "gigaace", "dx5", "dsnake", "slink", "fibreace", "digilink", "extron-exp", "pots", "blu-link"],
   "Network": ["ethernet", "fiber"],
-  "Control / Data": ["dmx", "artnet", "sacn", "rs422", "rs485", "serial", "gpio", "contact-closure", "ir", "midi", "tally", "usb", "thunderbolt", "dxlink", "ebus", "control-voltage", "cresnet", "nlight", "dcp", "sensor"],
+  "Control / Data": ["dmx", "spi", "artnet", "sacn", "rs422", "rs485", "serial", "gpio", "contact-closure", "ir", "midi", "tally", "usb", "thunderbolt", "dxlink", "ebus", "control-voltage", "cresnet", "nlight", "dcp", "sensor"],
   "Sync / Clock": ["genlock", "wordclock", "timecode", "dars", "gps"],
   "Power": ["power", "power-l1", "power-l2", "power-l3", "power-neutral", "power-ground"],
   "Streaming": ["rtmp", "rtsp", "mpeg-ts", "rf"],

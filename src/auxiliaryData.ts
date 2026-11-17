@@ -1,3 +1,4 @@
+import { lightingChannelLabel } from "./lightingChannels";
 import type { AuxRow, DeviceData, Port } from "./types";
 import { lightingAddressLabel } from "./lightingConfig";
 import { effectiveThermalBtuh } from "./thermal";
@@ -49,7 +50,7 @@ export const AUX_FIELDS: AuxField[] = [
   { token: "modelNumber", label: "Model Number", group: "Identity", resolve: (d) => str(d.modelNumber) },
   { token: "deviceType", label: "Device Type", group: "Identity", resolve: (d) => prettyDeviceType(d.deviceType) },
 
-  { token: "lightingPatch", label: "DMX / Universe Patch", group: "Lighting", resolve: d => d.ports.filter(p => p.lightingConfig).map(p => { const label = lightingAddressLabel(p); return label ? `${p.label}: ${label}` : ""; }).filter(Boolean).join("; ") },
+  { token: "lightingPatch", label: "DMX / Universe Patch", group: "Lighting", resolve: d => [...(d.lightingChannels ?? []).map(lightingChannelLabel), ...d.ports.filter(p => p.lightingConfig && !d.lightingChannels?.some(c => c.portIds.includes(p.id))).map(p => { const label = lightingAddressLabel(p); return label ? `${p.label}: ${label}` : ""; })].filter(Boolean).join("; ") },
 
   // Power
   { token: "powerDrawW", label: "Power Draw", group: "Power", resolve: (d) => fmtW(d.powerDrawW) },

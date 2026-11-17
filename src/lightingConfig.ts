@@ -1,6 +1,6 @@
 import type { LightingProtocol, Port, PortLightingConfig, SignalType } from "./types";
 
-export const LIGHTING_SIGNAL_TYPES = new Set<SignalType>(["dmx", "artnet", "sacn"]);
+export const LIGHTING_SIGNAL_TYPES = new Set<SignalType>(["dmx", "artnet", "sacn", "spi"]);
 export const LIGHTING_PROTOCOL_LABELS: Record<LightingProtocol, string> = { dmx: "DMX", artnet: "Art-Net", sacn: "sACN" };
 export const LIGHTING_UNIVERSE_LIMITS: Record<LightingProtocol, { min: number; max: number }> = {
   dmx: { min: 1, max: 63999 }, artnet: { min: 0, max: 32767 }, sacn: { min: 1, max: 63999 },

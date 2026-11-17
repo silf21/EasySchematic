@@ -1,3 +1,4 @@
+import { validateLightingChannels } from "../lightingChannels";
 import { lightingConfigErrors, lightingProtocol } from "../lightingConfig";
 import type { DeviceTemplate, Port, SlotDefinition } from "../types";
 import { DEVICE_TYPE_TO_CATEGORY, DEVICE_TYPE_ALIASES } from "../deviceTypeCategories";
@@ -76,6 +77,8 @@ export function validateTemplate(t: Partial<DeviceTemplate>): TemplateValidation
       errors.push(`${field} must be a non-negative number`);
     }
   }
+
+  errors.push(...validateLightingChannels(t.lightingChannels, Array.isArray(t.ports) ? t.ports : []));
 
   // Ports
   if (!Array.isArray(t.ports)) {

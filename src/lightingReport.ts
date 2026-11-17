@@ -1,3 +1,4 @@
+import { lightingChannelRange, lightingChannelErrors } from "./lightingChannels";
 import type { DeviceData, SchematicNode } from "./types";
 import { getRoomLabel, csvRow } from "./packList";
 import { hasLightingConfig, lightingProtocol, lightingEndAddress, lightingConfigErrors, LIGHTING_SIGNAL_TYPES, LIGHTING_PROTOCOL_LABELS } from "./lightingConfig";
@@ -28,7 +29,7 @@ export const LIGHTING_COLUMNS = [
   { key: "protocol", header: "Protocol", widthMm: 18 },
   { key: "universe", header: "Universe", widthMm: 16 },
   { key: "startAddress", header: "Start", widthMm: 12 },
-  { key: "endAddress", header: "End", widthMm: 12 },
+  { key: "endAddress", header: "End", widthMm: 20 },
   { key: "footprint", header: "Channels", widthMm: 16 },
   { key: "mode", header: "Mode", widthMm: 30 },
   { key: "ip", header: "IP", widthMm: 28 },
@@ -41,7 +42,22 @@ export function computeLightingReport(nodes: SchematicNode[]): LightingReportRow
     if (node.type !== "device") continue;
     const data: DeviceData = node.data;
     const ips = [...new Set(data.ports.map(p => p.networkConfig?.ip?.trim()).filter(Boolean))].join(", ");
+    const groupedPorts = new Set(data.lightingChannels?.flatMap(c => c.portIds) ?? []);
+    for (const channel of data.lightingChannels ?? []) {
+      const range = lightingChannelRange(channel);
+      const protocol = lightingProtocol("dmx", channel.config);
+      const members = channel.portIds.map(id => data.ports.find(p => p.id === id)?.label ?? id).join(", ");
+      rows.push({ nodeId: node.id, portId: `channel:${channel.id}`, device: transformLabelNow(data.label),
+        port: transformLabelNow(`${channel.label} [${members}]`), room: getRoomLabel(nodes, node.parentId), protocol: LIGHTING_PROTOCOL_LABELS[protocol],
+        universe: channel.config.universe !== undefined ? String(channel.config.universe) : "",
+        startAddress: channel.config.startAddress !== undefined ? String(channel.config.startAddress) : "",
+        endAddress: range.endAddress !== undefined ? `U${range.endUniverse}:${range.endAddress}` : "",
+        footprint: range.footprint !== undefined ? String(range.footprint) : "", mode: channel.config.mode ?? "", ip: ips,
+        warnings: lightingChannelErrors(channel, data.ports).join(" "),
+      });
+    }
     for (const port of data.ports) {
+      if (groupedPorts.has(port.id)) continue;
       const config = port.lightingConfig;
       if (!LIGHTING_SIGNAL_TYPES.has(port.signalType) || !config || (!hasLightingConfig(config) && !config.protocol)) continue;
       const protocol = lightingProtocol(port.signalType, config);

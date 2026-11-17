@@ -1,6 +1,9 @@
+import LightingChannelsEditor from "./LightingChannelsEditor";
+import { remapLightingChannels, cloneLightingChannelsForPorts } from "../lightingChannels";
+import type { LightingChannel } from "../types";
 import PortLightingSection from "./PortLightingSection";
 import { LIGHTING_SIGNAL_TYPES } from "../lightingConfig";
-import { useState, useEffect, useCallback, useRef, useMemo, type DragEvent } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo, type DragEvent } from "react";
 import { useSchematicStore } from "../store";
 import { buildBulkSlots, bulkLabel } from "../slotBulk";
 import { buildBulkPorts, type BulkPortSpec } from "../portBulk";
@@ -94,6 +97,8 @@ function newPortDraft(direction: PortDirection): PortDraft {
 }
 
 const MIME = "application/easyschematic-port";
+
+const LightingChannelsContext = createContext<LightingChannel[]>([]);
 
 export default function DeviceEditor() {
   useTypeRegistryVersion(); // the signal / connector pickers list community types
@@ -215,6 +220,7 @@ export default function DeviceEditor() {
   const [searchTermsRaw, setSearchTermsRaw] = useState("");
 
   // Auxiliary data rows — each row carries its own header/footer slot.
+  const [lightingChannels, setLightingChannels] = useState<LightingChannel[]>([]);
   const [auxiliaryData, setAuxiliaryData] = useState<AuxRow[]>([]);
   const [auxFieldMenuIdx, setAuxFieldMenuIdx] = useState<number | null>(null);
   const auxInputRefs = useRef<Array<HTMLInputElement | null>>([]);
@@ -292,6 +298,7 @@ export default function DeviceEditor() {
     setIsVenueProvided(node.data.isVenueProvided ?? false);
     setAdapterVisibility(node.data.adapterVisibility ?? "default");
     setAuxiliaryData(normalizeAuxRows(node.data.auxiliaryData));
+    setLightingChannels(remapLightingChannels(node.data.lightingChannels, new Map()) ?? []);
     setSearchTermsRaw((node.data.searchTerms ?? []).join(", "));
   }, [editingNodeId, syncNonce]);
   /* eslint-enable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
@@ -311,6 +318,7 @@ export default function DeviceEditor() {
     if (!node) return;
     const synced = node.data.ports.map((p) => ({
       id: p.id,
+      templatePortId: p.templatePortId,
       label: p.label,
       signalType: p.signalType,
       direction: p.direction,
@@ -413,6 +421,7 @@ export default function DeviceEditor() {
       ...(hostname.trim() ? { hostname: hostname.trim() } : {}),
       deviceType: deviceType.trim() || "custom",
       ports: finalPorts,
+      lightingChannels: remapLightingChannels(lightingChannels, idMap, finalPortIds),
       ...(manufacturer.trim() ? { manufacturer: manufacturer.trim() } : {}),
       ...(modelNumber.trim() ? { modelNumber: modelNumber.trim() } : {}),
       ...(referenceUrl.trim() ? { referenceUrl: referenceUrl.trim() } : {}),
@@ -455,7 +464,7 @@ export default function DeviceEditor() {
       ...(() => { const t = searchTermsRaw.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 20); return t.length > 0 ? { searchTerms: t } : {}; })(),
     };
     return overrides ? { ...data, ...overrides } : data;
-  }, [supplier, editingNodeId, ports, label, shortName, useShortName, wrapLabel, hostname, deviceType, manufacturer, modelNumber, referenceUrl, category, color, headerColor, node, showAllPorts, hiddenPorts, dhcpServer, powerDrawW, powerCapacityW, voltage, thermalBtuh, poeBudgetW, poeDrawW, unitCost, serialNumber, note, isSpare, procurementSource, heightMm, widthMm, depthMm, weightKg, rackForm, isCableAccessory, integratedWithCable, isVenueProvided, adapterVisibility, auxiliaryData, searchTermsRaw]);
+  }, [supplier, editingNodeId, ports, label, shortName, useShortName, wrapLabel, hostname, deviceType, manufacturer, modelNumber, referenceUrl, category, color, headerColor, node, showAllPorts, hiddenPorts, dhcpServer, powerDrawW, powerCapacityW, voltage, thermalBtuh, poeBudgetW, poeDrawW, unitCost, serialNumber, note, isSpare, procurementSource, heightMm, widthMm, depthMm, weightKg, rackForm, isCableAccessory, integratedWithCable, isVenueProvided, adapterVisibility, auxiliaryData, lightingChannels, searchTermsRaw]);
 
   const handleSave = useCallback(() => {
     if (!editingNodeId) return;
@@ -530,12 +539,13 @@ export default function DeviceEditor() {
           rackForm,
           isVenueProvided,
           auxiliaryData,
+          lightingChannels,
           searchTermsRaw,
           existing: node?.data,
         },
         overrides,
       ),
-    [ports, label, shortName, hostname, node, customTemplates, powerDrawW, powerCapacityW, voltage, thermalBtuh, poeBudgetW, poeDrawW, unitCost, heightMm, widthMm, depthMm, weightKg, rackForm, isVenueProvided, deviceType, color, headerColorCapture, manufacturer, modelNumber, referenceUrl, category, auxiliaryData, searchTermsRaw],
+    [ports, label, shortName, hostname, node, customTemplates, powerDrawW, powerCapacityW, voltage, thermalBtuh, poeBudgetW, poeDrawW, unitCost, heightMm, widthMm, depthMm, weightKg, rackForm, isVenueProvided, deviceType, color, headerColorCapture, manufacturer, modelNumber, referenceUrl, category, auxiliaryData, lightingChannels, searchTermsRaw],
   );
 
   const handleSaveAsTemplate = useCallback(() => {
@@ -650,6 +660,7 @@ export default function DeviceEditor() {
       ...(shortName.trim() ? { shortName: shortName.trim() } : {}),
       deviceType: dt,
       ports: finalPorts,
+      lightingChannels: cloneLightingChannelsForPorts(lightingChannels, ports.filter(p => p.label.trim()), finalPorts),
       ...(color ? { color } : {}),
       ...(manufacturer.trim() ? { manufacturer: manufacturer.trim() } : {}),
       ...(modelNumber.trim() ? { modelNumber: modelNumber.trim() } : {}),
@@ -699,7 +710,7 @@ export default function DeviceEditor() {
     } catch (e) {
       console.error("Failed to create draft:", e);
     }
-  }, [ports, label, shortName, deviceType, color, node, hostname, poeBudgetW, poeDrawW, unitCost, manufacturer, modelNumber, referenceUrl, category, powerDrawW, powerCapacityW, voltage, thermalBtuh, heightMm, widthMm, depthMm, weightKg, rackForm, isVenueProvided, auxiliaryData, searchTermsRaw]);
+  }, [ports, label, shortName, deviceType, color, node, hostname, poeBudgetW, poeDrawW, unitCost, manufacturer, modelNumber, referenceUrl, category, powerDrawW, powerCapacityW, voltage, thermalBtuh, heightMm, widthMm, depthMm, weightKg, rackForm, isVenueProvided, auxiliaryData, lightingChannels, searchTermsRaw]);
 
   const handleSaveAsPreset = useCallback(() => {
     if (!editingNodeId || !node?.data.templateId) return;
@@ -707,6 +718,7 @@ export default function DeviceEditor() {
 
     setTemplatePreset(templateId, buildTemplatePreset({
       ports,
+      lightingChannels,
       hiddenPorts,
       color,
       headerColor: headerColorCapture(templatePresets[templateId]?.headerColor),
@@ -714,7 +726,7 @@ export default function DeviceEditor() {
 
     // Also apply changes to current device
     handleSave();
-  }, [editingNodeId, node, ports, hiddenPorts, color, headerColorCapture, templatePresets, setTemplatePreset, handleSave]);
+  }, [editingNodeId, node, ports, lightingChannels, hiddenPorts, color, headerColorCapture, templatePresets, setTemplatePreset, handleSave]);
 
   const handleRevertToTemplate = useCallback(() => {
     if (!node) return;
@@ -775,6 +787,8 @@ export default function DeviceEditor() {
     }));
     setHeaderColorEdited(false);
 
+    setLightingChannels(remapLightingChannels(tpl.lightingChannels, new Map(tpl.ports.map(p => [p.id, existingPorts.find(dp => dp.templatePortId === p.id || dp.id === p.id)?.id ?? p.id]))) ?? []);
+
     // For user templates, also revert all editable metadata fields
     if (customTemplates.some((t) => t.id === templateId)) {
       setLabel(tpl.label ?? "");
@@ -809,6 +823,7 @@ export default function DeviceEditor() {
 
     setPorts(preset.ports.map((p) => ({
       id: p.id,
+      templatePortId: p.templatePortId,
       label: p.label,
       signalType: p.signalType,
       direction: p.direction,
@@ -827,6 +842,7 @@ export default function DeviceEditor() {
       flipped: p.flipped,
       addressable: p.addressable,
     })));
+    setLightingChannels(remapLightingChannels(preset.lightingChannels, new Map()) ?? []);
     setHiddenPorts(preset.hiddenPorts ?? []);
     setColor(preset.color);
     setHeaderColor(headerColorAfterRevert("preset", {
@@ -949,6 +965,7 @@ export default function DeviceEditor() {
     const isUserTemplate = customTemplates.some((t) => t.id === templateId);
 
     const dirtyVsTemplate = !!tpl && (
+      JSON.stringify(lightingChannels) !== JSON.stringify(remapLightingChannels(tpl.lightingChannels, new Map(tpl.ports.map(p => [p.id, ports.find(dp => dp.templatePortId === p.id || dp.id === p.id)?.id ?? p.id]))) ?? []) ||
       !portsMatch(ports, tpl.ports) ||
       hiddenPorts.length > 0 ||
       (color ?? undefined) !== (tpl.color ?? undefined) ||
@@ -977,13 +994,14 @@ export default function DeviceEditor() {
     );
 
     const dirtyVsPreset = !!preset && (
+      JSON.stringify(lightingChannels) !== JSON.stringify(preset.lightingChannels ?? []) ||
       !portsMatch(ports, preset.ports) ||
       JSON.stringify([...hiddenPorts].sort()) !== JSON.stringify([...(preset.hiddenPorts ?? [])].sort()) ||
       (color ?? undefined) !== (preset.color ?? undefined)
     );
 
     return { dirtyVsPreset, dirtyVsTemplate };
-  }, [templateId, ports, hiddenPorts, color, templatePresets, customTemplates, label, manufacturer, modelNumber, referenceUrl, category, hostname, powerDrawW, powerCapacityW, voltage, thermalBtuh, poeBudgetW, poeDrawW, unitCost, heightMm, widthMm, depthMm, weightKg, rackForm, isVenueProvided, templatesLoaded]);
+  }, [templateId, ports, hiddenPorts, color, templatePresets, customTemplates, label, manufacturer, modelNumber, referenceUrl, category, hostname, powerDrawW, powerCapacityW, voltage, thermalBtuh, poeBudgetW, poeDrawW, unitCost, heightMm, widthMm, depthMm, weightKg, rackForm, isVenueProvided, lightingChannels, templatesLoaded]);
 
   if (!editingNodeId || !node) return null;
 
@@ -1012,6 +1030,7 @@ export default function DeviceEditor() {
   const passthroughPorts = ports.filter((p) => p.direction === "passthrough");
 
   return (
+    <LightingChannelsContext.Provider value={lightingChannels}>
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onMouseDown={(e) => { if (e.target === e.currentTarget && !saveMenuOpen) close(); }} onKeyDownCapture={onCtrlEnter}>
       <div
         className="bg-[var(--color-bg)] border border-[var(--color-border)] rounded-lg shadow-2xl w-[560px] max-h-[85vh] flex flex-col"
@@ -1679,6 +1698,8 @@ export default function DeviceEditor() {
             </div>
           </details>
 
+          <LightingChannelsEditor channels={lightingChannels} ports={ports} onChange={setLightingChannels} />
+
           {/* Auxiliary Data */}
           <details className="text-xs">
             <summary className="cursor-pointer text-[var(--color-text-secondary)] hover:text-[var(--color-text)] select-none py-1">
@@ -1962,6 +1983,7 @@ export default function DeviceEditor() {
         />
       )}
     </div>
+    </LightingChannelsContext.Provider>
   );
 }
 
@@ -2546,6 +2568,7 @@ function PortRow({
   onToggleVisibility: () => void;
 }) {
   useTypeRegistryVersion(); // the signal / connector pickers list community types
+  const logicalChannels = useContext(LightingChannelsContext).filter(channel => channel.portIds.includes(port.id));
   const rowRef = useRef<HTMLDivElement>(null);
   const [showSection, setShowSection] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
@@ -3028,7 +3051,8 @@ function PortRow({
         </div>
       )}
 
-      {LIGHTING_SIGNAL_TYPES.has(port.signalType) && <PortLightingSection signalType={port.signalType} config={port.lightingConfig}
+      {logicalChannels.length > 0 && <p className="pl-6 text-[10px] text-[var(--color-text-muted)]">Lighting mapping: {logicalChannels.map(channel => channel.label).join(", ")} (see Lighting Channels below)</p>}
+      {logicalChannels.length === 0 && LIGHTING_SIGNAL_TYPES.has(port.signalType) && <PortLightingSection signalType={port.signalType} config={port.lightingConfig}
         onChange={lightingConfig => onUpdate({ lightingConfig })} />}
 
       {/* Network Config (collapsible, only for addressable network signal types) */}

@@ -1,3 +1,4 @@
+import { cloneLightingChannelsForPorts, remapLightingChannels } from "./lightingChannels";
 import { create } from "zustand";
 import {
   applyNodeChanges,
@@ -2503,6 +2504,7 @@ export const useSchematicStore = create<SchematicState>((set, get) => ({
         label: template.label,
         deviceType: template.deviceType,
         ports,
+        lightingChannels: preset?.lightingChannels !== undefined ? cloneLightingChannelsForPorts(preset.lightingChannels, preset.ports, ports) : remapLightingChannels(template.lightingChannels, new Map(ports.filter(p => p.templatePortId).map(p => [p.templatePortId!, p.id])), new Set(ports.map(p => p.id))),
         color,
         ...(headerColor ? { headerColor } : {}),
         baseLabel: template.label,
@@ -2890,6 +2892,7 @@ export const useSchematicStore = create<SchematicState>((set, get) => ({
           data: {
             ...deviceData,
             ports: newPorts,
+            lightingChannels: cloneLightingChannelsForPorts(deviceData.lightingChannels, deviceData.ports, newPorts),
             hiddenPorts: remappedHidden && remappedHidden.length > 0 ? remappedHidden : undefined,
           },
         } as DeviceNode;
@@ -3511,6 +3514,7 @@ export const useSchematicStore = create<SchematicState>((set, get) => ({
       label: preservedLabel,
       deviceType: newTemplate.deviceType,
       ports: newPorts,
+      lightingChannels: remapLightingChannels(newTemplate.lightingChannels, new Map(newPorts.filter(p => p.templatePortId).map(p => [p.templatePortId!, p.id])), new Set(newPorts.map(p => p.id))),
       ...(newTemplate.color ? { color: newTemplate.color } : {}),
       ...(userRenamed ? {} : { baseLabel: newTemplate.label }),
       model: newTemplate.label,

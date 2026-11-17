@@ -47,12 +47,12 @@ export default function PatchReferenceNode({ id, data, selected }: NodeProps<Ref
   const footerContent = 1 + layout.footerRows.reduce((sum, row) => sum + auxRowHeight(row), 0);
   const footerPadding = layout.footerHeight - footerContent;
   const color = signalCssColor(edge?.data?.signalType ?? "custom");
-  return <div data-testid="patch-reference" title="Double-click to open Patch Bay"
+  return <div data-testid="patch-reference" title="Virtual panel reference — double-click to open Patch Bay"
     onDoubleClick={() => openPatchBay(data.panelNodeId, data.connectionId)}
-    className={`relative rounded-lg border bg-white ${selected ? "border-blue-500 shadow-lg shadow-blue-500/20" : "border-[var(--color-border)]"}`}
-    style={{ width: PATCH_REFERENCE_WIDTH, height: layout.height }}>
+    className={`relative rounded-lg border border-dashed ${selected ? "border-blue-500 shadow-lg shadow-blue-500/20" : "border-[var(--color-border)]"}`}
+    style={{ width: PATCH_REFERENCE_WIDTH, height: layout.height, backgroundColor: "var(--color-surface-hover)" }}>
     <div className="px-3 border-b border-[var(--color-border)] rounded-t-lg flex flex-col justify-center"
-      style={{ height: layout.headerHeight - 1, paddingTop: Math.floor(layout.headerPadding / 2), paddingBottom: Math.max(0, Math.ceil(layout.headerPadding / 2) - 1), backgroundColor: headerColor || "var(--color-surface)" }}>
+      style={{ height: layout.headerHeight - 1, paddingTop: Math.floor(layout.headerPadding / 2), paddingBottom: Math.max(0, Math.ceil(layout.headerPadding / 2) - 1), backgroundColor: headerColor || "var(--color-surface-hover)" }}>
       <div className="flex items-center justify-center shrink-0" style={{ height: layout.labelZone }}>
         <span className={`text-xs font-semibold text-[var(--color-text-heading)] ${layout.label.wrapsInHeader ? "" : "truncate leading-tight"}`} title={label}
           style={{ color: headerTextColor, ...(layout.label.wrapsInHeader ? { display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", wordBreak: "break-word", textAlign: "center", lineHeight: "14px" } : {}) }}>{label}</span>

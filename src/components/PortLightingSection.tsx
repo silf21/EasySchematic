@@ -25,7 +25,7 @@ export default function PortLightingSection({ signalType, config, onChange }: {
     </button>
     {open && <div className="mt-1 space-y-1">
       <div className="grid grid-cols-2 gap-2 text-[10px]">
-        <label>Universe source<select className={fieldClass} aria-label="Universe source" value={protocol} disabled={signalType !== "dmx"} onChange={e => update({ protocol: e.target.value as LightingProtocol })}>
+        <label>Universe source<select className={fieldClass} aria-label="Universe source" value={protocol} disabled={signalType === "artnet" || signalType === "sacn"} onChange={e => update({ protocol: e.target.value as LightingProtocol })}>
           <option value="dmx">Local DMX</option><option value="artnet">Art-Net</option><option value="sacn">sACN</option>
         </select></label>
         <label>Universe<input className={fieldClass} aria-label="Lighting universe" type="number" step="1" min={limits.min} max={limits.max} placeholder={`${limits.min}–${limits.max}`} value={c.universe ?? ""} onChange={e => update({ universe: e.target.value === "" ? undefined : Number(e.target.value) })} /></label>

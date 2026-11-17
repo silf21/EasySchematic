@@ -1,3 +1,5 @@
+import { cloneLightingChannelsForPorts, remapLightingChannels } from "./lightingChannels";
+import type { LightingChannel } from "./types";
 /**
  * The objects the device editor's template-family save actions write: a `DeviceTemplate` for
  * Save as User Template / Update User Template / Update as Custom, and a `TemplatePreset` for
@@ -28,6 +30,7 @@ import { capturedHeaderColorField, type HeaderColorCapture } from "./deviceHeade
 
 /** One row of the device editor's port table, before it is normalized into a `Port`. */
 export interface PortDraft {
+  templatePortId?: string;
   id: string;
   label: string;
   signalType: SignalType;
@@ -92,6 +95,7 @@ export interface TemplateFormValues {
   rackForm: DeviceData["rackForm"];
   isVenueProvided: boolean;
   auxiliaryData: AuxRow[];
+  lightingChannels?: LightingChannel[];
   searchTermsRaw: string;
   /** The device being saved, for the fields a template inherits from the placed instance. */
   existing: DeviceData | undefined;
@@ -119,6 +123,7 @@ export function buildDeviceTemplate(
     label: form.label.trim() || "Custom Device",
     ...(form.shortName.trim() ? { shortName: form.shortName.trim() } : {}),
     ports: finalPorts,
+    lightingChannels: form.lightingChannels === undefined ? undefined : cloneLightingChannelsForPorts(form.lightingChannels, form.ports.filter(p => p.label.trim()), finalPorts) ?? [],
     ...(form.color ? { color: form.color } : {}),
     // Save the device's header color with the template, so every device placed from it comes
     // out that color regardless of the two default settings (#354).
@@ -162,6 +167,7 @@ export function buildDeviceTemplate(
 
 /** Everything the preset builder reads out of the device editor's form. */
 export interface PresetFormValues {
+  lightingChannels?: LightingChannel[];
   ports: PortDraft[];
   hiddenPorts: string[];
   color: string | undefined;
@@ -183,6 +189,7 @@ export function buildTemplatePreset(form: PresetFormValues): TemplatePreset {
 
   return {
     ports: presetPorts,
+    lightingChannels: form.lightingChannels === undefined ? undefined : remapLightingChannels(form.lightingChannels, idMap, new Set(presetPorts.map(p => p.id))) ?? [],
     ...(presetHidden.length > 0 ? { hiddenPorts: presetHidden } : {}),
     ...(form.color ? { color: form.color } : {}),
     // The header color rides along with the preset, so every later device placed from this

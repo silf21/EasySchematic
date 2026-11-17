@@ -47,6 +47,7 @@ export * as CableSchedule from "./cableSchedule";
 export * as NetworkReport from "./networkReport";
 export * as LightingReport from "./lightingReport";
 export * as LightingConfig from "./lightingConfig";
+export * as LightingChannels from "./lightingChannels";
 export * as PowerReport from "./powerReport";
 export * as PatchPanelSchedule from "./patchPanelSchedule";
 export * as Thermal from "./thermal";
