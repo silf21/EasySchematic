@@ -39,6 +39,9 @@ path handles remain available in compact view.
 
 ![Distributed patch references](/distributed-patch-references.png)
 
+Cable IDs and cable lengths on the displayed sections follow the controls under
+**View → Connections → Show cable IDs / Show cable lengths**, independently.
+
 ## Actual adapters and cables
 
 The separate Physical signal path popup, inline-cable editor and floating tile chain

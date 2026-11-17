@@ -7,7 +7,7 @@ const fixture = {
     { id: "fixture", type: "device", position: { x: 1000, y: 0 }, data: { label: "Fixture", deviceType: "generic", ports: [1, 2].map(i => ({ id: `in${i}`, label: `DMX${i}`, direction: "input", signalType: "dmx", connectorType: "xlr-3" })) } },
     ...["PP1", "PP2"].map(id => ({ id, type: "device", hidden: true, position: { x: 0, y: -400 }, data: { label: id, deviceType: "patch-panel", offCanvas: true, supplier: "Festinstalliert", ports: [1, 2].map(i => ({ id: `p${i}`, label: `DMX${i}`, direction: "passthrough", signalType: "dmx", rearConnectorType: "xlr-5", frontConnectorType: "xlr-3" })) } })),
   ],
-  edges: [1, 2].map(i => ({ id: `dmx${i}`, source: "desk", target: "fixture", sourceHandle: `out${i}`, targetHandle: `in${i}`, type: "smoothstep", data: { signalType: "dmx", cableId: `D00${i}`, supplier: "Rental", patchHops: [{ panelNodeId: "PP1", portId: `p${i}`, entryFace: "front" }, { panelNodeId: "PP2", portId: `p${i}` }], patchSegments: [{}, { supplier: "Festinstalliert" }, {}] } })),
+  edges: [1, 2].map(i => ({ id: `dmx${i}`, source: "desk", target: "fixture", sourceHandle: `out${i}`, targetHandle: `in${i}`, type: "smoothstep", data: { signalType: "dmx", cableId: `D00${i}`, supplier: "Rental", patchHops: [{ panelNodeId: "PP1", portId: `p${i}`, entryFace: "front" }, { panelNodeId: "PP2", portId: `p${i}` }], patchSegments: [{ cableLength: "10m" }, { supplier: "Festinstalliert" }, {}] } })),
 };
 
 test("distributed references route to physical faces, remain independently movable, and flip directly in Patch Bay", async ({ page }) => {
@@ -21,6 +21,15 @@ test("distributed references route to physical faces, remain independently movab
   await expect(page.getByTestId("patch-reference").first()).toHaveCSS("width", "144px");
   await expect(page.getByTestId("patch-reference").first()).toHaveCSS("height", "64px");
   await expect(page.locator(".react-flow__edge-patch-reference-edge")).toHaveCount(6);
+  await page.getByRole("button", { name: "View options", exact: true }).click();
+  await page.getByLabel("Show cable lengths", { exact: true }).check();
+  await expect(page.getByText(/D001-A · 10m/, { exact: true })).toBeVisible();
+  await page.getByLabel("Show cable IDs", { exact: true }).uncheck();
+  await expect(page.getByText("10m", { exact: true })).toHaveCount(2);
+  await page.getByLabel("Show cable lengths", { exact: true }).uncheck();
+  await expect(page.getByText("10m", { exact: true })).toHaveCount(0);
+  await page.getByLabel("Show cable IDs", { exact: true }).check();
+  await page.getByRole("button", { name: "Collapse", exact: true }).click();
   const refs = page.locator('.react-flow__node-patch-reference');
   const first = refs.nth(0);
   const before = await first.getAttribute("style");
