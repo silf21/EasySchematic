@@ -187,7 +187,11 @@ export default function ImportExportPage() {
       <h2>PDF</h2>
       <p>
         <strong>Export PDF</strong> generates a multi-page document matching your Print View settings. Each page includes
-        the title block. See <a href="/printing">Printing &amp; Title Block</a> for page setup details.
+        the title block. The schematic uses vector paths and selectable text, preserving the
+        drawn positions, device sizes, visible ports and routing. Embedded pictures remain images.
+        Stub references include the cable ID, destination, port/physical face, room and target page;
+        click a reference to jump to its destination page. Cable-ID-only tag preferences are retained.
+        See <a href="/printing">Printing &amp; Title Block</a> for page setup details.
       </p>
 
       <p>

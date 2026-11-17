@@ -16,8 +16,7 @@ export interface RasterBudget {
 // Image-download budget: caps the raster so a large capture can't demand a
 // multi-gigapixel canvas — pixelRatio 4 over the full schematic bounds was
 // allocating GBs and near-crashing 8GB machines (#383). Kept deliberately
-// tighter than the PDF page budget (pdfExport.ts): full-schematic bounds are
-// unbounded in a way paper sizes never are. The area cap additionally bounds
+// bounded because full-schematic bounds can grow without limit. The area cap additionally bounds
 // captures big in BOTH dimensions (12000×12000 alone would be a 576MB bitmap).
 const IMAGE_RASTER_BUDGET: RasterBudget = {
   maxDimensionPx: 12000,
@@ -25,8 +24,7 @@ const IMAGE_RASTER_BUDGET: RasterBudget = {
 };
 
 /** Largest pixelRatio that keeps a widthPx×heightPx capture inside the budget.
- *  One formula shared by image and PDF export — the budgets differ on purpose
- *  (see each budget's rationale), the math must not. May fall below 1 for
+ *  The caller may choose a different raster budget. May fall below 1 for
  *  outsized captures — downsampling the output is the point. */
 export function capExportPixelRatio(
   target: number,

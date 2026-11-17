@@ -28,7 +28,10 @@ export default function PatchReferenceEdge(props: EdgeProps<ConnectionEdge>) {
       { x: sourceX, y: sourceY, side: sourcePosition === "left" ? "left" : "right" },
       { x: targetX, y: targetY, side: targetPosition === "right" ? "right" : "left" });
     return <>{ends.map((end, i) => <BaseEdge key={i} id={`${id}:stub:${i}`} path={`M ${end.x} ${end.y} L ${end.endX} ${end.endY}`} interactionWidth={props.interactionWidth} style={style} />)}
-      <EdgeLabelRenderer>{ends.map((end, i) => <div key={i} data-testid="patch-section-stub" className="nodrag nopan text-[9px] leading-3 bg-[var(--color-surface)] text-[var(--color-text)] border border-[var(--color-border)] rounded px-1 py-0.5 whitespace-nowrap"
+      <EdgeLabelRenderer>{ends.map((end, i) => <div key={i} data-testid="patch-section-stub"
+        data-pdf-target-node={i === 0 ? props.target : props.source}
+        data-pdf-target-handle={i === 0 ? props.targetHandleId : props.sourceHandleId}
+        data-pdf-cable-id={data.cableId ?? ""} data-pdf-align={end.side === "left" ? "right" : "left"} className="nodrag nopan text-[9px] leading-3 bg-[var(--color-surface)] text-[var(--color-text)] border border-[var(--color-border)] rounded px-1 py-0.5 whitespace-nowrap"
         onContextMenu={event => {
           event.preventDefault(); event.stopPropagation();
           if (!data.patchReference) return;
