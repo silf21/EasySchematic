@@ -1,3 +1,4 @@
+import { mergeVisibleColumnOrder, orderReportColumns, readReportColumnOrder, reportColumnId, reportColumnOrderKey } from "../reportColumnOrder";
 import { memo, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import type { TitleBlock, TitleBlockLayout, TitleBlockCell } from "../types";
 import type { ReportLayout, ReportTableDef, PaperSize, TableBorderStyle } from "../reportLayout";
@@ -167,6 +168,7 @@ function ReportPreviewDialog({
   filename,
   mirrorScreen = false,
 }: ReportPreviewDialogProps) {
+  const reportOrders = useSchematicStore(s => s.reportLayouts);
   const storedLayout = useSchematicStore((s) => s.reportLayouts[reportKey]) as ReportLayout | undefined;
   const setReportLayout = useSchematicStore((s) => s.setReportLayout);
   const globalHeaderLayout = useSchematicStore((s) => s.globalReportHeaderLayout);
@@ -270,7 +272,8 @@ function ReportPreviewDialog({
     ...layout,
     headerLayout: effectiveHeaderLayout,
     footerLayout: effectiveFooterLayout,
-  }), [layout, effectiveHeaderLayout, effectiveFooterLayout]);
+    tables: layout.tables.map(table => ({ ...table, columns: orderReportColumns(table.columns, readReportColumnOrder(reportOrders[reportColumnOrderKey(table.id)]), column => reportColumnId(column.header)) })),
+  }), [layout, effectiveHeaderLayout, effectiveFooterLayout, reportOrders]);
 
   const handleExportPdf = useCallback(async () => {
     await renderReportPdf(effectiveLayout, titleBlock, tables, filename);
@@ -468,16 +471,20 @@ function ReportPreviewDialog({
             )}
 
             {/* Table sections */}
-            {layout.tables.map((tableDef) => (
+            {effectiveLayout.tables.map((tableDef) => (
               <SidebarSection key={tableDef.id} title={tableDef.label}>
                 <div className="flex flex-col gap-1">
-                  {tableDef.columns.map((col) => (
-                    <Checkbox
-                      key={col.key}
-                      label={col.header}
-                      checked={col.visible}
-                      onChange={() => toggleColumn(tableDef.id, col.key)}
-                    />
+                  {tableDef.columns.map((col, index) => (
+                    <div key={col.key} className="flex items-center gap-1">
+                      <div className="flex-1"><Checkbox label={col.header} checked={col.visible} onChange={() => toggleColumn(tableDef.id, col.key)} /></div>
+                      {[-1, 1].map(delta => <button key={delta} type="button" aria-label={`Move ${col.header} ${delta < 0 ? "left" : "right"}`} disabled={index + delta < 0 || index + delta >= tableDef.columns.length}
+                        className="px-1 disabled:opacity-30" onClick={() => {
+                          const columns = [...tableDef.columns];
+                          [columns[index], columns[index + delta]] = [columns[index + delta], columns[index]];
+                          const key = reportColumnOrderKey(tableDef.id);
+                          setReportLayout(key, mergeVisibleColumnOrder(readReportColumnOrder(reportOrders[key]), tableDef.columns.map(column => reportColumnId(column.header)), columns.map(column => reportColumnId(column.header))));
+                        }}>{delta < 0 ? "←" : "→"}</button>)}
+                    </div>
                   ))}
                 </div>
                 {mirrorScreen && (

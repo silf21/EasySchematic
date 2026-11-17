@@ -76,9 +76,9 @@ test("distributed references route to physical faces, remain independently movab
   await supplier.fill("Venue Rental");
   await expect(supplier).toHaveValue("Venue Rental");
   await page.keyboard.press("Escape");
-  await page.evaluate(() => window.dispatchEvent(new CustomEvent("easyschematic:open-reports", { detail: "suppliers" })));
-  await expect(page.getByRole("button", { name: "By Supplier", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: /Venue Rental · 1 items?/ })).toBeVisible();
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent("easyschematic:open-reports", { detail: "cableSchedule" })));
+  await expect(page.getByRole("button", { name: "Cable Schedule", exact: true })).toBeVisible();
+  await expect(page.locator('input[value="Venue Rental"]').first()).toBeVisible();
   expect(errors).toEqual([]);
 });
 

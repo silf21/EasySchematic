@@ -198,7 +198,6 @@ export function createDefaultPackListLayout(): ReportLayout {
         label: "Devices",
         columns: [
           { key: "count", header: "Qty", widthMm: 12, visible: true },
-          { key: "supplier", header: "Supplier", widthMm: 25, visible: true },
           { key: "model", header: "Device", widthMm: 60, visible: true },
           { key: "manufacturer", header: "Manufacturer", widthMm: 30, visible: false },
           { key: "modelNumber", header: "Model #", widthMm: 30, visible: false },
@@ -210,6 +209,7 @@ export function createDefaultPackListLayout(): ReportLayout {
           { key: "serialNumber", header: "Serial #", widthMm: 32, visible: false },
           { key: "spare", header: "Spare", widthMm: 14, visible: false },
           { key: "note", header: "Note", widthMm: 50, visible: false },
+          { key: "supplier", header: "Supplier", widthMm: 25, visible: true },
         ],
         groupBy: null,
         groupByOptions: [
@@ -315,6 +315,9 @@ export function createDefaultCableScheduleLayout(): ReportLayout {
         label: "Cable Schedule",
         columns: [
           { key: "cableId",         header: "Cable ID",   widthMm: 18, visible: true },
+          { key: "signalType",      header: "Signal",      widthMm: 20, visible: true },
+          { key: "cableType",       header: "Cable Type",  widthMm: 22, visible: true },
+          { key: "cableLength",     header: "Length",      widthMm: 16, visible: true },
           { key: "sourceDevice",    header: "Source",      widthMm: 30, visible: true },
           { key: "sourcePort",      header: "Src Port",    widthMm: 22, visible: true },
           { key: "sourceConnector", header: "Src Conn",    widthMm: 18, visible: true },
@@ -322,9 +325,6 @@ export function createDefaultCableScheduleLayout(): ReportLayout {
           { key: "targetPort",      header: "Tgt Port",    widthMm: 22, visible: true },
           { key: "targetConnector", header: "Tgt Conn",    widthMm: 18, visible: true },
           { key: "supplier", header: "Supplier", widthMm: 25, visible: true },
-          { key: "cableType",       header: "Cable Type",  widthMm: 22, visible: true },
-          { key: "signalType",      header: "Signal",      widthMm: 20, visible: true },
-          { key: "cableLength",     header: "Length",      widthMm: 16, visible: true },
           { key: "computedLength",  header: "Est. Length", widthMm: 18, visible: true },
           { key: "gaugeAwg",        header: "Gauge",       widthMm: 16, visible: false },
           { key: "cableAlias",      header: "Alias",       widthMm: 28, visible: false },

@@ -8,6 +8,20 @@ export default function PackListPage() {
         and cable you need. Open it from the <strong>Reports</strong> menu in the menu bar.
       </p>
 
+      <h2>Column order</h2>
+      <p>
+        Every report table has a <strong>Column order</strong> control. Drag a column
+        or use its left/right arrows to move it. <strong>Reset column order</strong>
+        restores the default. Each table has its own order, saved with the project
+        and restored when reopening it. PDF previews and exports use that order;
+        the preview sidebar also has arrows for arranging print columns.
+      </p>
+      <p>
+        The Cable Schedule starts with Label, Cable ID, Signal, Cable Type and Length.
+        The Devices report places Supplier at the right by default. Supplier remains
+        editable and searchable in Devices; there is no separate By Supplier tab.
+      </p>
+
       <h2>Browsing the pack list</h2>
       <p>
         The pack list dialog has two tabs:

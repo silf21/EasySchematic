@@ -1,8 +1,8 @@
+import { useOrderedReportColumns } from "../useOrderedReportColumns";
+import { ReportTable, ReportRow } from "./ReportTable";
 import LightingReport from "./LightingReport";
 import { buildLightingReportCsv, computeLightingReport, createLightingReportLayout, getLightingReportTableData } from "../lightingReport";
-import SupplierReport from "./SupplierReport";
 import SupplierInput from "./SupplierInput";
-import { buildSupplierCsv, computeSupplierMaterials, createSupplierLayout, supplierTableData } from "../supplierReport";
 import { supplierKey } from "../suppliers";
 import React, { memo, useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { useSchematicStore } from "../store";
@@ -74,10 +74,9 @@ const PATCH_PANEL_LAYOUT_KEY = "easyschematic-patch-panel-layout";
 const POWER_LAYOUT_KEY = "easyschematic-power-report-layout";
 
 function ReportsDialog({ initialTab, onClose }: ReportsDialogProps) {
-  const [tab, setTab] = useState<ReportsTab>(initialTab);
+  const [tab, setTab] = useState<ReportsTab>(initialTab === "suppliers" ? "devices" : initialTab);
   const [maximized, setMaximized] = useState(false);
   const [showLightingPreview, setShowLightingPreview] = useState(false);
-  const [showSupplierPreview, setShowSupplierPreview] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [showNetworkPreview, setShowNetworkPreview] = useState(false);
   const [showCableSchedulePreview, setShowCableSchedulePreview] = useState(false);
@@ -114,9 +113,6 @@ function ReportsDialog({ initialTab, onClose }: ReportsDialogProps) {
     const ownedGear = useSchematicStore.getState().ownedGear;
     if (tab === "lighting") {
       downloadCsv(buildLightingReportCsv(computeLightingReport(nodes)), `${schematicName} - Lighting.csv`);
-    } else if (tab === "suppliers") {
-      const s = useSchematicStore.getState();
-      downloadCsv(buildSupplierCsv(computeSupplierMaterials(nodes, edges, s.pages, s.cableCosts)), `${schematicName} - Suppliers.csv`);
     } else if (tab === "network") {
       exportNetworkCsv(nodes, edges, schematicName);
     } else if (tab === "devices") {
@@ -152,9 +148,8 @@ function ReportsDialog({ initialTab, onClose }: ReportsDialogProps) {
   const cableScheduleDefaultLayout = useMemo(() => createDefaultCableScheduleLayout(), []);
   const powerDefaultLayout = useMemo(() => createDefaultPowerReportLayout(), []);
 
-  const tabLabels: Record<ReportsTab, string> = {
+  const tabLabels: Partial<Record<ReportsTab, string>> = {
     lighting: "Virtual Channels / Lighting",
-    suppliers: "By Supplier",
     devices: "Devices",
     cableSchedule: "Cable Schedule",
     patchPanel: "Patch Panels",
@@ -187,7 +182,6 @@ function ReportsDialog({ initialTab, onClose }: ReportsDialogProps) {
               CSV
             </button>
             {tab === "lighting" && <button onClick={() => setShowLightingPreview(true)} className={btnClass}>PDF</button>}
-            {tab === "suppliers" && <button onClick={() => setShowSupplierPreview(true)} className={btnClass}>PDF</button>}
             {tab === "network" && (
               <button onClick={() => setShowNetworkPreview(true)} className={btnClass}>
                 PDF
@@ -249,7 +243,6 @@ function ReportsDialog({ initialTab, onClose }: ReportsDialogProps) {
           {/* Body */}
           <div className="overflow-auto flex-1 p-4">
             {tab === "lighting" && <LightingReport onEdit={nodeId => { useSchematicStore.getState().setEditingNodeId(nodeId); onClose(); }} />}
-            {tab === "suppliers" && <SupplierReport />}
             {tab === "network" && <NetworkReportTab />}
             {tab === "devices" && <DeviceReportTab />}
             {tab === "packList" && <PackListTabInline />}
@@ -261,7 +254,6 @@ function ReportsDialog({ initialTab, onClose }: ReportsDialogProps) {
       </div>
 
       {showLightingPreview && <ReportPreviewDialog reportKey="easyschematic-lighting-report-layout" defaultLayout={lightingDefaultLayout} titleBlock={titleBlock} getTableData={() => getLightingReportTableData(computeLightingReport(nodes))} onClose={() => setShowLightingPreview(false)} filename={`${schematicName} - Lighting.pdf`} />}
-      {showSupplierPreview && <ReportPreviewDialog reportKey="easyschematic-supplier-layout" defaultLayout={createSupplierLayout()} titleBlock={titleBlock} getTableData={() => { const s = useSchematicStore.getState(); return supplierTableData(computeSupplierMaterials(nodes, edges, s.pages, s.cableCosts)); }} onClose={() => setShowSupplierPreview(false)} filename={`${schematicName} - Suppliers.pdf`} />}
       {showNetworkPreview && (
         <ReportPreviewDialog
           reportKey={NETWORK_LAYOUT_KEY}
@@ -363,16 +355,16 @@ const rowClass = (i: number) =>
 const CABLE_COLUMNS: { id: string; label: string }[] = [
   { id: "label", label: "Label" },
   { id: "cableId", label: "Cable ID" },
+  { id: "signalType", label: "Signal" },
+  { id: "cableType", label: "Cable Type" },
+  { id: "cableLength", label: "Length" },
   { id: "sourceDevice", label: "Source" },
   { id: "sourcePort", label: "Src Port" },
   { id: "sourceConnector", label: "Src Conn" },
   { id: "targetDevice", label: "Target" },
   { id: "targetPort", label: "Tgt Port" },
   { id: "targetConnector", label: "Tgt Conn" },
-  { id: "cableType", label: "Cable Type" },
-  { id: "signalType", label: "Signal" },
   { id: "supplier", label: "Supplier" },
-  { id: "cableLength", label: "Length" },
   { id: "computedLength", label: "Est. Length" },
   { id: "gaugeAwg", label: "Gauge" },
   { id: "cableAlias", label: "Alias" },
@@ -610,7 +602,7 @@ function NetworkReportTab() {
 
   const spreadsheet = useSpreadsheetSelection({
     rowCount: sorted.length,
-    columns: networkColumns,
+    columns: useOrderedReportColumns("network", networkColumns),
     isCellEditable,
     getCellValue,
     onCellChange,
@@ -649,28 +641,28 @@ function NetworkReportTab() {
           <div className="px-3 py-1.5 bg-[var(--color-surface)] border-b border-[var(--color-border)]">
             <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">DHCP Servers</span>
           </div>
-          <table className="w-full border-collapse">
+          <ReportTable tableId="dhcpServers" className="w-full border-collapse">
             <thead>
-              <tr>
+              <ReportRow header>
                 <th className={thClass}>Device</th>
                 <th className={thClass}>Pool Start</th>
                 <th className={thClass}>Pool End</th>
                 <th className={thClass}>Subnet</th>
                 <th className={thClass}>Gateway</th>
-              </tr>
+              </ReportRow>
             </thead>
             <tbody>
               {dhcpServers.map((srv, i) => (
-                <tr key={srv.nodeId} className={rowClass(i)}>
+                <ReportRow key={srv.nodeId} className={rowClass(i)}>
                   <td className={tdClass}>{srv.deviceLabel}</td>
                   <td className={tdClass}>{srv.rangeStart || "—"}</td>
                   <td className={tdClass}>{srv.rangeEnd || "—"}</td>
                   <td className={tdClass}>{srv.subnetMask || "—"}</td>
                   <td className={tdClass}>{srv.gateway || "—"}</td>
-                </tr>
+                </ReportRow>
               ))}
             </tbody>
-          </table>
+          </ReportTable>
         </div>
       )}
 
@@ -680,20 +672,20 @@ function NetworkReportTab() {
           <div className="px-3 py-1.5 bg-[var(--color-surface)] border-b border-[var(--color-border)]">
             <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">PoE Budget</span>
           </div>
-          <table className="w-full border-collapse">
+          <ReportTable tableId="poeBudget" className="w-full border-collapse">
             <thead>
-              <tr>
+              <ReportRow header>
                 <th className={thClass}>Switch</th>
                 <th className={thClass}>Room</th>
                 <th className={thClass}>Budget (W)</th>
                 <th className={thClass}>Load (W)</th>
                 <th className={thClass}>Remaining (W)</th>
                 <th className={thClass}>Status</th>
-              </tr>
+              </ReportRow>
             </thead>
             <tbody>
               {poeBudgets.map((poe, i) => (
-                <tr key={poe.nodeId} className={rowClass(i)}>
+                <ReportRow key={poe.nodeId} className={rowClass(i)}>
                   <td className={tdClass}>{poe.deviceLabel}</td>
                   <td className={tdClass}>{poe.room}</td>
                   <td className={tdClass}>{poe.budgetW}</td>
@@ -702,10 +694,10 @@ function NetworkReportTab() {
                   <td className={`${tdClass} ${poe.overBudget ? "text-red-600 font-semibold" : "text-green-600"}`}>
                     {poe.overBudget ? "OVER BUDGET" : "OK"}
                   </td>
-                </tr>
+                </ReportRow>
               ))}
             </tbody>
-          </table>
+          </ReportTable>
         </div>
       )}
 
@@ -738,9 +730,9 @@ function NetworkReportTab() {
         />
       </div>
       <div {...spreadsheet.getContainerProps()}>
-        <table className="w-full border-collapse">
+        <ReportTable tableId="network" className="w-full border-collapse">
           <thead>
-            <tr>
+            <ReportRow header>
               <th className={thClass} onClick={() => toggleSort("deviceLabel")}>
                 Device{sortArrow("deviceLabel")}
               </th>
@@ -783,7 +775,7 @@ function NetworkReportTab() {
               <th className={thClass} onClick={() => toggleSort("notes")}>
                 Notes{sortArrow("notes")}
               </th>
-            </tr>
+            </ReportRow>
           </thead>
           <tbody>
             {sorted.map((row, i) => (
@@ -799,7 +791,7 @@ function NetworkReportTab() {
               />
             ))}
           </tbody>
-        </table>
+        </ReportTable>
       </div>
 
       {spreadsheet.fillSeriesRequest && (
@@ -868,7 +860,7 @@ const NetworkRow = memo(function NetworkRow({
   })();
 
   return (
-    <tr className={hasSelection ? "bg-blue-50" : altClass}>
+    <ReportRow className={hasSelection ? "bg-blue-50" : altClass}>
       {/* Read-only columns */}
       <td className={tdClass}>{row.deviceLabel}</td>
       <td className={tdClass}>{row.portLabel}</td>
@@ -1031,7 +1023,7 @@ const NetworkRow = memo(function NetworkRow({
           />
         )}
       />
-    </tr>
+    </ReportRow>
   );
 });
 
@@ -1291,7 +1283,7 @@ function DeviceReportTab() {
 
   const spreadsheet = useSpreadsheetSelection({
     rowCount: sorted.length,
-    columns: deviceColumns,
+    columns: useOrderedReportColumns("deviceReport", deviceColumns),
     isCellEditable,
     getCellValue,
     onCellChange,
@@ -1336,20 +1328,19 @@ function DeviceReportTab() {
       <div className="mb-3">
         <input
           className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded px-2 py-1 text-xs outline-none focus:border-blue-500"
-          placeholder="Filter by name, type, manufacturer, or room..."
+          placeholder="Filter by name, type, manufacturer, room, or supplier..."
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           onKeyDown={(e) => e.stopPropagation()}
         />
       </div>
       <div {...spreadsheet.getContainerProps()}>
-        <table className="w-full border-collapse">
+        <ReportTable tableId="deviceReport" className="w-full border-collapse">
           <thead>
-            <tr>
+            <ReportRow header>
               <th className={thClass} onClick={() => toggleSort("label")}>
                 Device{sortArrow("label")}
               </th>
-              <th className={thClass} onClick={() => toggleSort("supplier")}>Supplier{sortArrow("supplier")}</th>
               <th className={thClass} onClick={() => toggleSort("shortName")}>
                 Short Name{sortArrow("shortName")}
               </th>
@@ -1385,7 +1376,8 @@ function DeviceReportTab() {
                 Unit Cost{sortArrow("unitCost")}
               </th>
               <th className={thClass} style={{ width: 40 }}>Color</th>
-            </tr>
+              <th className={thClass} onClick={() => toggleSort("supplier")}>Supplier{sortArrow("supplier")}</th>
+            </ReportRow>
           </thead>
           <tbody>
             {sorted.map((row, i) => (
@@ -1400,7 +1392,7 @@ function DeviceReportTab() {
               />
             ))}
           </tbody>
-        </table>
+        </ReportTable>
       </div>
 
       {spreadsheet.fillSeriesRequest && (
@@ -1436,7 +1428,7 @@ const DeviceRow = memo(function DeviceRow({
   const currency = useSchematicStore((s) => s.currency);
 
   return (
-    <tr className={hasSelection ? "bg-blue-50" : altClass}>
+    <ReportRow className={hasSelection ? "bg-blue-50" : altClass}>
       {cellProps.isEditing ? (
         <td className={`${tdClass} p-0.5`}>
           <input
@@ -1463,7 +1455,6 @@ const DeviceRow = memo(function DeviceRow({
           <span className="text-[10px] px-1 select-none">{row.label}</span>
         </td>
       )}
-      <td className={tdClass}><SupplierInput value={row.supplier} onChange={supplier => useSchematicStore.getState().patchDeviceData(row.nodeId, { supplier })} /></td>
       {(() => {
         const sn = spreadsheet.getCellProps(rowIndex, "shortName");
         if (sn.isEditing) {
@@ -1552,7 +1543,8 @@ const DeviceRow = memo(function DeviceRow({
           className="w-6 h-5 p-0 border-0 cursor-pointer rounded"
         />
       </td>
-    </tr>
+      <td className={tdClass}><SupplierInput value={row.supplier} onChange={supplier => useSchematicStore.getState().patchDeviceData(row.nodeId, { supplier })} /></td>
+    </ReportRow>
   );
 });
 
@@ -1725,7 +1717,7 @@ function CableScheduleTabInline() {
 
   const spreadsheet = useSpreadsheetSelection({
     rowCount: sorted.length,
-    columns: cableScheduleColumns,
+    columns: useOrderedReportColumns("cableSchedule", cableScheduleColumns),
     isCellEditable,
     getCellValue,
     onCellChange,
@@ -1873,14 +1865,23 @@ function CableScheduleTabInline() {
         </button>
       </div>
       <div {...spreadsheet.getContainerProps()}>
-        <table className="w-full border-collapse">
+        <ReportTable tableId="cableSchedule" className="w-full border-collapse">
           <thead>
-            <tr onContextMenu={(e) => { e.preventDefault(); setColMenu({ x: e.clientX, y: e.clientY }); }}>
+            <ReportRow header onContextMenu={(e) => { e.preventDefault(); setColMenu({ x: e.clientX, y: e.clientY }); }}>
               {!hiddenCols.has("label") && (
                 <th className={thClass} style={{ width: 28, textAlign: "center" }} title="Show label on schematic">Label</th>
               )}
               {!hiddenCols.has("cableId") && (
                 <th className={thClass} onClick={() => toggleSort("cableId")}>Cable ID{sortArrow("cableId")}</th>
+              )}
+              {!hiddenCols.has("signalType") && (
+                <th className={thClass} onClick={() => toggleSort("signalType")}>Signal{sortArrow("signalType")}</th>
+              )}
+              {!hiddenCols.has("cableType") && (
+                <th className={thClass} onClick={() => toggleSort("cableType")}>Cable Type{sortArrow("cableType")}</th>
+              )}
+              {!hiddenCols.has("cableLength") && (
+                <th className={thClass} onClick={() => toggleSort("cableLength")}>Length{sortArrow("cableLength")}</th>
               )}
               {!hiddenCols.has("sourceDevice") && (
                 <th className={thClass} onClick={() => toggleSort("sourceDevice")}>Source{sortArrow("sourceDevice")}</th>
@@ -1900,16 +1901,7 @@ function CableScheduleTabInline() {
               {!hiddenCols.has("targetConnector") && (
                 <th className={thClass} onClick={() => toggleSort("targetConnector")}>Tgt Conn{sortArrow("targetConnector")}</th>
               )}
-              {!hiddenCols.has("cableType") && (
-                <th className={thClass} onClick={() => toggleSort("cableType")}>Cable Type{sortArrow("cableType")}</th>
-              )}
-              {!hiddenCols.has("signalType") && (
-                <th className={thClass} onClick={() => toggleSort("signalType")}>Signal{sortArrow("signalType")}</th>
-              )}
               {!hiddenCols.has("supplier") && <th className={thClass} onClick={() => toggleSort("supplier")}>Supplier{sortArrow("supplier")}</th>}
-              {!hiddenCols.has("cableLength") && (
-                <th className={thClass} onClick={() => toggleSort("cableLength")}>Length{sortArrow("cableLength")}</th>
-              )}
               {!hiddenCols.has("computedLength") && (
                 <th className={thClass} onClick={() => toggleSort("computedLength")} title="Estimated length from room-to-room distance + slack">Est. Length{sortArrow("computedLength")}</th>
               )}
@@ -1934,7 +1926,7 @@ function CableScheduleTabInline() {
               {!hiddenCols.has("multicableLabel") && (
                 <th className={thClass} onClick={() => toggleSort("multicableLabel")}>Snake{sortArrow("multicableLabel")}</th>
               )}
-            </tr>
+            </ReportRow>
           </thead>
           <tbody>
             {grouped
@@ -1954,7 +1946,7 @@ function CableScheduleTabInline() {
                 ))
             }
           </tbody>
-        </table>
+        </ReportTable>
       </div>
 
       {spreadsheet.fillSeriesRequest && (
@@ -1972,7 +1964,7 @@ function CableScheduleTabInline() {
           <div className="fixed inset-0 z-40" onClick={() => setColMenu(null)} />
           <div
             className="fixed z-50 bg-white border border-[var(--color-border)] rounded shadow-lg py-1 text-xs max-h-[70vh] overflow-y-auto"
-            style={{ left: colMenu.x, top: colMenu.y }}
+            style={{ left: colMenu.x, top: Math.min(colMenu.y, Math.max(8, window.innerHeight * 0.3 - 8)) }}
           >
             <div className="flex items-center justify-between gap-3 px-3 py-1">
               <span className="text-[10px] font-semibold text-[var(--color-text-muted)] uppercase tracking-wide">
@@ -2078,7 +2070,7 @@ const CableScheduleRow_ = memo(function CableScheduleRow_({
   });
 
   return (
-    <tr className={hasSelection ? "bg-blue-50" : altClass}>
+    <ReportRow className={hasSelection ? "bg-blue-50" : altClass}>
       {!hiddenCols.has("label") && (
         <td
           className={`${tdClass} ${labelProps.isSelected ? "bg-blue-100 ring-1 ring-inset ring-blue-300" : ""}`}
@@ -2099,22 +2091,22 @@ const CableScheduleRow_ = memo(function CableScheduleRow_({
       {!hiddenCols.has("cableId") && (
         <EditableCell spreadsheet={spreadsheet} rowIndex={rowIndex} columnId="cableId" value={row.cableId} />
       )}
+      {!hiddenCols.has("signalType") && <td className={tdClass}>{row.signalType}</td>}
+      {!hiddenCols.has("cableType") && <td className={tdClass}>{row.cableType}</td>}
+      {!hiddenCols.has("cableLength") && (
+        <EditableCell spreadsheet={spreadsheet} rowIndex={rowIndex} columnId="cableLength" value={row.cableLength} />
+      )}
       {!hiddenCols.has("sourceDevice") && <td className={tdClass}>{row.sourceDevice}</td>}
       {!hiddenCols.has("sourcePort") && <td className={tdClass}>{row.sourcePort}</td>}
       {!hiddenCols.has("sourceConnector") && <td className={tdClass}>{row.sourceConnector}</td>}
       {!hiddenCols.has("targetDevice") && <td className={tdClass}>{row.targetDevice}</td>}
       {!hiddenCols.has("targetPort") && <td className={tdClass}>{row.targetPort}</td>}
       {!hiddenCols.has("targetConnector") && <td className={tdClass}>{row.targetConnector}</td>}
-      {!hiddenCols.has("cableType") && <td className={tdClass}>{row.cableType}</td>}
-      {!hiddenCols.has("signalType") && <td className={tdClass}>{row.signalType}</td>}
       {!hiddenCols.has("supplier") && <td className={tdClass}><SupplierInput value={row.supplier ?? ""} onChange={supplier => {
         const state = useSchematicStore.getState();
         if (row.segIndex !== undefined) state.setPatchSegmentOverride(row.edgeId, row.segIndex, { supplier });
         else state.patchEdgeData(row.edgeId, { supplier });
       }} /></td>}
-      {!hiddenCols.has("cableLength") && (
-        <EditableCell spreadsheet={spreadsheet} rowIndex={rowIndex} columnId="cableLength" value={row.cableLength} />
-      )}
       {!hiddenCols.has("computedLength") && (
         <td className={`${tdClass} text-[var(--color-text-muted)]`}>{row.computedLength ?? ""}</td>
       )}
@@ -2153,7 +2145,7 @@ const CableScheduleRow_ = memo(function CableScheduleRow_({
       {!hiddenCols.has("sourceRoom") && <td className={tdClass}>{row.sourceRoom}</td>}
       {!hiddenCols.has("targetRoom") && <td className={tdClass}>{row.targetRoom}</td>}
       {!hiddenCols.has("multicableLabel") && <td className={tdClass}>{row.multicableLabel}</td>}
-    </tr>
+    </ReportRow>
   );
 });
 
@@ -2181,14 +2173,14 @@ function renderGroupedCableSchedule(
   let idx = 0;
   for (const [group, rows] of groups) {
     elements.push(
-      <tr key={`h-${group}`}>
+      <ReportRow key={`h-${group}`}>
         <td
           colSpan={visibleColCount}
           className="pt-3 pb-1 px-2 text-xs font-semibold text-[var(--color-text-heading)] border-b border-[var(--color-border)]"
         >
           {group}
         </td>
-      </tr>,
+      </ReportRow>,
     );
     for (const r of rows) {
       elements.push(
@@ -2379,9 +2371,9 @@ function PatchPanelScheduleTabInline({ onViewChange }: { onViewChange: (v: Patch
         })}
       </div>
 
-      <table className="w-full border-collapse">
+      <ReportTable tableId="patchPanelSchedule" className="w-full border-collapse">
         <thead>
-          <tr onContextMenu={(e) => { e.preventDefault(); setColMenu({ x: e.clientX, y: e.clientY }); }}>
+          <ReportRow header onContextMenu={(e) => { e.preventDefault(); setColMenu({ x: e.clientX, y: e.clientY }); }}>
             {/* Rendered straight off the shared column list, minus whatever is hidden —
                 the single-face columns hide themselves when no legacy paired-port row is
                 in view (#311), and the PDF prints exactly this set (#362). */}
@@ -2395,25 +2387,25 @@ function PatchPanelScheduleTabInline({ onViewChange }: { onViewChange: (v: Patch
                 {col.header}{col.sortable === false ? "" : sortArrow(col.key)}
               </th>
             ))}
-          </tr>
+          </ReportRow>
         </thead>
         <tbody>
           {groups.map((g, gi) => (
             <React.Fragment key={g.label || `__g${gi}`}>
               {g.label && (
-                <tr>
+                <ReportRow>
                   <td
                     colSpan={visibleColumns.length}
                     className="bg-[var(--color-surface)] text-[10px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)] py-1 px-2"
                   >
                     {g.label}
                   </td>
-                </tr>
+                </ReportRow>
               )}
               {g.rows.map((r, i) => {
                 const unconnected = r.edgeId === "";
                 return (
-                  <tr
+                  <ReportRow
                     key={r.rowId}
                     className={`${rowClass(i)} ${unconnected ? "opacity-60" : ""}`}
                   >
@@ -2422,13 +2414,13 @@ function PatchPanelScheduleTabInline({ onViewChange }: { onViewChange: (v: Patch
                         {patchPanelCellText(r, col.key)}
                       </td>
                     ))}
-                  </tr>
+                  </ReportRow>
                 );
               })}
             </React.Fragment>
           ))}
         </tbody>
-      </table>
+      </ReportTable>
 
       {colMenu && (
         <>
@@ -2612,15 +2604,15 @@ function PackListTabInline() {
               No devices in this schematic.
             </div>
           ) : (
-            <table className="w-full border-collapse">
+            <ReportTable tableId="devices" className="w-full border-collapse">
               <thead>
-                <tr>
+                <ReportRow header>
                   <th className={plThClass}>Qty</th>
                   <th className={plThClass}>Device</th>
                   <th className={plThClass}>Type</th>
                   <th className={plThClass}>Unit Cost</th>
                   <th className={plThClass}>Ext. Cost</th>
-                </tr>
+                </ReportRow>
               </thead>
               <tbody>
                 {(groupDevicesByRoom
@@ -2628,7 +2620,7 @@ function PackListTabInline() {
                   : renderDeviceRows(mergeDevicesByModel(data.devices), "", currency)
                 )}
               </tbody>
-            </table>
+            </ReportTable>
           )}
         </>
       )}
@@ -2649,7 +2641,7 @@ function PackListTabInline() {
                   const uc = cableUnitCost(s, cableCosts);
                   const ext = uc > 0 ? uc * s.count : 0;
                   return (
-                    <tr key={i} className={rowClass(i)}>
+                    <ReportRow key={i} className={rowClass(i)}>
                       <td className={tdClass}>{s.count}&times;</td>
                       <td className={tdClass}>{s.cableType}{s.supplier && <div className="text-[10px] text-neutral-500">{s.supplier}</div>}</td>
                       <td className={tdClass}>{s.signalType}</td>
@@ -2659,7 +2651,7 @@ function PackListTabInline() {
                         {s.unitCost !== undefined ? <span title="Per-connection or section price">{formatCurrency(uc, currency)}</span> : <CableCostCell costKey={key} value={uc} onChange={setCableCost} currency={currency} />}
                       </td>
                       <td className={tdClass}>{ext > 0 ? formatCurrency(ext, currency) : "—"}</td>
-                    </tr>
+                    </ReportRow>
                   );
                 };
 
@@ -2667,9 +2659,9 @@ function PackListTabInline() {
                 let rowIdx = 0;
 
                 return (
-                  <table className="w-full border-collapse">
+                  <ReportTable tableId="cables" className="w-full border-collapse">
                     <thead>
-                      <tr>
+                      <ReportRow header>
                         <th className={plThClass}>Qty</th>
                         <th className={plThClass}>Cable Type</th>
                         <th className={plThClass}>Signal</th>
@@ -2677,7 +2669,7 @@ function PackListTabInline() {
                         {showPath && <th className={plThClass}>Route</th>}
                         <th className={plThClass}>Unit Cost</th>
                         <th className={plThClass}>Ext. Cost</th>
-                      </tr>
+                      </ReportRow>
                     </thead>
                     <tbody>
                       {categories
@@ -2685,14 +2677,14 @@ function PackListTabInline() {
                             const rows = group.rows.map((s) => renderRow(s, rowIdx++));
                             return categories.length > 1 ? (
                               <React.Fragment key={group.category}>
-                                <tr>
+                                <ReportRow>
                                   <td
                                     colSpan={99}
                                     className="pt-3 pb-1 px-2 text-xs font-semibold text-[var(--color-text-heading)] border-b border-[var(--color-border)]"
                                   >
                                     {group.category} ({group.total} cable{group.total !== 1 ? "s" : ""})
                                   </td>
-                                </tr>
+                                </ReportRow>
                                 {rows}
                               </React.Fragment>
                             ) : rows;
@@ -2701,27 +2693,27 @@ function PackListTabInline() {
                       }
                       {data.adapters.length > 0 && (
                         <>
-                          <tr>
+                          <ReportRow>
                             <td
                               colSpan={99}
                               className="pt-3 pb-1 px-2 text-xs font-semibold text-[var(--color-text-heading)] border-b border-[var(--color-border)]"
                             >
                               Adapters ({data.adapters.reduce((sum, a) => sum + a.count, 0)})
                             </td>
-                          </tr>
+                          </ReportRow>
                           {data.adapters.map((a, i) => (
-                            <tr key={`adapter-${i}`} className={rowClass(i)}>
+                            <ReportRow key={`adapter-${i}`} className={rowClass(i)}>
                               <td className={tdClass}>{a.count}&times;</td>
                               <td className={tdClass}>{a.model}</td>
                               <td className={tdClass}></td>
                               <td className={tdClass}></td>
                               {showPath && <td className={tdClass}></td>}
-                            </tr>
+                            </ReportRow>
                           ))}
                         </>
                       )}
                     </tbody>
-                  </table>
+                  </ReportTable>
                 );
               })()}
             </>
@@ -2736,26 +2728,26 @@ function PackListTabInline() {
               No cable accessories in this schematic.
             </div>
           ) : (
-            <table className="w-full border-collapse">
+            <ReportTable tableId="accessories" className="w-full border-collapse">
               <thead>
-                <tr>
+                <ReportRow header>
                   <th className={plThClass}>Qty</th>
                   <th className={plThClass}>Accessory</th>
                   <th className={plThClass}>Type</th>
                   <th className={plThClass}>Room</th>
-                </tr>
+                </ReportRow>
               </thead>
               <tbody>
                 {data.accessories.map((a, i) => (
-                  <tr key={i} className={rowClass(i)}>
+                  <ReportRow key={i} className={rowClass(i)}>
                     <td className={tdClass}>{a.count}&times;</td>
                     <td className={tdClass}>{a.model}</td>
                     <td className={tdClass}>{a.accessoryType}</td>
                     <td className={tdClass}>{a.room}</td>
-                  </tr>
+                  </ReportRow>
                 ))}
               </tbody>
-            </table>
+            </ReportTable>
           )}
         </>
       )}
@@ -2767,9 +2759,9 @@ function PackListTabInline() {
               No racks in this project.
             </div>
           ) : (
-            <table className="w-full border-collapse">
+            <ReportTable tableId="racks" className="w-full border-collapse">
               <thead>
-                <tr>
+                <ReportRow header>
                   <th className={plThClass}>Qty</th>
                   <th className={plThClass}>Rack</th>
                   <th className={plThClass}>Type</th>
@@ -2777,13 +2769,13 @@ function PackListTabInline() {
                   <th className={plThClass}>Room</th>
                   <th className={plThClass}>Unit Cost</th>
                   <th className={plThClass}>Ext. Cost</th>
-                </tr>
+                </ReportRow>
               </thead>
               <tbody>
                 {data.racks.map((r, i) => {
                   const ext = r.unitCost > 0 ? r.unitCost * r.count : 0;
                   return (
-                    <tr key={i} className={rowClass(i)}>
+                    <ReportRow key={i} className={rowClass(i)}>
                       <td className={tdClass}>{r.count}&times;</td>
                       <td className={tdClass}>{r.label}</td>
                       <td className={tdClass}>{r.rackType}</td>
@@ -2791,11 +2783,11 @@ function PackListTabInline() {
                       <td className={tdClass}>{r.room}</td>
                       <td className={tdClass}>{r.unitCost > 0 ? formatCurrency(r.unitCost, currency) : "—"}</td>
                       <td className={tdClass}>{ext > 0 ? formatCurrency(ext, currency) : "—"}</td>
-                    </tr>
+                    </ReportRow>
                   );
                 })}
               </tbody>
-            </table>
+            </ReportTable>
           )}
         </>
       )}
@@ -2809,20 +2801,20 @@ function renderDeviceRows(devices: PackListDevice[], keyPrefix = "", currency = 
   for (const d of devices) {
     const extCost = d.unitCost > 0 ? d.unitCost * d.count : 0;
     elements.push(
-      <tr key={`${keyPrefix}${idx}`} className={rowClass(idx)}>
+      <ReportRow key={`${keyPrefix}${idx}`} className={rowClass(idx)}>
         <td className={tdClass}>{d.count}&times;</td>
         <td className={tdClass}>{d.model}{d.supplier && <div className="text-[10px] text-neutral-500">{d.supplier}</div>}</td>
         <td className={tdClass}>{deviceTypeDisplay(d.deviceType)}</td>
         <td className={tdClass}>{d.unitCost > 0 ? formatCurrency(d.unitCost, currency) : "—"}</td>
         <td className={tdClass}>{extCost > 0 ? formatCurrency(extCost, currency) : "—"}</td>
-      </tr>,
+      </ReportRow>,
     );
     idx++;
     for (let ci = 0; ci < d.cards.length; ci++) {
       const c = d.cards[ci];
       const cardExt = c.cardUnitCost > 0 ? c.cardUnitCost * c.count : 0;
       elements.push(
-        <tr key={`${keyPrefix}${idx}-c${ci}`} className="bg-[var(--color-surface)]">
+        <ReportRow key={`${keyPrefix}${idx}-c${ci}`} className="bg-[var(--color-surface)]">
           <td className={`${tdClass} pl-6 text-[var(--color-text-muted)]`}>{c.count}&times;</td>
           <td className={`${tdClass} text-[var(--color-text-muted)]`}>
             <span className="pl-3">{c.cardLabel}</span>
@@ -2830,7 +2822,7 @@ function renderDeviceRows(devices: PackListDevice[], keyPrefix = "", currency = 
           <td className={tdClass} />
           <td className={`${tdClass} text-[var(--color-text-muted)]`}>{c.cardUnitCost > 0 ? formatCurrency(c.cardUnitCost, currency) : ""}</td>
           <td className={`${tdClass} text-[var(--color-text-muted)]`}>{cardExt > 0 ? formatCurrency(cardExt, currency) : ""}</td>
-        </tr>,
+        </ReportRow>,
       );
     }
   }
@@ -2848,14 +2840,14 @@ function renderGroupedDevices(devices: PackListDevice[], currency = "USD") {
   const elements: React.ReactNode[] = [];
   for (const [room, rows] of groups) {
     elements.push(
-      <tr key={`h-${room}`}>
+      <ReportRow key={`h-${room}`}>
         <td
           colSpan={99}
           className="pt-3 pb-1 px-2 text-xs font-semibold text-[var(--color-text-heading)] border-b border-[var(--color-border)]"
         >
           {room}
         </td>
-      </tr>,
+      </ReportRow>,
     );
     elements.push(...renderDeviceRows(rows, `${room}-`, currency));
   }
@@ -2975,20 +2967,20 @@ function PowerReportTab() {
           <div className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)] mb-2">
             Distribution Loading
           </div>
-          <table className="w-full border-collapse border border-[var(--color-border)] rounded overflow-hidden">
+          <ReportTable tableId="powerDistros" className="w-full border-collapse border border-[var(--color-border)] rounded overflow-hidden">
             <thead>
-              <tr>
+              <ReportRow header>
                 <th className={thClass}>Distro</th>
                 <th className={thClass}>Room</th>
                 <th className={thClass}>Capacity (W)</th>
                 <th className={thClass}>Load (W)</th>
                 <th className={thClass}>Load %</th>
                 <th className={thClass}>Status</th>
-              </tr>
+              </ReportRow>
             </thead>
             <tbody>
               {report.distros.map((d, i) => (
-                <tr key={d.nodeId} className={rowClass(i)}>
+                <ReportRow key={d.nodeId} className={rowClass(i)}>
                   <td className={tdClass}>{d.label}</td>
                   <td className={tdClass}>{d.room}</td>
                   <td className={tdClass}>{d.capacityW.toLocaleString()}</td>
@@ -3003,10 +2995,10 @@ function PowerReportTab() {
                       {d.status}
                     </span>
                   </td>
-                </tr>
+                </ReportRow>
               ))}
             </tbody>
-          </table>
+          </ReportTable>
         </div>
       )}
 
@@ -3015,9 +3007,9 @@ function PowerReportTab() {
         <div className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-text-muted)] mb-2">
           Device Power Draw
         </div>
-        <table className="w-full border-collapse border border-[var(--color-border)] rounded overflow-hidden">
+        <ReportTable tableId="powerDevices" className="w-full border-collapse border border-[var(--color-border)] rounded overflow-hidden">
           <thead>
-            <tr>
+            <ReportRow header>
               <th className={thClass}>Qty</th>
               <th className={thClass}>Device</th>
               <th className={thClass}>Type</th>
@@ -3027,14 +3019,14 @@ function PowerReportTab() {
               <th className={thClass}>Thermal (BTU/h)</th>
               <th className={thClass}>Total (BTU/h)</th>
               <th className={thClass}>Voltage</th>
-            </tr>
+            </ReportRow>
           </thead>
           <tbody>
             {report.devices.map((d, i) => {
               const thermalTitle = d.thermalDerived ? "Auto-derived from power draw (× 3.412)" : undefined;
               const thermalCls = d.thermalDerived ? `${tdClass} italic text-[var(--color-text-muted)]` : tdClass;
               return (
-                <tr key={`${d.model}-${d.room}-${i}`} className={rowClass(i)}>
+                <ReportRow key={`${d.model}-${d.room}-${i}`} className={rowClass(i)}>
                   <td className={tdClass}>{d.count}x</td>
                   <td className={tdClass}>{d.model}</td>
                   <td className={tdClass}>{deviceTypeDisplay(d.deviceType)}</td>
@@ -3048,11 +3040,11 @@ function PowerReportTab() {
                     {d.thermalBtuh > 0 ? `${d.thermalDerived ? "~" : ""}${(d.thermalBtuh * d.count).toLocaleString()}` : "—"}
                   </td>
                   <td className={tdClass}>{d.voltage || "—"}</td>
-                </tr>
+                </ReportRow>
               );
             })}
           </tbody>
-        </table>
+        </ReportTable>
       </div>
     </div>
   );
