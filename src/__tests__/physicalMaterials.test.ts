@@ -85,7 +85,7 @@ describe("distributed patch references", () => {
     const hidden = reconcilePatchReferences(diagram, [compact]);
     expect(hidden.find(n => n.id === ref.id)?.hidden).toBe(true);
     expect(patchReferenceEdges(hidden, [compact])).toEqual([compact]);
-    expect(reconcilePatchReferences(hidden, [e]).find(n => n.id === ref.id)?.position).toEqual({ x: 1000, y: 200 });
+    expect(reconcilePatchReferences(hidden, [e]).find(n => n.id === ref.id)?.position).toEqual({ x: 1008, y: 208 });
     expect(reconcilePatchReferences(hidden, []).some(n => n.type === "patch-reference")).toBe(false);
   });
   it("represents a shared panel separately for different circuits, with one real device", () => {

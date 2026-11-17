@@ -34,7 +34,8 @@ export default function PatchReferenceNode({ id, data, selected }: NodeProps<Ref
       <span className="text-[10px] font-semibold text-center truncate" title={port?.label || data.portId} style={{ color }}>{port?.label || data.portId}</span>
       <span className="text-[9px] text-[var(--color-text-muted)] capitalize text-right">{right}</span>
     </div>
-    <Handle type="source" id={left} position={Position.Left} isConnectable={false} className="!w-2.5 !h-2.5 !border-2 !border-[var(--color-border)] !-left-[5px]" style={{ top: PATCH_REFERENCE_HANDLE_Y, background: color }} />
-    <Handle type="source" id={right} position={Position.Right} isConnectable={false} className="!w-2.5 !h-2.5 !border-2 !border-[var(--color-border)] !-right-[5px]" style={{ top: PATCH_REFERENCE_HANDLE_Y, background: color }} />
+    {/* Absolute handles use the padding box; compensate the 1px outer border so their centers land on the routing grid. */}
+    <Handle type="source" id={left} position={Position.Left} isConnectable={false} className="!w-2.5 !h-2.5 !border-2 !border-[var(--color-border)] !-left-px" style={{ top: PATCH_REFERENCE_HANDLE_Y - 1, background: color }} />
+    <Handle type="source" id={right} position={Position.Right} isConnectable={false} className="!w-2.5 !h-2.5 !border-2 !border-[var(--color-border)] !-right-px" style={{ top: PATCH_REFERENCE_HANDLE_Y - 1, background: color }} />
   </div>;
 }

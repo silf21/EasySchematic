@@ -21,6 +21,18 @@ test("distributed references route to physical faces, remain independently movab
   await expect(page.getByTestId("patch-reference").first()).toHaveCSS("width", "144px");
   await expect(page.getByTestId("patch-reference").first()).toHaveCSS("height", "64px");
   await expect(page.locator(".react-flow__edge-patch-reference-edge")).toHaveCount(6);
+  // Measure actual rendered centers in flow coordinates, including border offsets.
+  await expect.poll(() => page.locator('.react-flow__node-patch-reference .react-flow__handle').evaluateAll(handles => {
+    const viewport = document.querySelector('.react-flow__viewport')!;
+    const matrix = new DOMMatrix(getComputedStyle(viewport).transform);
+    const pane = viewport.parentElement!.getBoundingClientRect();
+    return handles.every(handle => {
+      const r = handle.getBoundingClientRect();
+      const x = ((r.left + r.width / 2) - pane.left - matrix.e) / matrix.a;
+      const y = ((r.top + r.height / 2) - pane.top - matrix.f) / matrix.d;
+      return Math.abs(x / 16 - Math.round(x / 16)) < 0.01 && Math.abs(y / 16 - Math.round(y / 16)) < 0.01;
+    });
+  })).toBe(true);
   await page.getByRole("button", { name: "View options", exact: true }).click();
   await page.getByLabel("Show cable lengths", { exact: true }).check();
   await expect(page.getByText(/D001-A · 10m/, { exact: true })).toBeVisible();

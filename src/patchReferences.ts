@@ -1,3 +1,4 @@
+import { GRID_SIZE } from "./gridConstants";
 import type { ConnectionEdge, PatchReferenceNode, SchematicNode } from "./types";
 import { entryFace, exitFace, resolvableHops, segmentsForEdge } from "./patchCircuits";
 
@@ -36,13 +37,15 @@ export function reconcilePatchReferences(nodes: SchematicNode[], edges: Connecti
       wanted.add(id);
       const hidden = edge.data?.showPatchReferences === false;
       if (old) {
+        const position = { x: Math.round(old.position.x / GRID_SIZE) * GRID_SIZE, y: Math.round(old.position.y / GRID_SIZE) * GRID_SIZE };
+        const moved = position.x !== old.position.x || position.y !== old.position.y;
         const resized = old.width !== PATCH_REFERENCE_WIDTH || old.height !== PATCH_REFERENCE_HEIGHT;
-        if (!!old.hidden !== hidden || resized) updates.set(id, {
-          ...old, hidden, width: PATCH_REFERENCE_WIDTH, height: PATCH_REFERENCE_HEIGHT,
+        if (!!old.hidden !== hidden || resized || moved) updates.set(id, {
+          ...old, position, hidden, width: PATCH_REFERENCE_WIDTH, height: PATCH_REFERENCE_HEIGHT,
           ...(resized ? { measured: undefined } : {}),
         });
       } else additions.push({
-        id, type: "patch-reference", position: { x: sourcePosition.x + 220 + i * 260, y: sourcePosition.y + 140 + lane * 100 },
+        id, type: "patch-reference", position: { x: Math.round((sourcePosition.x + 220 + i * 260) / GRID_SIZE) * GRID_SIZE, y: Math.round((sourcePosition.y + 140 + lane * 100) / GRID_SIZE) * GRID_SIZE },
         width: PATCH_REFERENCE_WIDTH, height: PATCH_REFERENCE_HEIGHT, hidden, zIndex: 5,
         data: { connectionId: edge.id, panelNodeId: hop.panelNodeId, portId: hop.portId },
       });
