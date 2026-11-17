@@ -87,6 +87,7 @@ export function patchReferenceEdges(nodes: SchematicNode[], edges: ConnectionEdg
           patchSectionStubbed: override?.stubbed === true,
           cableId: sections[i]?.directAttach ? "" : override?.label?.trim() || `${baseId}-${String.fromCharCode(65 + i)}`,
           cableLength: override?.cableLength ?? "", supplier: override?.supplier ?? edge.data?.supplier,
+          unitCost: override?.unitCost ?? edge.data?.unitCost,
         },
       };
     });

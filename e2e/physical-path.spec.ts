@@ -78,7 +78,7 @@ test("distributed references route to physical faces, remain independently movab
   await page.keyboard.press("Escape");
   await page.evaluate(() => window.dispatchEvent(new CustomEvent("easyschematic:open-reports", { detail: "suppliers" })));
   await expect(page.getByRole("button", { name: "By Supplier", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: /Venue Rental · 2 items/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Venue Rental · 1 items?/ })).toBeVisible();
   expect(errors).toEqual([]);
 });
 
@@ -126,4 +126,38 @@ test("panel references mirror the real panel's name and auxiliary fields", async
   await page.reload();
   await expect(reference.getByText("MZH FOH", { exact: true })).toBeVisible();
   await expect(reference.getByText("panel-foh-01", { exact: true })).toBeVisible();
+});
+
+test("each physical patch section has independent cable properties", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("easyschematic-skip-landing", "1"));
+  await page.goto("/");
+  await expect(page.locator(".react-flow")).toBeVisible({ timeout: 30000 });
+  await page.locator('input[type="file"][accept=".json"]').first().setInputFiles({ name: "sections.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(fixture)) });
+  const open = async (index: number) => {
+    await page.locator(`.react-flow__edge[data-id="dmx1:patch-section:${index}"]`).dispatchEvent("contextmenu", { button: 2, clientX: 500, clientY: 250 });
+    return page.getByTestId("patch-section-properties");
+  };
+  let properties = await open(0);
+  await expect(properties).toContainText("Patch section A");
+  await properties.getByLabel("Section cable ID", { exact: true }).fill("FOH-Cable");
+  await properties.getByLabel("Section cable length", { exact: true }).fill("10m");
+  await properties.getByLabel("Supplier", { exact: true }).fill("Supplier A");
+  await properties.getByLabel("Section unit cost", { exact: true }).fill("12.50");
+  await page.keyboard.press("Escape");
+  properties = await open(2);
+  await expect(properties.getByLabel("Supplier", { exact: true })).toHaveValue("Rental");
+  await properties.getByLabel("Section cable length", { exact: true }).fill("20m");
+  await properties.getByLabel("Supplier", { exact: true }).fill("Supplier B");
+  await properties.getByLabel("Section unit cost", { exact: true }).fill("25");
+  await page.keyboard.press("Escape");
+  properties = await open(1);
+  await expect(properties.getByLabel("Supplier", { exact: true })).toHaveValue("Festinstalliert");
+  await page.keyboard.press("Escape");
+  await page.reload();
+  await expect(page.getByTestId("patch-reference")).toHaveCount(4);
+  properties = await open(0);
+  await expect(properties.getByLabel("Section cable ID", { exact: true })).toHaveValue("FOH-Cable");
+  await expect(properties.getByLabel("Section cable length", { exact: true })).toHaveValue("10m");
+  await expect(properties.getByLabel("Supplier", { exact: true })).toHaveValue("Supplier A");
+  await expect(properties.getByLabel("Section unit cost", { exact: true })).toHaveValue("12.5");
 });

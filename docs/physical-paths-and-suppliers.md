@@ -103,3 +103,9 @@ Distributed panel references use the real panel's name-display settings (short n
 Cable ID and length labels on routed patch sections are anchored halfway along the actual routed wire, including bent Ethernet runs. Right-click a displayed section and choose **Set Cable Length…** to edit that section's length. Other section lengths and the compact connection's stored length are preserved. The global cable-ID and cable-length visibility controls remain independent.
 
 Generated panel references have a subtle neutral background and a dashed outline to distinguish them from actual devices. Their text and ports remain fully opaque, selected references retain the blue selection border, and explicit real-panel header colors are preserved.
+
+## Properties of individual physical cable sections
+
+Right-click the required section in the distributed schematic. **Patch section A/B/…** identifies its endpoints and exposes its cable ID, length, Supplier and unit cost. Each field updates only that section. Unspecified suppliers/prices inherit the compact connection's defaults; a section can have a different supplier and price, or be marked Festinstalliert. Quantities, cable schedule and supplier totals use the section values. Direct plug attachments are identified as such and do not expose properties for a nonexistent cable.
+
+The older **Venue provided** device checkbox also excludes that device from the pack list, but is a separate legacy flag. It does not assign a Supplier and does not mark the device's attached cables as installed. Use **Supplier = Festinstalliert** to describe fixed devices and each relevant fixed cable section consistently.

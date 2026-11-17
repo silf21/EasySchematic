@@ -181,3 +181,24 @@ it("stubs an individual patch section without changing quantities, and supports 
     expect(patchReferenceEdges(store.getState().nodes, store.getState().edges).every(e => !e.data?.patchSectionStubbed)).toBe(true);
   } finally { store.setState(before); }
 });
+
+it("keeps suppliers, lengths, prices and cable IDs independent across all physical sections", async () => {
+  const { useSchematicStore: store } = await import("../store");
+  const before = store.getState();
+  try {
+    const e = patched();
+    store.setState({ nodes, edges: [e] });
+    store.getState().setPatchSegmentOverride(e.id, 0, { label: "FOH-Cable", cableLength: "10m", supplier: "Supplier A", unitCost: 12.5 });
+    store.getState().setPatchSegmentOverride(e.id, 2, { cableLength: "20m", supplier: "Supplier B", unitCost: 25 });
+    const current = store.getState();
+    const schedule = computeCableSchedule(current.nodes, current.edges);
+    expect(schedule.map(r => [r.cableLength, r.supplier, r.unitCost])).toEqual([["10m", "Supplier A", 12.5], ["", "Festinstalliert", 100], ["20m", "Supplier B", 25]]);
+    expect(schedule[0].cableId).toBe("FOH-Cable");
+    expect(current.edges[0].data?.supplier).toBe("Rental");
+    const groups = supplierGroups(computeSupplierMaterials(current.nodes, current.edges));
+    expect(groups.find(g => g.supplier === "Supplier A")?.cost).toBe(12.5);
+    expect(groups.find(g => g.supplier === "Supplier B")?.cost).toBe(25);
+    expect(groups.some(g => g.supplier === "Festinstalliert")).toBe(false);
+    expect(patchReferenceEdges(current.nodes, current.edges).map(e => e.data?.unitCost)).toEqual([12.5, 100, 25]);
+  } finally { store.setState(before); }
+});
