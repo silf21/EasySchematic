@@ -235,7 +235,7 @@ export default function EdgeContextMenu() {
     if (!menu) return;
     if (menu.initialEdit === "length") {
       const edge = useSchematicStore.getState().edges.find((e) => e.id === menu.edgeId);
-      setLabelValue((edge?.data?.cableLength as string) ?? "");
+      setLabelValue(menu.segmentIndex != null ? edge?.data?.patchSegments?.[menu.segmentIndex]?.cableLength ?? "" : (edge?.data?.cableLength as string) ?? "");
       setEditingLabel("length");
     } else {
       setEditingLabel(false);
@@ -279,7 +279,7 @@ export default function EdgeContextMenu() {
     if (!menu) return;
     const store = useSchematicStore.getState();
     const edge = store.edges.find((e) => e.id === menu.edgeId);
-    setLabelValue((edge?.data?.cableLength as string) ?? "");
+    setLabelValue(menu.segmentIndex != null ? edge?.data?.patchSegments?.[menu.segmentIndex]?.cableLength ?? "" : (edge?.data?.cableLength as string) ?? "");
     setEditingLabel("length");
   }, [menu]);
 
@@ -308,7 +308,11 @@ export default function EdgeContextMenu() {
       : editingLabel === "target" ? "targetLabel"
       : editingLabel === "length" ? "cableLength"
       : "label";
-    store.patchEdgeData(menu.edgeId, { [field]: labelValue.trim() || undefined });
+    if (editingLabel === "length" && menu.segmentIndex != null) {
+      store.setPatchSegmentOverride(menu.edgeId, menu.segmentIndex, { cableLength: labelValue.trim() || undefined });
+    } else {
+      store.patchEdgeData(menu.edgeId, { [field]: labelValue.trim() || undefined });
+    }
     useSchematicStore.setState({ edgeContextMenu: null });
     setEditingLabel(false);
   }, [menu, labelValue, editingLabel]);

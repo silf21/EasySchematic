@@ -1,3 +1,4 @@
+import { patchLabelPosition } from "../patchReferenceLabels";
 import { patchSectionStubEnds } from "../patchSectionStubs";
 import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath, type EdgeProps } from "@xyflow/react";
 import { useSchematicStore } from "../store";
@@ -20,6 +21,7 @@ export default function PatchReferenceEdge(props: EdgeProps<ConnectionEdge>) {
   const cableId = showIds && !data?.hideCableId ? data?.cableId : "";
   const length = showLengths ? data?.cableLength : "";
   const label = [cableId, length, fixed && (cableId || length) ? "Festinstalliert" : ""].filter(Boolean).join(" · ");
+  const labelPosition = patchLabelPosition(route?.waypoints, { x: labelX, y: labelY });
   const style = { ...props.style, stroke: data?.directAttach ? "#9ca3af" : data?.color ?? props.style?.stroke ?? signalCssColor(data?.signalType ?? "custom"), strokeWidth: data?.directAttach ? 1 : selected ? 3 : 2, strokeDasharray: fixed ? "6 4" : LINE_STYLE_DASHARRAY[data?.lineStyle ?? "solid"] };
   if (data?.patchSectionStubbed) {
     const ends = patchSectionStubEnds({ ...props, sourceHandle: props.sourceHandleId, targetHandle: props.targetHandleId } as ConnectionEdge, nodes,
@@ -37,7 +39,7 @@ export default function PatchReferenceEdge(props: EdgeProps<ConnectionEdge>) {
   }
   return <>
     <BaseEdge id={id} path={path} interactionWidth={props.interactionWidth} style={style} />
-    {!data?.directAttach && label && <EdgeLabelRenderer><div className="text-[10px] bg-[var(--color-surface)] text-[var(--color-text)] px-1 rounded" style={{ position: "absolute", pointerEvents: "none", transform: `translate(-50%, -50%) translate(${route?.labelX ?? labelX}px, ${route?.labelY ?? labelY}px)` }}>
+    {!data?.directAttach && label && <EdgeLabelRenderer><div data-testid="patch-section-label" data-edge-id={id} className="text-[10px] bg-[var(--color-surface)] text-[var(--color-text)] px-1 rounded" style={{ position: "absolute", pointerEvents: "none", transform: `translate(-50%, -50%) translate(${labelPosition.x}px, ${labelPosition.y}px)` }}>
       {label}
     </div></EdgeLabelRenderer>}
   </>;
