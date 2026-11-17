@@ -18,6 +18,8 @@ test("distributed references route to physical faces, remain independently movab
   await expect(page.locator(".react-flow")).toBeVisible({ timeout: 30000 });
   await page.locator('input[type="file"][accept=".json"]').first().setInputFiles({ name: "references.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(fixture)) });
   await expect(page.getByTestId("patch-reference")).toHaveCount(4);
+  await expect(page.getByTestId("patch-reference").first()).toHaveCSS("width", "144px");
+  await expect(page.getByTestId("patch-reference").first()).toHaveCSS("height", "64px");
   await expect(page.locator(".react-flow__edge-patch-reference-edge")).toHaveCount(6);
   const refs = page.locator('.react-flow__node-patch-reference');
   const first = refs.nth(0);
@@ -33,7 +35,7 @@ test("distributed references route to physical faces, remain independently movab
   await page.reload();
   await expect(page.getByTestId("patch-reference")).toHaveCount(4);
   await expect.poll(() => page.locator('.react-flow__node-patch-reference').nth(0).getAttribute("style")).toBe(saved);
-  await page.getByRole("button", { name: /Patch Bay/ }).click();
+  await page.getByTestId("patch-reference").first().dblclick();
   const flip = page.getByTestId("flip-patch-face").first();
   await expect(flip).toContainText("Previous: Front");
   await flip.click();

@@ -1,3 +1,4 @@
+import { openPatchBay } from "../patchBayNavigation";
 import { memo, useMemo, useCallback } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import type { DeviceNode as DeviceNodeType, Port } from "../types";
@@ -493,7 +494,7 @@ function DeviceNodeComponent({ id, data, selected }: NodeProps<DeviceNodeType>) 
 
   return (
     <div
-      onDoubleClick={() => setEditingNodeId(id)}
+      onDoubleClick={() => data.deviceType === "patch-panel" ? openPatchBay(id) : setEditingNodeId(id)}
       className={`
         relative rounded-lg border bg-white
         ${isOverlapping ? "border-red-400 shadow-lg shadow-red-400/30" : selected ? "border-blue-500 shadow-lg shadow-blue-500/20" : "border-[var(--color-border)]"}

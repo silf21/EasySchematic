@@ -4,6 +4,9 @@ import { useSchematicStore } from "../store";
 import type { PatchReferenceNode as ReferenceNode } from "../types";
 import { entryFace, exitFace } from "../patchCircuits";
 import { signalCssColor } from "../typeRegistry";
+import { contrastingTextColor } from "../colorContrast";
+import { PATCH_REFERENCE_WIDTH, PATCH_REFERENCE_HEIGHT, PATCH_REFERENCE_HANDLE_Y } from "../patchReferences";
+import { openPatchBay } from "../patchBayNavigation";
 
 export default function PatchReferenceNode({ id, data, selected }: NodeProps<ReferenceNode>) {
   const panel = useSchematicStore(s => s.nodes.find(n => n.id === data.panelNodeId));
@@ -14,12 +17,24 @@ export default function PatchReferenceNode({ id, data, selected }: NodeProps<Ref
   const right = hop ? exitFace(hop) : "front";
   useEffect(() => { update(id); }, [id, left, update]);
   const port = panel?.type === "device" ? panel.data.ports.find(p => p.id === data.portId) : undefined;
+  const headerColor = panel?.type === "device" ? panel.data.headerColor : undefined;
+  const label = String(panel?.data.label ?? "Panel");
   const color = signalCssColor(edge?.data?.signalType ?? "custom");
-  return <div data-testid="patch-reference" className={`rounded border-2 bg-[var(--color-surface)] text-[var(--color-text)] shadow-sm ${selected ? "border-blue-500" : "border-[var(--color-border)]"}`} style={{ width: 220, height: 80 }}>
-    <div className="px-2 py-1 text-xs font-semibold truncate border-b border-[var(--color-border)]" title={String(panel?.data.label ?? "Panel")}>{String(panel?.data.label ?? "Panel")}</div>
-    <div className="text-center text-xs font-semibold pt-1 truncate" style={{ color }}>{port?.label || data.portId}</div>
-    <div className="flex justify-between px-3 text-[10px] capitalize"><span>{left}</span><span className="opacity-40">············</span><span>{right}</span></div>
-    <Handle type="source" id={left} position={Position.Left} isConnectable={false} style={{ top: 60, background: color }} />
-    <Handle type="source" id={right} position={Position.Right} isConnectable={false} style={{ top: 60, background: color }} />
+  return <div data-testid="patch-reference" title="Double-click to open Patch Bay"
+    onDoubleClick={() => openPatchBay(data.panelNodeId, data.connectionId)}
+    className={`relative rounded-lg border bg-white ${selected ? "border-blue-500 shadow-lg shadow-blue-500/20" : "border-[var(--color-border)]"}`}
+    style={{ width: PATCH_REFERENCE_WIDTH, height: PATCH_REFERENCE_HEIGHT }}>
+    <div className="px-3 border-b border-[var(--color-border)] rounded-t-lg flex items-center justify-center"
+      style={{ height: 31, backgroundColor: headerColor || "var(--color-surface)" }}>
+      <span className="text-xs font-semibold text-[var(--color-text-heading)] truncate leading-tight" title={label}
+        style={headerColor ? { color: contrastingTextColor(headerColor) } : undefined}>{label}</span>
+    </div>
+    <div className="grid grid-cols-[1fr_1.5fr_1fr] items-center px-2 gap-1" style={{ height: 31 }}>
+      <span className="text-[9px] text-[var(--color-text-muted)] capitalize">{left}</span>
+      <span className="text-[10px] font-semibold text-center truncate" title={port?.label || data.portId} style={{ color }}>{port?.label || data.portId}</span>
+      <span className="text-[9px] text-[var(--color-text-muted)] capitalize text-right">{right}</span>
+    </div>
+    <Handle type="source" id={left} position={Position.Left} isConnectable={false} className="!w-2.5 !h-2.5 !border-2 !border-[var(--color-border)] !-left-[5px]" style={{ top: PATCH_REFERENCE_HANDLE_Y, background: color }} />
+    <Handle type="source" id={right} position={Position.Right} isConnectable={false} className="!w-2.5 !h-2.5 !border-2 !border-[var(--color-border)] !-right-[5px]" style={{ top: PATCH_REFERENCE_HANDLE_Y, background: color }} />
   </div>;
 }

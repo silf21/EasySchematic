@@ -1,4 +1,4 @@
-import { patchReferenceEdges } from "../patchReferences";
+import { PATCH_REFERENCE_WIDTH, PATCH_REFERENCE_HEIGHT, PATCH_REFERENCE_HANDLE_Y, patchReferenceEdges } from "../patchReferences";
 import { entryFace, exitFace } from "../patchCircuits";
 import type { ReactFlowInstance } from "@xyflow/react";
 import { useSchematicStore } from "../store";
@@ -100,10 +100,11 @@ export function buildDxf(rfInstance: ReactFlowInstance): string | null {
     const port = panel?.type === "device" ? panel.data.ports.find(p => p.id === node.data.portId) : undefined;
     const hop = state.edges.find(e => e.id === node.data.connectionId)?.data?.patchHops?.find(h => h.panelNodeId === node.data.panelNodeId && h.portId === node.data.portId);
     const { x, y } = internal.internals.positionAbsolute;
-    writer.addRect(CANONICAL_LAYERS.DEVICES, pxToIn(x), -pxToIn(y + 80), pxToIn(220), pxToIn(80));
-    writer.addText(CANONICAL_LAYERS.LABELS, pxToIn(x + 8), -pxToIn(y + 18), String(panel?.data.label ?? "Panel"), { height: pxToIn(11) });
-    writer.addText(CANONICAL_LAYERS.PORTS, pxToIn(x + 8), -pxToIn(y + 40), port?.label ?? node.data.portId, { height: pxToIn(11) });
-    writer.addText(CANONICAL_LAYERS.PORTS, pxToIn(x + 8), -pxToIn(y + 60), hop ? `${entryFace(hop)} | ${exitFace(hop)}` : "Rear | Front", { height: pxToIn(10) });
+    writer.addRect(CANONICAL_LAYERS.DEVICES, pxToIn(x), -pxToIn(y + PATCH_REFERENCE_HEIGHT), pxToIn(PATCH_REFERENCE_WIDTH), pxToIn(PATCH_REFERENCE_HEIGHT));
+    writer.addText(CANONICAL_LAYERS.LABELS, pxToIn(x + PATCH_REFERENCE_WIDTH / 2), -pxToIn(y + 20), String(panel?.data.label ?? "Panel"), { height: pxToIn(11), align: "center" });
+    writer.addText(CANONICAL_LAYERS.PORTS, pxToIn(x + PATCH_REFERENCE_WIDTH / 2), -pxToIn(y + PATCH_REFERENCE_HANDLE_Y + 3), port?.label ?? node.data.portId, { height: pxToIn(10), align: "center" });
+    writer.addText(CANONICAL_LAYERS.PORTS, pxToIn(x + 6), -pxToIn(y + PATCH_REFERENCE_HANDLE_Y + 3), hop ? entryFace(hop) : "Rear", { height: pxToIn(8) });
+    writer.addText(CANONICAL_LAYERS.PORTS, pxToIn(x + PATCH_REFERENCE_WIDTH - 6), -pxToIn(y + PATCH_REFERENCE_HANDLE_Y + 3), hop ? exitFace(hop) : "Front", { height: pxToIn(8), align: "right" });
   }
 
   // ─── Annotations ────────────────────────────────────────────────────

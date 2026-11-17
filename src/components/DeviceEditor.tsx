@@ -1137,6 +1137,10 @@ export default function DeviceEditor() {
                 placeholder="https://…"
               />
             </Field>
+            <Field label="Supplier">
+              <SupplierInput value={supplier} onChange={setSupplier}
+                className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded px-2 py-1.5 text-xs text-[var(--color-text-heading)] outline-none focus:border-blue-500" />
+            </Field>
           </div>
 
           {/* Header color picker */}
@@ -1591,9 +1595,6 @@ export default function DeviceEditor() {
             </div>
           </details>
 
-          <div className="grid grid-cols-2 gap-3 text-xs my-2">
-            <label>Supplier<SupplierInput value={supplier} onChange={setSupplier} /></label>
-          </div>
           {/* Cost & Procurement */}
           <details className="text-xs">
             <summary className="cursor-pointer text-[var(--color-text-secondary)] hover:text-[var(--color-text)] select-none py-1">

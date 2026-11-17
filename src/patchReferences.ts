@@ -1,8 +1,9 @@
 import type { ConnectionEdge, PatchReferenceNode, SchematicNode } from "./types";
 import { entryFace, exitFace, resolvableHops, segmentsForEdge } from "./patchCircuits";
 
-export const PATCH_REFERENCE_WIDTH = 220;
-export const PATCH_REFERENCE_HEIGHT = 80;
+export const PATCH_REFERENCE_WIDTH = 144;
+export const PATCH_REFERENCE_HEIGHT = 64;
+export const PATCH_REFERENCE_HANDLE_Y = 48;
 export function patchReferenceId(edgeId: string, panelId: string, portId: string): string {
   return `patch-ref:${encodeURIComponent(edgeId)}:${encodeURIComponent(panelId)}:${encodeURIComponent(portId)}`;
 }
@@ -35,7 +36,11 @@ export function reconcilePatchReferences(nodes: SchematicNode[], edges: Connecti
       wanted.add(id);
       const hidden = edge.data?.showPatchReferences === false;
       if (old) {
-        if (!!old.hidden !== hidden) updates.set(id, { ...old, hidden });
+        const resized = old.width !== PATCH_REFERENCE_WIDTH || old.height !== PATCH_REFERENCE_HEIGHT;
+        if (!!old.hidden !== hidden || resized) updates.set(id, {
+          ...old, hidden, width: PATCH_REFERENCE_WIDTH, height: PATCH_REFERENCE_HEIGHT,
+          ...(resized ? { measured: undefined } : {}),
+        });
       } else additions.push({
         id, type: "patch-reference", position: { x: sourcePosition.x + 220 + i * 260, y: sourcePosition.y + 140 + lane * 100 },
         width: PATCH_REFERENCE_WIDTH, height: PATCH_REFERENCE_HEIGHT, hidden, zIndex: 5,

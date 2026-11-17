@@ -19,7 +19,9 @@ Changing the face preserves section lengths, suppliers and cable labels.
 
 Virtual patch assignments now show local, independently movable panel-position
 references. Every reference names the real panel and used position (for example DMX1)
-and exposes its Front and Rear faces. The lines actually terminate at these handles;
+and exposes its Front and Rear faces. Compact references use the same 144px width
+and header / port-row styling as devices. Double-click a reference or a real patch
+panel device to open Patch Bay at the corresponding panel. The lines actually terminate at these handles;
 the usual automatic or simple router routes each displayed section.
 
 The same real panel can appear at multiple places along different circuits. These
