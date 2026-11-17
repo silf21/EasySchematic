@@ -474,9 +474,9 @@ interface SchematicState {
    *  unchanged "already in this room" device for a successful placement. Used by the
    *  bridge's place_device_in_room tool. */
   placeDeviceInRoom: (nodeId: string, roomId: string, relativePosition?: { x: number; y: number }) => boolean;
-  /** Re-evaluate room membership for every non-room node. Used after a room is
-   *  created, resized, or moved so devices get parented/unparented to match
-   *  the new layout. */
+  /** Re-evaluate midpoint membership for rooms and devices. Room parents must
+   *  have greater area, preventing cycles and creation-order dependence.
+   *  Used after creation, resize, move and load; excludes routing anchors. */
   reparentAllDevices: (options?: { skipUndo?: boolean }) => void;
   /** Called when a room's NodeResizer finishes. Snapshots undo and reconciles
    *  device membership against the new bounds. */
@@ -1517,6 +1517,12 @@ export function isAutoNamedDevice(
   return suffix.length > 0 && /^\d+$/.test(suffix);
 }
 
+/** Stable room rank: larger rooms are containers; equal-sized overlaps stay peers. */
+function roomArea(node: SchematicNode): number {
+  return (node.measured?.width ?? (node.style?.width as number) ?? node.width ?? 400)
+    * (node.measured?.height ?? (node.style?.height as number) ?? node.height ?? 300);
+}
+
 /** Ensure parent nodes appear before their children in the array (topological sort). */
 function sortNodesParentFirst(nodes: SchematicNode[]): SchematicNode[] {
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));
@@ -1533,7 +1539,7 @@ function sortNodesParentFirst(nodes: SchematicNode[]): SchematicNode[] {
   }
 
   // Visit rooms first so all rooms precede non-room nodes
-  for (const n of nodes) if (n.type === "room") visit(n);
+  for (const n of nodes.filter(n => n.type === "room").sort((a, b) => roomArea(b) - roomArea(a) || a.id.localeCompare(b.id))) visit(n);
   for (const n of nodes) if (n.type !== "room") visit(n);
   return result;
 }
@@ -1578,13 +1584,16 @@ function findBestEnclosingRoom(
   centerY: number,
   nodes: SchematicNode[],
   nodeMap: Map<string, SchematicNode>,
+  reconcilingAll = false,
 ): SchematicNode | undefined {
   let best: SchematicNode | undefined;
   let bestArea = Infinity;
   for (const n of nodes) {
     if (n.type !== "room") continue;
     if (n.id === candidateId) continue;
-    if (candidateIsRoom && isAncestorOf(candidateId, n.id, nodeMap)) continue;
+    if (candidateIsRoom && !reconcilingAll && isAncestorOf(candidateId, n.id, nodeMap)) continue;
+    const candidate = nodeMap.get(candidateId);
+    if (candidateIsRoom && candidate && roomArea(n) <= roomArea(candidate)) continue;
     const rw = n.measured?.width ?? (n.style?.width as number) ?? (n.width as number) ?? 400;
     const rh = n.measured?.height ?? (n.style?.height as number) ?? (n.height as number) ?? 300;
     const absPos = getAbsolutePosition(n.id, nodeMap);
@@ -1593,7 +1602,7 @@ function findBestEnclosingRoom(
       centerY >= absPos.y && centerY <= absPos.y + rh
     ) {
       const area = rw * rh;
-      if (area < bestArea) {
+      if (area < bestArea || (area === bestArea && best && n.id.localeCompare(best.id) < 0)) {
         best = n;
         bestArea = area;
       }
@@ -1611,8 +1620,8 @@ function nodeCenterFromAbsolute(
   absolutePosition: { x: number; y: number },
 ): { x: number; y: number } {
   const isRoom = node.type === "room";
-  const w = node.measured?.width ?? (isRoom ? 400 : 144);
-  const h = node.measured?.height ?? (isRoom ? 300 : 48);
+  const w = node.measured?.width ?? (isRoom ? (node.style?.width as number) ?? node.width ?? 400 : 144);
+  const h = node.measured?.height ?? (isRoom ? (node.style?.height as number) ?? node.height ?? 300 : 48);
   return { x: absolutePosition.x + w / 2, y: absolutePosition.y + h / 2 };
 }
 
@@ -3889,8 +3898,8 @@ export const useSchematicStore = create<SchematicState>((set, get) => ({
     // Rooms must appear before their potential children in the array
     // Deselect everything else so the new room is the sole selection
     const deselected = state.nodes.map((n) => (n.selected ? { ...n, selected: false } : n));
-    set({ nodes: [newRoom, ...deselected] });
-    // Capture any existing devices that now fall inside the new room's bounds
+    set({ nodes: sortNodesParentFirst([newRoom, ...deselected]) });
+    // Reconcile existing rooms and devices by their absolute midpoints
     get().reparentAllDevices({ skipUndo: true });
     get().saveToLocalStorage();
   },
@@ -4151,15 +4160,11 @@ export const useSchematicStore = create<SchematicState>((set, get) => ({
       // Waypoints belong to edges, not rooms — reparenting them turns their
       // .position into relative-to-room coords, which downstream sync code
       // mistakes for absolute and corrupts manualWaypoints.
-      if (node.type === "room" || node.type === "waypoint" || node.type === "patch-reference") continue;
+      if (node.type === "waypoint" || node.type === "patch-reference") continue;
 
       const absPos = getAbsolutePosition(node.id, nodeMap);
-      const nodeW = node.measured?.width ?? 144;
-      const nodeH = node.measured?.height ?? 48;
-      const centerX = absPos.x + nodeW / 2;
-      const centerY = absPos.y + nodeH / 2;
-
-      const targetRoom = findBestEnclosingRoom(node.id, false, centerX, centerY, state.nodes, nodeMap);
+      const center = nodeCenterFromAbsolute(node, absPos);
+      const targetRoom = findBestEnclosingRoom(node.id, node.type === "room", center.x, center.y, state.nodes, nodeMap, true);
       const newParent = targetRoom?.id;
       if (node.parentId === newParent) continue;
 
@@ -8058,6 +8063,10 @@ if (typeof window !== "undefined") {
 // References are presentation nodes. Reconcile from canonical patch assignments after
 // edits/load/undo; never turn reference wiring into extra material or port occupancy.
 useSchematicStore.subscribe((state, previous) => {
+  if (state.loadSeq !== previous.loadSeq) {
+    state.reparentAllDevices({ skipUndo: true });
+    if (useSchematicStore.getState().nodes !== state.nodes) return;
+  }
   if (state.nodes === previous.nodes && state.edges === previous.edges && state.useShortNames === previous.useShortNames && state.wrapDeviceLabels === previous.wrapDeviceLabels) return;
   const nodes = reconcilePatchReferences(state.nodes, state.edges, state);
   if (nodes !== state.nodes) useSchematicStore.setState({ nodes });
