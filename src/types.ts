@@ -241,24 +241,8 @@ export interface InstalledSlot {
   portIds: string[];            // tracks which ports in device.ports belong to this slot
 }
 
-export type Provision = "bring" | "installed" | "provided";
-
-/** A real cable, including an adapter cable, in a physical run. No device or dummy edge required. */
-export interface PhysicalCable {
-  id: string;
-  cableId?: string;
-  label?: string;
-  cableLength?: string;
-  sourceConnector?: ConnectorType;
-  targetConnector?: ConnectorType;
-  supplier?: string;
-  unitCost?: number;
-  provision?: Provision;
-}
-
 export interface DeviceData {
   supplier?: string;
-  provision?: Provision;
   [key: string]: unknown;
   label: string;
   /** Short alternative name (e.g. "HDC-5500" instead of "Sony HDC-5500 Studio Camera").
@@ -503,12 +487,20 @@ export interface BundleJunctionData {
 
 export type BundleJunctionNode = Node<BundleJunctionData, "bundle-junction">;
 
-export type SchematicNode = DeviceNode | RoomNode | NoteNode | AnnotationNode | StubLabelNode | TextStubNode | WaypointNode | BundleJunctionNode;
+export interface PatchReferenceData {
+  [key: string]: unknown;
+  connectionId: string;
+  panelNodeId: string;
+  portId: string;
+}
+export type PatchReferenceNode = Node<PatchReferenceData, "patch-reference">;
+
+export type SchematicNode = PatchReferenceNode | DeviceNode | RoomNode | NoteNode | AnnotationNode | StubLabelNode | TextStubNode | WaypointNode | BundleJunctionNode;
 
 /** One intermediate patch-panel hop on a connection's physical path (source → target order).
  *  The panel is a real device node (deviceType "patch-panel"), possibly off-canvas. */
 export interface PatchHop {
-  /** Signal enters this face; omitted means rear for existing files. */
+  /** Physical face toward the preceding station in the connection; no signal-direction constraint. */
   entryFace?: "rear" | "front";
   panelNodeId: string;
   /** Passthrough port id on that panel. */
@@ -520,8 +512,6 @@ export interface PatchHop {
 export interface PatchSegmentOverride {
   supplier?: string;
   unitCost?: number;
-  provision?: Provision;
-  cables?: PhysicalCable[];
   label?: string;
   cableLength?: string;
 }
@@ -529,10 +519,10 @@ export interface PatchSegmentOverride {
 export interface ConnectionData {
   supplier?: string;
   unitCost?: number;
-  provision?: Provision;
-  /** Ordered inline cables for an unpatched connection. */
-  cables?: PhysicalCable[];
-  physicalPathExpanded?: boolean;
+  /** Show local, independently placed references to the used panel positions. */
+  showPatchReferences?: boolean;
+  /** Presentation-only segment metadata; never persisted as a material connection. */
+  patchReference?: { edgeId: string; segmentIndex: number };
   [key: string]: unknown;
   signalType: SignalType;
   manualWaypoints?: { x: number; y: number }[];

@@ -228,7 +228,7 @@ describe("custom types travel with files and archives (custom-types P5)", () => 
     // What File → Save writes for that drawing:
     mine.store.getState().importFromJSON(saved);
     const written = JSON.parse(JSON.stringify(mine.store.getState().exportToJSON()));
-    expect(written.version).toBe(45);
+    expect(written.version).toBe(46);
     expect(written.customTypes).toEqual({ signals: [signalDef], connectors: [connectorDef] });
 
     const freshStorage = new MemStorage();

@@ -7,6 +7,6 @@ export default function SupplierInput({ value, onChange }: { value: string; onCh
   const nodes = useSchematicStore(s => s.nodes);
   const edges = useSchematicStore(s => s.edges);
   return <><input aria-label="Supplier" className="w-full border rounded px-2 py-1 text-xs" list={id} value={value}
-    placeholder="Supplier…" onChange={e => onChange(e.target.value)} onKeyDown={e => e.stopPropagation()} />
+    onDoubleClick={e => e.stopPropagation()} placeholder="Supplier…" onChange={e => onChange(e.target.value)} onKeyDown={e => e.stopPropagation()} />
     <datalist id={id}>{usedSuppliers(nodes, edges).map(name => <option key={name} value={name} />)}</datalist></>;
 }

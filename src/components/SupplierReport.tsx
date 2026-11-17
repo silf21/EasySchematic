@@ -13,7 +13,7 @@ export default function SupplierReport() {
   const [groupBy, setGroupBy] = useState<"category" | "room">("category");
   const rows = computeSupplierMaterials(nodes, edges, pages, costs).filter(r => [r.supplier, r.material, r.room, r.category].join(" ").toLowerCase().includes(filter.toLowerCase()));
   return <div className="text-xs">
-    <p className="text-neutral-500 mb-3">Materials to bring / procure, grouped by supplier. Fixed installation and provided material are documented in the Cable Schedule. Costs use the project currency ({currency}). Zero-price items are listed as unpriced.</p>
+    <p className="text-neutral-500 mb-3">Materials to supply, grouped by supplier. Supplier “Festinstalliert” is excluded here and remains documented in the Cable Schedule. Costs use the project currency ({currency}). Zero-price items are listed as unpriced.</p>
     <div className="flex gap-3 mb-3"><input aria-label="Filter supplier materials" className="border rounded p-2 flex-1" placeholder="Filter supplier, material, room…" value={filter} onChange={e => setFilter(e.target.value)} /><label>Within supplier: <select value={groupBy} onChange={e => setGroupBy(e.target.value as "category" | "room")}><option value="category">Category</option><option value="room">Room / route</option></select></label></div>
     {supplierGroups(rows).map(g => <section key={g.supplier} className="mb-5 border rounded overflow-hidden">
       <h3 className="font-semibold bg-blue-50 p-2">{g.supplier} · {g.count} items · {formatCurrency(g.cost, currency)}{g.unpriced ? ` · ${g.unpriced} unpriced` : ""}</h3>

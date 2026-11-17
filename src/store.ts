@@ -86,6 +86,7 @@ import { syncDeviceWithTemplate, type SyncResult } from "./templateSync";
 import { chooseNewHandleSuffix, type SwapPlan, type NewPortRef } from "./deviceSwap";
 import { getSignalColorOverrides, applySignalColors, loadSignalColors, saveSignalColors } from "./signalColors";
 import { computeCableSchedule } from "./cableSchedule";
+import { patchReferenceEdges, reconcilePatchReferences } from "./patchReferences";
 import { getPanelOccupancy, isPortAvailable } from "./patchCircuits";
 import { autoFillSheetForRack } from "./printSheetAutoFill";
 import { allocateEdgeId, maxEdgeCounterFromIds, newLinkedConnectionId, uniquifyEdgeIds } from "./idUtils";
@@ -2576,12 +2577,13 @@ export const useSchematicStore = create<SchematicState>((set, get) => ({
         return n && n.type !== "waypoint";
       }),
     );
+    const referenceOwners = new Set(state.nodes.filter(n => n.type === "patch-reference" && n.selected).map(n => n.data.connectionId));
     const survivingEdges = state.edges.filter(
       (e) =>
         !selectedEdgeIds.has(e.id) &&
         !deletedConnectingNodes.has(e.source) &&
         !deletedConnectingNodes.has(e.target),
-    );
+    ).map(e => referenceOwners.has(e.id) ? { ...e, data: { ...e.data!, showPatchReferences: false } } : e);
 
     // Splice manualWaypoints entries for each selected waypoint node so their
     // indices vanish from the canonical store. Waypoints belonging to deleted
@@ -2589,8 +2591,9 @@ export const useSchematicStore = create<SchematicState>((set, get) => ({
     const edgesAfterSplice = spliceWaypointsForRemovedNodes(survivingEdges, selectedWaypoints);
 
     const remainingNodes = state.nodes
-      .filter((n) => !n.selected)
+      .filter((n) => !n.selected || n.type === "patch-reference")
       .map((n) => {
+        if (n.type === "patch-reference" && n.selected) return { ...n, selected: false };
         if (n.parentId && deletedRoomIds.has(n.parentId)) {
           // Convert to absolute position — walk the full parent chain
           return {
@@ -4146,7 +4149,7 @@ export const useSchematicStore = create<SchematicState>((set, get) => ({
       // Waypoints belong to edges, not rooms — reparenting them turns their
       // .position into relative-to-room coords, which downstream sync code
       // mistakes for absolute and corrupts manualWaypoints.
-      if (node.type === "room" || node.type === "waypoint") continue;
+      if (node.type === "room" || node.type === "waypoint" || node.type === "patch-reference") continue;
 
       const absPos = getAbsolutePosition(node.id, nodeMap);
       const nodeW = node.measured?.width ?? 144;
@@ -7220,8 +7223,7 @@ export const useSchematicStore = create<SchematicState>((set, get) => ({
     // double-book the panel ports and orphan them when the source leg unpatches.
     delete (tgtLegData as Record<string, unknown>).patchHops;
     delete (tgtLegData as Record<string, unknown>).patchSegments;
-    delete (tgtLegData as Record<string, unknown>).cables;
-    delete (tgtLegData as Record<string, unknown>).physicalPathExpanded;
+    delete (tgtLegData as Record<string, unknown>).showPatchReferences;
     // The custom middle label (data.label) is intentionally KEPT on the target
     // leg (#201): each leg carries the same logical connection's custom label so
     // it shows on both halves, between the cable ID and the stub-label box. Cable
@@ -7565,7 +7567,7 @@ export const useSchematicStore = create<SchematicState>((set, get) => ({
       );
     };
 
-    for (const edge of state.edges) {
+    for (const edge of patchReferenceEdges(state.nodes, state.edges)) {
       const srcInternal = rfInstance.getInternalNode(edge.source);
       const tgtInternal = rfInstance.getInternalNode(edge.target);
       if (!srcInternal || !tgtInternal) continue;
@@ -7767,9 +7769,10 @@ export const useSchematicStore = create<SchematicState>((set, get) => ({
   recomputeRoutes: (rfInstance) => {
     const state = get();
     const hiddenSet = state.hiddenSignalTypes ? new Set(state.hiddenSignalTypes.split(",")) : null;
+    const diagramEdges = patchReferenceEdges(state.nodes, state.edges);
     let visibleEdges = hiddenSet
-      ? state.edges.filter((e) => !hiddenSet.has(e.data?.signalType ?? ""))
-      : state.edges;
+      ? diagramEdges.filter((e) => !hiddenSet.has(e.data?.signalType ?? ""))
+      : diagramEdges;
 
     // --- Adapter visibility: compute hidden adapters and virtual edges ---
     const hiddenAdapterNodeIds = resolveHiddenAdapterIds(state.nodes, state.hideAdapters);
@@ -7837,7 +7840,7 @@ export const useSchematicStore = create<SchematicState>((set, get) => ({
     // obstacle computation — neither is rendered, so neither should block routes.
     const offCanvasIds = new Set(
       state.nodes
-        .filter((n) => n.type === "device" && (n.data as DeviceData).offCanvas)
+        .filter((n) => n.type === "device" && (n.data as DeviceData).offCanvas || n.type === "patch-reference" && n.hidden)
         .map((n) => n.id),
     );
     const routingNodes = (hiddenAdapterNodeIds.size > 0 || offCanvasIds.size > 0)
@@ -8049,3 +8052,11 @@ if (typeof window !== "undefined") {
     if (e.persisted) reloadCustomTemplatesFromStorage();
   });
 }
+
+// References are presentation nodes. Reconcile from canonical patch assignments after
+// edits/load/undo; never turn reference wiring into extra material or port occupancy.
+useSchematicStore.subscribe((state, previous) => {
+  if (state.nodes === previous.nodes && state.edges === previous.edges) return;
+  const nodes = reconcilePatchReferences(state.nodes, state.edges);
+  if (nodes !== state.nodes) useSchematicStore.setState({ nodes });
+});

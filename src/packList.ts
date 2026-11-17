@@ -288,7 +288,7 @@ export function computePackList(
   for (const n of nodes) {
     if (n.type !== "device") continue;
     const data = n.data as DeviceData;
-    if (data.isVenueProvided || !includedInPackList(data.provision)) continue;
+    if (data.isVenueProvided || !includedInPackList(data.supplier)) continue;
     const model = transformLabelNow(data.model ?? data.baseLabel ?? data.label);
     const room = getRoomLabel(nodes, n.parentId);
 
@@ -401,7 +401,7 @@ export function computePackList(
   // Reuse the complete physical schedule: a panel hop adds one cable, inline adapter
   // cables add their own material, and installed/provided runs are excluded only here.
   const cables: PackListCable[] = computeCableSchedule(nodes, edges)
-    .filter(row => includedInPackList(row.provision))
+    .filter(row => includedInPackList(row.supplier))
     .filter(row => {
       const e = edges.find(e => e.id === row.edgeId);
       if (!e || row.segIndex !== undefined) return true;

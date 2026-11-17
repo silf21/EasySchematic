@@ -16,7 +16,7 @@ import { getPortAbsolutePositions } from "./snapUtils";
 import type { SchematicNode } from "./types";
 import { defaultConnector } from "./typeRegistry";
 
-export const CURRENT_SCHEMA_VERSION = 45;
+export const CURRENT_SCHEMA_VERSION = 46;
 
 /** Stub-label nodes paint at this z-index so connection lines render UNDER their
  *  white box (matches waypoint/junction z — above edge z, below the 10000 edge labels). */
@@ -611,6 +611,11 @@ const migrations: Record<number, Migration> = {
     // v42 → v43: patch panel view — adds optional edge.data.patchHops/patchSegments,
     // DeviceData.offCanvas, and the "patch-panel" page variant. Purely additive.
     data.version = 43;
+    return data;
+  },
+  45: (data) => {
+    // Additive distributed panel references. No supplier-data migration.
+    data.version = 46;
     return data;
   },
   44: (data) => {

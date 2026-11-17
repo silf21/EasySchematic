@@ -22,8 +22,7 @@
         "cableAlias": "CAM-A",
         "tested": "✓ 2026-06-01",
         "cableUse": "field",
-        "supplier": "",
-        "provision": "bring"
+        "supplier": ""
       },
       {
         "edgeId": "e-ad-sw",
@@ -45,8 +44,7 @@
         "cableAlias": "",
         "tested": "",
         "cableUse": "patch",
-        "supplier": "",
-        "provision": "bring"
+        "supplier": ""
       },
       {
         "edgeId": "e-cam2-sw",
@@ -68,8 +66,7 @@
         "cableAlias": "",
         "tested": "",
         "cableUse": "",
-        "supplier": "",
-        "provision": "bring"
+        "supplier": ""
       },
       {
         "edgeId": "e-aud1",
@@ -91,8 +88,7 @@
         "cableAlias": "",
         "tested": "",
         "cableUse": "",
-        "supplier": "",
-        "provision": "bring"
+        "supplier": ""
       },
       {
         "edgeId": "e-aud2",
@@ -114,8 +110,7 @@
         "cableAlias": "",
         "tested": "",
         "cableUse": "",
-        "supplier": "",
-        "provision": "bring"
+        "supplier": ""
       },
       {
         "edgeId": "e-cam1-net",
@@ -137,8 +132,7 @@
         "cableAlias": "",
         "tested": "",
         "cableUse": "",
-        "supplier": "",
-        "provision": "bring"
+        "supplier": ""
       },
       {
         "edgeId": "e-cam2-net",
@@ -160,8 +154,7 @@
         "cableAlias": "",
         "tested": "",
         "cableUse": "",
-        "supplier": "",
-        "provision": "bring"
+        "supplier": ""
       },
       {
         "edgeId": "e-legacy",
@@ -183,8 +176,7 @@
         "cableAlias": "",
         "tested": "",
         "cableUse": "",
-        "supplier": "",
-        "provision": "bring"
+        "supplier": ""
       },
       {
         "edgeId": "e-sw-net",
@@ -206,8 +198,7 @@
         "cableAlias": "",
         "tested": "",
         "cableUse": "",
-        "supplier": "",
-        "provision": "bring"
+        "supplier": ""
       },
       {
         "edgeId": "stub-net-src",
@@ -229,8 +220,7 @@
         "cableAlias": "",
         "tested": "",
         "cableUse": "",
-        "supplier": "",
-        "provision": "bring"
+        "supplier": ""
       },
       {
         "edgeId": "e-sw-pp",
@@ -252,8 +242,7 @@
         "cableAlias": "",
         "tested": "",
         "cableUse": "",
-        "supplier": "",
-        "provision": "bring"
+        "supplier": ""
       },
       {
         "edgeId": "e-pp-disp",
@@ -275,8 +264,7 @@
         "cableAlias": "",
         "tested": "",
         "cableUse": "",
-        "supplier": "",
-        "provision": "bring"
+        "supplier": ""
       },
       {
         "edgeId": "e-pwr-sw",
@@ -298,8 +286,7 @@
         "cableAlias": "",
         "tested": "",
         "cableUse": "",
-        "supplier": "",
-        "provision": "bring"
+        "supplier": ""
       },
       {
         "edgeId": "stub-pwr-src",
@@ -321,18 +308,16 @@
         "cableAlias": "",
         "tested": "",
         "cableUse": "",
-        "supplier": "",
-        "provision": "bring"
+        "supplier": ""
       }
     ],
-    "csv": "﻿Cable Schedule — kitchen-sink\nGenerated 2026-01-01\n\nCable ID,Source,Src Port,Src Conn,Target,Tgt Port,Tgt Conn,Cable Type,Signal,Length,Est. Length,Gauge (AWG),Alias,Tested,Use,Src Room,Tgt Room,Snake,Bundle,Supplier,Provision,Unit Cost\nV001,Camera 1,SDI Out,BNC,SDI-HDMI Adapter,SDI In,BNC,BNC M-M,SDI,25 ft,,22,CAM-A,✓ 2026-06-01,Field,Stage,Control Room,,,,bring,\nC001,SDI-HDMI Adapter,HDMI Out,HDMI,Vision Switcher,SDI In 1,BNC,HDMI M-M,HDMI,,,,,,Patch,Control Room,Control Room,,,,bring,\nC002,Camera 2,SDI Out,BNC,Vision Switcher,SDI In 2,BNC,BNC M-M,SDI,50 ft,,,,,,Stage,Control Room,,,,bring,\nC003,FOH Mixer,Main L,XLR-3,Vision Switcher,Audio In 1,XLR-3,XLR,Analog,,,,,,,Stage,Control Room,Audio Snake,,,bring,\nC004,FOH Mixer,Main R,XLR-3,Vision Switcher,Audio In 2,XLR-3,XLR,Analog,,,,,,,Stage,Control Room,Audio Snake,,,bring,\nC005,Camera 1,LAN,RJ45,Core Router,Port 1,RJ45,Cat6 M-M,Ethernet,,,,,,,Stage,Control Room,,Camera Loom,,bring,\nC006,Camera 2,LAN,RJ45,Core Router,Port 3,RJ45,Cat6 M-M,Ethernet,,,,,,,Stage,Control Room,,Camera Loom,,bring,\nC007,Legacy Encoder,LAN,RJ45,Core Router,Port 4,RJ45,Cat6 M-M,Ethernet,,,,,,,Stage,Control Room,,,,bring,\nC008,Vision Switcher,Control,RJ45,Core Router,Port 1,RJ45,Cat6 M-M,Ethernet,,,,,,,Control Room,Control Room,,,,bring,\nE010,Core Router,Port 2,RJ45,Show PC,LAN,RJ45,Cat6 M-M,Ethernet,,,,,,,Control Room,Control Room,,,,bring,\nC009,Vision Switcher,PGM Out,HDMI,PP-01,Port 1,HDMI,HDMI M-M,HDMI,,,,,,,Control Room,Control Room,,,,bring,\nC010,PP-01,Port 1,HDMI,Stage Display,HDMI In,HDMI,HDMI M-M,HDMI,,,,,,,Control Room,Stage,,,,bring,\nC011,Power Distro,Circuit 1,powerCON,Vision Switcher,AC In,powerCON,powerCON,Power,,,,,,,Control Room,Control Room,,,,bring,\nC012,Power Distro,Circuit 2,Edison,Show PC,AC In,Edison,Edison,Power,,,,,,,Control Room,Control Room,,,,bring,",
+    "csv": "﻿Cable Schedule — kitchen-sink\nGenerated 2026-01-01\n\nCable ID,Source,Src Port,Src Conn,Target,Tgt Port,Tgt Conn,Cable Type,Signal,Length,Est. Length,Gauge (AWG),Alias,Tested,Use,Src Room,Tgt Room,Snake,Bundle,Supplier,Unit Cost\nV001,Camera 1,SDI Out,BNC,SDI-HDMI Adapter,SDI In,BNC,BNC M-M,SDI,25 ft,,22,CAM-A,✓ 2026-06-01,Field,Stage,Control Room,,,,\nC001,SDI-HDMI Adapter,HDMI Out,HDMI,Vision Switcher,SDI In 1,BNC,HDMI M-M,HDMI,,,,,,Patch,Control Room,Control Room,,,,\nC002,Camera 2,SDI Out,BNC,Vision Switcher,SDI In 2,BNC,BNC M-M,SDI,50 ft,,,,,,Stage,Control Room,,,,\nC003,FOH Mixer,Main L,XLR-3,Vision Switcher,Audio In 1,XLR-3,XLR,Analog,,,,,,,Stage,Control Room,Audio Snake,,,\nC004,FOH Mixer,Main R,XLR-3,Vision Switcher,Audio In 2,XLR-3,XLR,Analog,,,,,,,Stage,Control Room,Audio Snake,,,\nC005,Camera 1,LAN,RJ45,Core Router,Port 1,RJ45,Cat6 M-M,Ethernet,,,,,,,Stage,Control Room,,Camera Loom,,\nC006,Camera 2,LAN,RJ45,Core Router,Port 3,RJ45,Cat6 M-M,Ethernet,,,,,,,Stage,Control Room,,Camera Loom,,\nC007,Legacy Encoder,LAN,RJ45,Core Router,Port 4,RJ45,Cat6 M-M,Ethernet,,,,,,,Stage,Control Room,,,,\nC008,Vision Switcher,Control,RJ45,Core Router,Port 1,RJ45,Cat6 M-M,Ethernet,,,,,,,Control Room,Control Room,,,,\nE010,Core Router,Port 2,RJ45,Show PC,LAN,RJ45,Cat6 M-M,Ethernet,,,,,,,Control Room,Control Room,,,,\nC009,Vision Switcher,PGM Out,HDMI,PP-01,Port 1,HDMI,HDMI M-M,HDMI,,,,,,,Control Room,Control Room,,,,\nC010,PP-01,Port 1,HDMI,Stage Display,HDMI In,HDMI,HDMI M-M,HDMI,,,,,,,Control Room,Stage,,,,\nC011,Power Distro,Circuit 1,powerCON,Vision Switcher,AC In,powerCON,powerCON,Power,,,,,,,Control Room,Control Room,,,,\nC012,Power Distro,Circuit 2,Edison,Show PC,AC In,Edison,Edison,Power,,,,,,,Control Room,Control Room,,,,",
     "printTables": [
       {
         "id": "cableSchedule",
         "rows": [
           {
             "supplier": "",
-            "provision": "bring",
             "cableId": "C001",
             "sourceDevice": "SDI-HDMI Adapter",
             "sourcePort": "HDMI Out",
@@ -355,7 +340,6 @@
           },
           {
             "supplier": "",
-            "provision": "bring",
             "cableId": "C002",
             "sourceDevice": "Camera 2",
             "sourcePort": "SDI Out",
@@ -378,7 +362,6 @@
           },
           {
             "supplier": "",
-            "provision": "bring",
             "cableId": "C003",
             "sourceDevice": "FOH Mixer",
             "sourcePort": "Main L",
@@ -401,7 +384,6 @@
           },
           {
             "supplier": "",
-            "provision": "bring",
             "cableId": "C004",
             "sourceDevice": "FOH Mixer",
             "sourcePort": "Main R",
@@ -424,7 +406,6 @@
           },
           {
             "supplier": "",
-            "provision": "bring",
             "cableId": "C005",
             "sourceDevice": "Camera 1",
             "sourcePort": "LAN",
@@ -447,7 +428,6 @@
           },
           {
             "supplier": "",
-            "provision": "bring",
             "cableId": "C006",
             "sourceDevice": "Camera 2",
             "sourcePort": "LAN",
@@ -470,7 +450,6 @@
           },
           {
             "supplier": "",
-            "provision": "bring",
             "cableId": "C007",
             "sourceDevice": "Legacy Encoder",
             "sourcePort": "LAN",
@@ -493,7 +472,6 @@
           },
           {
             "supplier": "",
-            "provision": "bring",
             "cableId": "C008",
             "sourceDevice": "Vision Switcher",
             "sourcePort": "Control",
@@ -516,7 +494,6 @@
           },
           {
             "supplier": "",
-            "provision": "bring",
             "cableId": "C009",
             "sourceDevice": "Vision Switcher",
             "sourcePort": "PGM Out",
@@ -539,7 +516,6 @@
           },
           {
             "supplier": "",
-            "provision": "bring",
             "cableId": "C010",
             "sourceDevice": "PP-01",
             "sourcePort": "Port 1",
@@ -562,7 +538,6 @@
           },
           {
             "supplier": "",
-            "provision": "bring",
             "cableId": "C011",
             "sourceDevice": "Power Distro",
             "sourcePort": "Circuit 1",
@@ -585,7 +560,6 @@
           },
           {
             "supplier": "",
-            "provision": "bring",
             "cableId": "C012",
             "sourceDevice": "Power Distro",
             "sourcePort": "Circuit 2",
@@ -608,7 +582,6 @@
           },
           {
             "supplier": "",
-            "provision": "bring",
             "cableId": "E010",
             "sourceDevice": "Core Router",
             "sourcePort": "Port 2",
@@ -631,7 +604,6 @@
           },
           {
             "supplier": "",
-            "provision": "bring",
             "cableId": "V001",
             "sourceDevice": "Camera 1",
             "sourcePort": "SDI Out",
@@ -815,8 +787,7 @@
           "cableAlias": "CAM-A",
           "tested": "✓ 2026-06-01",
           "cableUse": "field",
-          "supplier": "",
-          "provision": "bring"
+          "supplier": ""
         },
         {
           "edgeId": "e-ad-sw",
@@ -838,8 +809,7 @@
           "cableAlias": "",
           "tested": "",
           "cableUse": "patch",
-          "supplier": "",
-          "provision": "bring"
+          "supplier": ""
         },
         {
           "edgeId": "e-cam2-sw",
@@ -861,8 +831,7 @@
           "cableAlias": "",
           "tested": "",
           "cableUse": "",
-          "supplier": "",
-          "provision": "bring"
+          "supplier": ""
         },
         {
           "edgeId": "e-aud1",
@@ -884,8 +853,7 @@
           "cableAlias": "",
           "tested": "",
           "cableUse": "",
-          "supplier": "",
-          "provision": "bring"
+          "supplier": ""
         },
         {
           "edgeId": "e-aud2",
@@ -907,8 +875,7 @@
           "cableAlias": "",
           "tested": "",
           "cableUse": "",
-          "supplier": "",
-          "provision": "bring"
+          "supplier": ""
         },
         {
           "edgeId": "e-cam1-net",
@@ -930,8 +897,7 @@
           "cableAlias": "",
           "tested": "",
           "cableUse": "",
-          "supplier": "",
-          "provision": "bring"
+          "supplier": ""
         },
         {
           "edgeId": "e-cam2-net",
@@ -953,8 +919,7 @@
           "cableAlias": "",
           "tested": "",
           "cableUse": "",
-          "supplier": "",
-          "provision": "bring"
+          "supplier": ""
         },
         {
           "edgeId": "e-legacy",
@@ -976,8 +941,7 @@
           "cableAlias": "",
           "tested": "",
           "cableUse": "",
-          "supplier": "",
-          "provision": "bring"
+          "supplier": ""
         },
         {
           "edgeId": "e-sw-net",
@@ -999,8 +963,7 @@
           "cableAlias": "",
           "tested": "",
           "cableUse": "",
-          "supplier": "",
-          "provision": "bring"
+          "supplier": ""
         },
         {
           "edgeId": "stub-net-src",
@@ -1022,8 +985,7 @@
           "cableAlias": "",
           "tested": "",
           "cableUse": "",
-          "supplier": "",
-          "provision": "bring"
+          "supplier": ""
         },
         {
           "edgeId": "e-sw-pp",
@@ -1045,8 +1007,7 @@
           "cableAlias": "",
           "tested": "",
           "cableUse": "",
-          "supplier": "",
-          "provision": "bring"
+          "supplier": ""
         },
         {
           "edgeId": "e-pp-disp",
@@ -1068,8 +1029,7 @@
           "cableAlias": "",
           "tested": "",
           "cableUse": "",
-          "supplier": "",
-          "provision": "bring"
+          "supplier": ""
         },
         {
           "edgeId": "e-pwr-sw",
@@ -1091,8 +1051,7 @@
           "cableAlias": "",
           "tested": "",
           "cableUse": "",
-          "supplier": "",
-          "provision": "bring"
+          "supplier": ""
         },
         {
           "edgeId": "stub-pwr-src",
@@ -1114,8 +1073,7 @@
           "cableAlias": "",
           "tested": "",
           "cableUse": "",
-          "supplier": "",
-          "provision": "bring"
+          "supplier": ""
         }
       ],
       "summary": [

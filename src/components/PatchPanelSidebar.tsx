@@ -1,6 +1,4 @@
-import { openPhysicalPath } from "../physicalPathEvents";
 import SupplierInput from "./SupplierInput";
-import { ProvisionSelect } from "./PhysicalPathEditor";
 import { useEffect, useMemo, useState } from "react";
 import type { ConnectionEdge, DeviceData, DeviceTemplate } from "../types";
 import { useSchematicStore } from "../store";
@@ -84,7 +82,7 @@ export default function PatchPanelSidebar() {
   const cables = useMemo(
     () =>
       edges.filter((e) => {
-        if (!e.data?.signalType || e.data?.directAttach) return false;
+        if (!e.data?.signalType) return false;
         if (e.data?.linkedConnectionId && nodeTypeById.get(e.source) === "stub-label") return false;
         return true;
       }),
@@ -197,7 +195,6 @@ export default function PatchPanelSidebar() {
               </span>
             </div>
             <div className="my-1"><SupplierInput value={data.supplier ?? ""} onChange={supplier => useSchematicStore.getState().patchDeviceData(p.id, { supplier })} /></div>
-            <ProvisionSelect value={data.provision} onChange={provision => useSchematicStore.getState().patchDeviceData(p.id, { provision })} />
             <div className="hidden group-hover:flex gap-3 pt-0.5">
               <button
                 className="text-blue-600 hover:underline disabled:text-neutral-300 disabled:no-underline"
@@ -280,8 +277,9 @@ export default function PatchPanelSidebar() {
             {patched && via && (
               <div className="pl-4 text-[10px] text-neutral-400 font-mono truncate">via {via}</div>
             )}
-            <div className="pl-4 pt-0.5 flex gap-3">
-              <button className="text-blue-600 hover:underline" onClick={() => openPhysicalPath(e.id)}>Cables / supplier…</button>
+            <div className="pl-4 my-1"><SupplierInput value={e.data?.supplier ?? ""} onChange={supplier => useSchematicStore.getState().patchEdgeData(e.id, { supplier })} /></div>
+            <div className="pl-4 pt-0.5 flex flex-wrap gap-3">
+              {patched && <button className="text-blue-600 hover:underline" onClick={() => useSchematicStore.getState().patchEdgeData(e.id, { showPatchReferences: e.data?.showPatchReferences === false })}>{e.data?.showPatchReferences === false ? "Show panel references" : "Compact schematic"}</button>}
               {patched ? (
                 <>
                   <button className="text-blue-600 hover:underline" onClick={() => clearEdgePatchHops(e.id)}>

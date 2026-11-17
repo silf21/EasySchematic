@@ -1,84 +1,88 @@
-# Physical signal paths, provisioning and suppliers
+# Virtual patching, distributed panel references and suppliers
 
-The development build identifies itself as `0.44.4-dev.1`. About and Copy Debug Info
-include the build number and commit hash. The development Docker workflow passes
-`github.run_number.github.run_attempt` and the full commit SHA as build arguments.
-Local builds display `Build local`. Optional `BUILD_NUMBER` and `BUILD_HASH` environment
-variables also work outside Docker.
+The development version and About dialog retain build number / commit identification.
+The development Docker workflow passes these values to the image build.
 
-## Editing a connection
+## Physical faces in Patch Bay
 
-Right-click a connection and choose **Physical path / Supplier…**, or use **Edit**
-on its physical-path annotation. The Patch Bay also offers **Cables / supplier…**
-on each connection and **Direction / cables…** on occupied patch ports.
+Each virtual panel hop specifies the physical face toward the preceding station in the
+connection's stored order. The opposite face faces the next station. This is a physical
+connection mapping, independent of whether the carried signal is bidirectional.
 
-- Choose the default supplier and provision for the connection.
-- Choose **Rear → Front** or **Front → Rear** for each patch-panel hop. Direction
-  is stored per connection/hop, so different signals can traverse a panel differently.
-- Every physical section initially represents one cable. Use **Add inline cable /
-  adapter cable** to add a real adapter cable, without creating an adapter device
-  or an imaginary connecting cable. Rows are in signal order. Give each cable its
-  name, length, ends, supplier and optional unit cost.
-- For a plug adapter modelled as a device, mark its direct plug attachment as
-  **Direct plug attachment (no separate cable)**. That attachment contributes no
-  cable to the reports. A whole multi-panel run cannot be a direct attachment.
-- Blank supplier/price values inherit from the section or connection. A blank
-  explicit supplier can be used to leave a cable unassigned.
-- All edits in the dialog are drafts until **Save**. Cancel and Escape discard them.
+Choose the face while assigning a port, or use the **Previous: Front · Next: Rear ⇄**
+button directly below an occupied port in Patch Bay to swap the mapping. An MA3 console
+can connect to PP1 Front, continue from PP1 Rear to PP2 Rear, and leave PP2 Front toward
+the remote device. Connector checks, face labels and reports use this same mapping.
+Changing the face preserves section lengths, suppliers and cable labels.
 
-The compact schematic annotation lists the panels and their positions/directions.
-Expand it to see an inline diagram of the physical cables and intermediate panels.
-This is a derived annotation on the original logical connection: it does not
-create additional devices or edges, or move the existing diagram layout.
+## Distributed references in the schematic
 
-Patch Bay labels use the actual port name/position. Existing legacy paired-port
-panels remain in the Patch Panel Schedule, as before.
+Virtual patch assignments now show local, independently movable panel-position
+references. Every reference names the real panel and used position (for example DMX1)
+and exposes its Front and Rear faces. The lines actually terminate at these handles;
+the usual automatic or simple router routes each displayed section.
 
-![Physical signal path editor](/physical-path-editor.png)
+The same real panel can appear at multiple places along different circuits. These
+are references to the centrally managed panel/port, not extra device instances or
+additional material. Names and face mappings remain synchronized with Patch Bay.
 
-## DMX example
+Use **Compact schematic** on a connection in Patch Bay, or **Hide panel references**
+in its schematic context menu, to restore the single logical line. Reference positions
+are retained when switching views and saved with the project. Removing a selected
+reference also returns that connection to compact view without removing the panel or
+its patch assignment. Deleting a real panel or removing a patch assignment removes
+its references. Copying a connection still starts unpatched to avoid double-booking
+physical ports. In the expanded view move the references to adjust the path; canonical
+path handles remain available in compact view.
 
-Route the logical DMX connection through PP1 and PP2. Configure:
+![Distributed patch references](/distributed-patch-references.png)
 
-1. Desk → PP1: `DMX cable`, 10m; then `Adapter 3pin → 5pin`.
-2. PP1 → PP2: fixed DMX run, **Fixed installation**.
-3. PP2 → fixture: `Adapter 5pin → 3pin`; then `DMX cable`.
+## Actual adapters and cables
 
-Choose each panel's direction to match the physical installation and mark the
-panel devices themselves **Fixed installation** if they must not be packed.
-The Cable Schedule documents five real cables. The Pack List and By Supplier
-report count the four portable cables and exclude the fixed run and panels.
+The separate Physical signal path popup, inline-cable editor and floating tile chain
+have been removed. This revision keeps the original cable / adapter-device model.
+A dedicated adapter-cable category and general cable-to-cable chaining are not part
+of this change.
 
-## Reports
+Existing adapter devices can use **Direkt gesteckt – kein zusätzliches Kabel** on
+the relevant port. A direct plug connection is a thin gray line with no additional
+cable ID or cable material count. Real cables remain connections in the schematic.
+Virtual patching retains the original section-per-panel-gap model. If an outer adapter
+port is marked direct-attach, that outer section is a plug attachment, not an extra
+cable. A real cable between two panels is still counted independently.
 
-- **Cable Schedule** is the full installation schedule, including installed and
-  on-site cables, with Supplier and Provision columns. Supplier is a grouping option.
-  Click a supplier/provision cell to edit the physical connection.
-- **Pack List** counts physical cables, including inline adapter cables, and excludes
-  **Fixed installation** and **Provided on site** material. Each device or section/cable
-  can be marked independently. Merely using a rear panel port never excludes a cable.
-- **By Supplier** provides a project-wide material list with each supplier's quantity,
-  cost subtotal and unpriced-item count, plus a grand total. Its CSV and PDF include
-  those subtotals. The screen can be filtered and sorted within suppliers by category
-  or room/route; CSV/PDF export the complete supplier list.
-- **Devices** includes an editable supplier dropdown and exports Supplier to CSV.
-- Supplier suggestions are shared across all project devices, connections, sections
-  and inline cables. Names are compared without case and redundant whitespace.
+## Supplier and Festinstalliert
 
-A per-cable unit cost takes precedence over a section/connection default price,
-then a supplier-specific cable price, then the existing generic cable price.
-Materials with different suppliers or unit prices are kept as separate lines.
-The supplier report identifies zero-price items as unpriced; its subtotal is the
-sum of the entered prices, not a claim that all items have a price.
+Supplier is available on devices, connections and virtual physical sections. Shared
+suggestions include the reserved value **Festinstalliert**, even in an empty project.
+For a section, a blank explicit supplier leaves it unassigned; an absent section
+supplier inherits the connection's supplier.
 
-## File compatibility
+- Supplier **Festinstalliert**: visible in the schematic and the complete Cable
+  Schedule, excluded from the Pack List / By Supplier material lists and their totals.
+- Any other or empty supplier: included in the material lists. An empty value means
+  the supplier has not yet been assigned.
 
-Schema 45 adds optional metadata. Earlier files retain Rear → Front direction,
-one cable per physical section and inclusion in the pack list unless already
-marked venue-provided. Existing generic cable prices remain valid as fallbacks.
-Supplier and provisioning are project-instance data, not shared device-template data.
+Comparison ignores case and redundant whitespace. Use the default connection supplier
+in Patch Bay or the connection context menu; use the face's supplier input in Patch Bay
+or the Supplier cell in Cable Schedule for a section override. A fixed section is drawn
+with a dashed line when panel references are shown. Panel devices themselves can also
+have supplier Festinstalliert.
 
-The existing hop-list editing policy still applies: adding/removing panel hops
-clears segment overrides because their positional indices change. Configure the
-panel route before entering per-section cable details. Flipping the direction of
-an existing hop in the physical-path editor preserves the section cable details.
+There is no separate provisioning selector or status tile. No supplier-data migration
+is performed. Older experimental provisioning / inline-cable metadata is not interpreted
+by the new workflow. Existing pre-feature venue-provided devices keep their original
+Pack List exclusion behavior.
+
+## Reports and compatibility
+
+The Cable Schedule documents all physical sections. Pack List and **By Supplier** use
+those same sections while excluding Festinstalliert. The supplier report retains
+quantities, supplier subtotals, grand total, unpriced counts and CSV/PDF export. Materials
+with different suppliers or prices remain separate; supplier-specific cable prices
+fall back to the existing generic price entries. Supplier/provisioning migration is
+intentionally omitted; schema 46 adds only the distributed-reference representation.
+
+As in the original virtual patch model, adding/removing panel hops clears positional
+section overrides. Set the route first, then enter section labels, lengths and suppliers.
+Flipping the physical face does not clear those overrides.

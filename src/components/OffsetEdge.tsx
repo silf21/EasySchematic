@@ -1,4 +1,3 @@
-import PhysicalPathLabel from "./PhysicalPathLabel";
 import { memo, useState, useRef, useEffect } from "react";
 import {
   BaseEdge,
@@ -723,7 +722,6 @@ function OffsetEdgeComponent({
   // All labels + reconnect visuals rendered via EdgeLabelRenderer (HTML layer above all SVG edges)
   const edgeLabelsPortal = (
     <EdgeLabelRenderer>
-      <PhysicalPathLabel edgeId={id} x={customMidPt.x} y={customMidPt.y} />
       {cableIdLabels}
       {customLabels}
       {cableLengthBadge}

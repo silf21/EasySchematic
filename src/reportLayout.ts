@@ -313,7 +313,6 @@ export function createDefaultCableScheduleLayout(): ReportLayout {
         id: "cableSchedule",
         label: "Cable Schedule",
         columns: [
-          { key: "provision", header: "Provision", widthMm: 25, visible: false },
           { key: "cableId",         header: "Cable ID",   widthMm: 18, visible: true },
           { key: "sourceDevice",    header: "Source",      widthMm: 30, visible: true },
           { key: "sourcePort",      header: "Src Port",    widthMm: 22, visible: true },

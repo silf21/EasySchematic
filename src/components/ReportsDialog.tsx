@@ -1,7 +1,5 @@
-import { physicalMaterialEdit } from "../physicalMaterialEdit";
 import SupplierReport from "./SupplierReport";
 import SupplierInput from "./SupplierInput";
-import { openPhysicalPath } from "../physicalPathEvents";
 import { buildSupplierCsv, computeSupplierMaterials, createSupplierLayout, supplierTableData } from "../supplierReport";
 import { supplierKey } from "../suppliers";
 import React, { memo, useMemo, useState, useCallback, useEffect, useRef } from "react";
@@ -364,7 +362,6 @@ const CABLE_COLUMNS: { id: string; label: string }[] = [
   { id: "cableType", label: "Cable Type" },
   { id: "signalType", label: "Signal" },
   { id: "supplier", label: "Supplier" },
-  { id: "provision", label: "Provision" },
   { id: "cableLength", label: "Length" },
   { id: "computedLength", label: "Est. Length" },
   { id: "gaugeAwg", label: "Gauge" },
@@ -1551,7 +1548,7 @@ const DeviceRow = memo(function DeviceRow({
 
 // ─── Cable Schedule Tab ────────────────────────────────────────
 
-type CableSortKey = "supplier" | "provision" | "cableId" | "sourceDevice" | "sourcePort" | "sourceConnector" | "targetDevice" | "targetPort" | "targetConnector" | "cableType" | "signalType" | "cableLength" | "computedLength" | "gaugeAwg" | "cableAlias" | "tested" | "cableUse" | "sourceRoom" | "targetRoom" | "multicableLabel";
+type CableSortKey = "supplier" | "cableId" | "sourceDevice" | "sourcePort" | "sourceConnector" | "targetDevice" | "targetPort" | "targetConnector" | "cableType" | "signalType" | "cableLength" | "computedLength" | "gaugeAwg" | "cableAlias" | "tested" | "cableUse" | "sourceRoom" | "targetRoom" | "multicableLabel";
 type CableGroupBy = "supplier" | "" | "sourceRoom" | "signalType" | "cableType" | "multicableLabel" | "cableUse";
 
 const cableScheduleColumns: SpreadsheetColumn<CableScheduleRow>[] = [
@@ -1644,11 +1641,6 @@ function CableScheduleTabInline() {
       const row = sorted[rowIndex];
       if (!row) return;
       const v = value.trim();
-      if (row.materialIndex !== undefined && (columnId === "cableLength" || columnId === "cableId")) {
-        const data = useSchematicStore.getState().edges.find(e => e.id === row.edgeId)?.data;
-        if (data) patchEdgeData(row.edgeId, physicalMaterialEdit(data, row, columnId, v));
-        return;
-      }
       // Patch-segment rows (one physical cable of a patched connection): Cable ID and
       // Length are PER-SEGMENT overrides — writing the parent edge's fields here would
       // rebase the whole run / silently no-op. Route them to the segment override.
@@ -1678,12 +1670,6 @@ function CableScheduleTabInline() {
           const row = sorted[c.rowIndex];
           if (!row) return null;
           const v = c.value.trim();
-          if (row.materialIndex !== undefined && (c.columnId === "cableLength" || c.columnId === "cableId")) {
-            const state = useSchematicStore.getState();
-            const data = state.edges.find(e => e.id === row.edgeId)?.data;
-            if (data) state.patchEdgeData(row.edgeId, physicalMaterialEdit(data, row, c.columnId, v));
-            return null;
-          }
           // Segment rows route Cable ID / Length to per-segment overrides (see onCellChange).
           if (row.segIndex !== undefined && (c.columnId === "cableLength" || c.columnId === "cableId")) {
             setPatchSegmentOverride(row.edgeId, row.segIndex,
@@ -1911,7 +1897,6 @@ function CableScheduleTabInline() {
                 <th className={thClass} onClick={() => toggleSort("signalType")}>Signal{sortArrow("signalType")}</th>
               )}
               {!hiddenCols.has("supplier") && <th className={thClass} onClick={() => toggleSort("supplier")}>Supplier{sortArrow("supplier")}</th>}
-              {!hiddenCols.has("provision") && <th className={thClass} onClick={() => toggleSort("provision")}>Provision{sortArrow("provision")}</th>}
               {!hiddenCols.has("cableLength") && (
                 <th className={thClass} onClick={() => toggleSort("cableLength")}>Length{sortArrow("cableLength")}</th>
               )}
@@ -1946,7 +1931,7 @@ function CableScheduleTabInline() {
               ? renderGroupedCableSchedule(grouped, spreadsheet, onToggleLabel, onToggleTested, onSetCableUse, hiddenCols)
               : sorted.map((r, i) => (
                   <CableScheduleRow_
-                    key={`${r.edgeId}:${r.segIndex ?? ""}:${r.materialIndex ?? ""}`}
+                    key={`${r.edgeId}:${r.segIndex ?? ""}:`}
                     row={r}
                     rowIndex={i}
                     altClass={rowClass(i)}
@@ -2112,8 +2097,11 @@ const CableScheduleRow_ = memo(function CableScheduleRow_({
       {!hiddenCols.has("targetConnector") && <td className={tdClass}>{row.targetConnector}</td>}
       {!hiddenCols.has("cableType") && <td className={tdClass}>{row.cableType}</td>}
       {!hiddenCols.has("signalType") && <td className={tdClass}>{row.signalType}</td>}
-      {!hiddenCols.has("supplier") && <td className={tdClass}><button title="Edit physical cable / supplier" onClick={() => openPhysicalPath(row.edgeId)}>{row.supplier || "Set supplier…"}</button></td>}
-      {!hiddenCols.has("provision") && <td className={tdClass}><button onClick={() => openPhysicalPath(row.edgeId)}>{row.provision ?? "bring"}</button></td>}
+      {!hiddenCols.has("supplier") && <td className={tdClass}><SupplierInput value={row.supplier ?? ""} onChange={supplier => {
+        const state = useSchematicStore.getState();
+        if (row.segIndex !== undefined) state.setPatchSegmentOverride(row.edgeId, row.segIndex, { supplier });
+        else state.patchEdgeData(row.edgeId, { supplier });
+      }} /></td>}
       {!hiddenCols.has("cableLength") && (
         <EditableCell spreadsheet={spreadsheet} rowIndex={rowIndex} columnId="cableLength" value={row.cableLength} />
       )}
@@ -2195,7 +2183,7 @@ function renderGroupedCableSchedule(
     for (const r of rows) {
       elements.push(
         <CableScheduleRow_
-          key={`${r.edgeId}:${r.segIndex ?? ""}:${r.materialIndex ?? ""}`}
+          key={`${r.edgeId}:${r.segIndex ?? ""}:`}
           row={r}
           rowIndex={idx}
           altClass={rowClass(idx)}
@@ -2658,7 +2646,7 @@ function PackListTabInline() {
                       <td className={tdClass}>{s.cableLength}</td>
                       {showPath && <td className={tdClass}>{s.route}</td>}
                       <td className={`${tdClass} p-0.5`}>
-                        {s.unitCost !== undefined ? <span title="Per-cable price; edit under Physical path / Supplier">{formatCurrency(uc, currency)}</span> : <CableCostCell costKey={key} value={uc} onChange={setCableCost} currency={currency} />}
+                        {s.unitCost !== undefined ? <span title="Per-connection or section price">{formatCurrency(uc, currency)}</span> : <CableCostCell costKey={key} value={uc} onChange={setCableCost} currency={currency} />}
                       </td>
                       <td className={tdClass}>{ext > 0 ? formatCurrency(ext, currency) : "—"}</td>
                     </tr>

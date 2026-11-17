@@ -1,5 +1,4 @@
 import SupplierInput from "./SupplierInput";
-import { ProvisionSelect } from "./PhysicalPathEditor";
 import { supplierName } from "../suppliers";
 import { useState, useMemo } from "react";
 
@@ -247,7 +246,6 @@ export default function BulkConnectionEditPanel({ onClose }: Props) {
       <section className="mb-3 text-xs">
         <div className="mb-1">Supplier</div><SupplierInput value={supplier} onChange={setSupplier} />
         <button className="text-blue-600 my-2" onClick={() => useSchematicStore.getState().batchPatchEdgeData(selectedEdges.map(e => ({ edgeId: e.id, patch: { supplier: supplierName(supplier) || undefined } })))}>Apply supplier to selected connections</button>
-        <div>Provision</div><ProvisionSelect onChange={provision => useSchematicStore.getState().batchPatchEdgeData(selectedEdges.map(e => ({ edgeId: e.id, patch: { provision } })))} />
       </section>
       {/* Labels */}
       <section className="mb-3">

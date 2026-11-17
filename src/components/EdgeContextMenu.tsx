@@ -6,7 +6,7 @@ import { LINE_STYLE_LABELS, LINE_STYLE_DASHARRAY, type DeviceData, type LineStyl
 import { isAdapterHidden, toggleAdapterVisibility as nextAdapterVisibility } from "../adapterVisibility";
 import { selectedConnectionEdges, stubbedLinkIdsOf } from "../stubSelection";
 import { useContextMenuPosition } from "../hooks/useContextMenuPosition";
-import { openPhysicalPath } from "../physicalPathEvents";
+import SupplierInput from "./SupplierInput";
 import MenuSubmenu from "./MenuSubmenu";
 
 /** Project a point onto the nearest segment and return the projected point. */
@@ -43,6 +43,7 @@ function projectOntoSegments(
 
 export default function EdgeContextMenu() {
   const menu = useSchematicStore((s) => s.edgeContextMenu);
+  const liveEdges = useSchematicStore(s => s.edges);
   const { setCenter, getZoom, getInternalNode } = useReactFlow();
 
   // Close on click anywhere or Escape
@@ -255,7 +256,7 @@ export default function EdgeContextMenu() {
   const { ref: menuRef, pos: menuPos } = useContextMenuPosition(
     menu?.screenX ?? 0,
     menu?.screenY ?? 0,
-    [editingLabel],
+    [editingLabel, !!menu],
   );
 
   const setConnectionLabel = useCallback(() => {
@@ -443,7 +444,7 @@ export default function EdgeContextMenu() {
   if (!menu) return null;
 
   const store = useSchematicStore.getState();
-  const edge = store.edges.find((e) => e.id === menu.edgeId);
+  const edge = liveEdges.find((e) => e.id === menu.edgeId);
   const hasManual = !!(edge?.data?.manualWaypoints?.length);
   const isStubbed = !!edge?.data?.linkedConnectionId;
   const isCableIdHidden = edge?.data?.hideCableId === true;
@@ -540,6 +541,7 @@ export default function EdgeContextMenu() {
     return (
       <div
         ref={menuRef}
+      data-testid="connection-context-menu"
         className="fixed z-50 bg-white border border-gray-300 rounded shadow-lg p-2 min-w-[200px]"
         style={{
           left: menuPos.x,
@@ -597,6 +599,7 @@ export default function EdgeContextMenu() {
   return (
     <div
       ref={menuRef}
+      data-testid="connection-context-menu"
       className="fixed z-50 bg-white border border-gray-300 rounded shadow-lg py-1 min-w-[160px]"
       style={{
         left: menuPos.x,
@@ -607,7 +610,7 @@ export default function EdgeContextMenu() {
       }}
       onClick={(e) => e.stopPropagation()}
     >
-      <MenuItem label="Add Handle" onClick={addHandle} />
+      {(!isPatched || patchEdge?.data?.showPatchReferences === false) && <MenuItem label="Add Handle" onClick={addHandle} />}
       {nearWaypoint && (
         <MenuItem label="Remove Handle" onClick={removeHandle} />
       )}
@@ -624,7 +627,6 @@ export default function EdgeContextMenu() {
       {isTrunkEdge && (
         <MenuItem label="Set Cable Label..." onClick={setCableLabel} />
       )}
-      <MenuItem label="Physical path / Supplier…" onClick={() => { if (patchEdge) openPhysicalPath(patchEdge.id); useSchematicStore.setState({ edgeContextMenu: null }); }} />
       {!isDirectAttach && (
         <MenuItem label="Set Cable Length..." onClick={setCableLength} />
       )}
@@ -659,8 +661,7 @@ export default function EdgeContextMenu() {
           )}
         </>
       )}
-      <MenuItem label="Physical path / Supplier…" onClick={() => { if (patchEdge) openPhysicalPath(patchEdge.id); useSchematicStore.setState({ edgeContextMenu: null }); }} />
-      {!isDirectAttach && (
+      {patchEdge && (
         <>
           <MenuItem
             label={isPatched ? "Patch via Panel (Add Hop)..." : "Patch via Panel..."}
@@ -695,7 +696,11 @@ export default function EdgeContextMenu() {
           onClick={toggleAdapterVisibility}
         />
       )}
-      <MenuItem label="Physical path / Supplier…" onClick={() => { if (patchEdge) openPhysicalPath(patchEdge.id); useSchematicStore.setState({ edgeContextMenu: null }); }} />
+      {patchEdge && <div className="px-3 py-2 text-xs"><div className="mb-1">Supplier</div><SupplierInput value={patchEdge.data?.supplier ?? ""} onChange={supplier => useSchematicStore.getState().patchEdgeData(patchEdge.id, { supplier })} /></div>}
+      {isPatched && <MenuItem label={patchEdge?.data?.showPatchReferences !== false ? "Hide panel references" : "Show panel references"} onClick={() => {
+        if (patchEdge) useSchematicStore.getState().patchEdgeData(patchEdge.id, { showPatchReferences: patchEdge.data?.showPatchReferences === false });
+        useSchematicStore.setState({ edgeContextMenu: null });
+      }} />}
       {!isDirectAttach && (
         <>
           <div className="h-px bg-gray-200 my-1" />

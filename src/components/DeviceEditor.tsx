@@ -43,7 +43,6 @@ import { connectorGroups, connectorLabel, connectorsByLabel, defaultConnector, p
 import { useTypeRegistryVersion } from "../hooks/useTypeRegistryVersion";
 import { NEW_TYPE_OPTION_LABEL, NEW_TYPE_VALUE, requestNewType } from "../newTypeRequest";
 import SupplierInput from "./SupplierInput";
-import { ProvisionSelect } from "./PhysicalPathEditor";
 import { supplierName } from "../suppliers";
 import DeviceTypeField from "./DeviceTypeField";
 
@@ -138,7 +137,6 @@ export default function DeviceEditor() {
   const [hostname, setHostname] = useState("");
   const [deviceType, setDeviceType] = useState("");
   const [supplier, setSupplier] = useState("");
-  const [provision, setProvision] = useState<DeviceData["provision"]>();
   const [manufacturer, setManufacturer] = useState("");
   const [modelNumber, setModelNumber] = useState("");
   const [referenceUrl, setReferenceUrl] = useState("");
@@ -262,7 +260,6 @@ export default function DeviceEditor() {
     setDeviceType(node.data.deviceType);
     setManufacturer(node.data.manufacturer ?? "");
     setSupplier(node.data.supplier ?? "");
-    setProvision(node.data.provision);
     setModelNumber(node.data.modelNumber ?? "");
     setReferenceUrl(node.data.referenceUrl ?? tpl?.referenceUrl ?? "");
     setCategory(node.data.category ?? tpl?.category ?? "");
@@ -405,7 +402,6 @@ export default function DeviceEditor() {
     const existing = node?.data;
     const data: DeviceData = {
       supplier: supplierName(supplier) || undefined,
-      provision,
       ...(existing?.offCanvas ? { offCanvas: true } : {}),
       label: label.trim() || "Untitled",
       ...(shortName.trim() ? { shortName: shortName.trim() } : {}),
@@ -456,7 +452,7 @@ export default function DeviceEditor() {
       ...(() => { const t = searchTermsRaw.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 20); return t.length > 0 ? { searchTerms: t } : {}; })(),
     };
     return overrides ? { ...data, ...overrides } : data;
-  }, [supplier, provision, editingNodeId, ports, label, shortName, useShortName, wrapLabel, hostname, deviceType, manufacturer, modelNumber, referenceUrl, category, color, headerColor, node, showAllPorts, hiddenPorts, dhcpServer, powerDrawW, powerCapacityW, voltage, thermalBtuh, poeBudgetW, poeDrawW, unitCost, serialNumber, note, isSpare, procurementSource, heightMm, widthMm, depthMm, weightKg, rackForm, isCableAccessory, integratedWithCable, isVenueProvided, adapterVisibility, auxiliaryData, searchTermsRaw]);
+  }, [supplier, editingNodeId, ports, label, shortName, useShortName, wrapLabel, hostname, deviceType, manufacturer, modelNumber, referenceUrl, category, color, headerColor, node, showAllPorts, hiddenPorts, dhcpServer, powerDrawW, powerCapacityW, voltage, thermalBtuh, poeBudgetW, poeDrawW, unitCost, serialNumber, note, isSpare, procurementSource, heightMm, widthMm, depthMm, weightKg, rackForm, isCableAccessory, integratedWithCable, isVenueProvided, adapterVisibility, auxiliaryData, searchTermsRaw]);
 
   const handleSave = useCallback(() => {
     if (!editingNodeId) return;
@@ -1597,7 +1593,6 @@ export default function DeviceEditor() {
 
           <div className="grid grid-cols-2 gap-3 text-xs my-2">
             <label>Supplier<SupplierInput value={supplier} onChange={setSupplier} /></label>
-            <label>Provision<div><ProvisionSelect value={provision} onChange={setProvision} /></div></label>
           </div>
           {/* Cost & Procurement */}
           <details className="text-xs">
@@ -2650,7 +2645,7 @@ function PortRow({
               onChange={(e) => onUpdate({ directAttach: e.target.checked || undefined })}
               className="hidden"
             />
-            DA
+            Direkt gesteckt
           </label>
         );
       case "section":

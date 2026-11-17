@@ -1,3 +1,5 @@
+import { patchReferenceEdges } from "../patchReferences";
+import { entryFace, exitFace } from "../patchCircuits";
 import type { ReactFlowInstance } from "@xyflow/react";
 import { useSchematicStore } from "../store";
 import type { ConnectionEdge, SignalType } from "../types";
@@ -34,7 +36,9 @@ const PADDING_IN = 0.25;
  */
 export function buildDxf(rfInstance: ReactFlowInstance): string | null {
   const state = useSchematicStore.getState();
-  const { nodes, edges, routedEdges } = state;
+  const { routedEdges } = state;
+  const nodes = state.nodes.filter(n => !n.hidden && !(n.type === "device" && n.data.offCanvas));
+  const edges = patchReferenceEdges(state.nodes, state.edges);
   if (nodes.length === 0) return null;
 
   const writer = new DxfWriter();
@@ -85,6 +89,21 @@ export function buildDxf(rfInstance: ReactFlowInstance): string | null {
   // ─── Devices ────────────────────────────────────────────────────────
   for (const node of nodes) {
     if (node.type === "device") emitDevice(writer, node, rfInstance, edges, state.signalColors, state.currency, { useShortNames: state.useShortNames, wrapDeviceLabels: state.wrapDeviceLabels });
+  }
+
+  // Distributed references are drawing geometry only, never extra device materials.
+  for (const node of nodes) {
+    if (node.type !== "patch-reference" || node.hidden) continue;
+    const internal = rfInstance.getInternalNode(node.id);
+    if (!internal) continue;
+    const panel = state.nodes.find(n => n.id === node.data.panelNodeId);
+    const port = panel?.type === "device" ? panel.data.ports.find(p => p.id === node.data.portId) : undefined;
+    const hop = state.edges.find(e => e.id === node.data.connectionId)?.data?.patchHops?.find(h => h.panelNodeId === node.data.panelNodeId && h.portId === node.data.portId);
+    const { x, y } = internal.internals.positionAbsolute;
+    writer.addRect(CANONICAL_LAYERS.DEVICES, pxToIn(x), -pxToIn(y + 80), pxToIn(220), pxToIn(80));
+    writer.addText(CANONICAL_LAYERS.LABELS, pxToIn(x + 8), -pxToIn(y + 18), String(panel?.data.label ?? "Panel"), { height: pxToIn(11) });
+    writer.addText(CANONICAL_LAYERS.PORTS, pxToIn(x + 8), -pxToIn(y + 40), port?.label ?? node.data.portId, { height: pxToIn(11) });
+    writer.addText(CANONICAL_LAYERS.PORTS, pxToIn(x + 8), -pxToIn(y + 60), hop ? `${entryFace(hop)} | ${exitFace(hop)}` : "Rear | Front", { height: pxToIn(10) });
   }
 
   // ─── Annotations ────────────────────────────────────────────────────
