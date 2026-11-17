@@ -1728,6 +1728,7 @@ export default function DeviceEditor() {
                   depthMm,
                   unitCost,
                   ports,
+                  virtualChannels,
                 } as unknown as DeviceData;
                 return [0, 1, 2, 3, 4].map((i) => {
                   const row = auxiliaryData[i] ?? { text: "", position: "footer" as const };
