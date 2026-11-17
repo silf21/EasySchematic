@@ -18,6 +18,7 @@ import type {
   PortCapabilities,
   PortDirection,
   PortNetworkConfig,
+  PortLightingConfig,
   SignalType,
   TemplatePreset,
 } from "./types";
@@ -35,6 +36,7 @@ export interface PortDraft {
   connectorType?: ConnectorType;
   gender?: Gender;
   networkConfig?: PortNetworkConfig;
+  lightingConfig?: PortLightingConfig;
   addressable?: boolean;
   capabilities?: PortCapabilities;
   isMulticable?: boolean;

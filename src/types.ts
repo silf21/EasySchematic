@@ -28,6 +28,19 @@ export type BuiltinConnectorType =
  *  Look its label, cable, gender and mating up through `typeRegistry`. */
 export type ConnectorType = BuiltinConnectorType | (string & {});
 
+/** Lighting patch metadata, independent of a port's IP configuration. */
+export type LightingProtocol = "dmx" | "artnet" | "sacn";
+export interface PortLightingConfig {
+  /** On a physical DMX port: the source protocol of its assigned universe. */
+  protocol?: LightingProtocol;
+  /** Art-Net: 0–32767; sACN and logical local DMX universes: 1–63999. */
+  universe?: number;
+  startAddress?: number;
+  /** DMX channels occupied by this fixture/mode, independent of multicable channelCount. */
+  footprint?: number;
+  mode?: string;
+}
+
 export interface PortNetworkConfig {
   ip?: string;
   subnetMask?: string;
@@ -187,6 +200,7 @@ export interface Port {
   normalling?: "full" | "half" | "none";
   capabilities?: PortCapabilities;
   networkConfig?: PortNetworkConfig;
+  lightingConfig?: PortLightingConfig;
   addressable?: boolean;
   activeConfig?: PortActiveConfig;
   isMulticable?: boolean;

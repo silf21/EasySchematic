@@ -1,3 +1,4 @@
+import { lightingAddressLabel } from "../lightingConfig";
 import { openPatchBay } from "../patchBayNavigation";
 import { memo, useMemo, useCallback } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
@@ -293,7 +294,7 @@ function DeviceNodeComponent({ id, data, selected }: NodeProps<DeviceNodeType>) 
         <span
           className="text-[10px] leading-4 truncate"
           style={{ color: signalCssColor(port.signalType) }}
-          title={`${displayLabel(port.label)} (${signalLabel(port.signalType)})${usbcPowerSuffix(port)}`}
+          title={`${displayLabel(port.label)} (${signalLabel(port.signalType)})${usbcPowerSuffix(port)}${lightingAddressLabel(port) ? ` — ${lightingAddressLabel(port)}` : ""}`}
         >
           {displayLabel(port.label)}
         </span>
@@ -693,7 +694,7 @@ function DeviceNodeComponent({ id, data, selected }: NodeProps<DeviceNodeType>) 
                 <span
                   className="text-[10px] leading-4 truncate"
                   style={{ color: signalCssColor(port.signalType) }}
-                  title={`${displayLabel(port.label)} (${signalLabel(port.signalType)}) — bidirectional${usbcPowerSuffix(port)}`}
+                  title={`${displayLabel(port.label)} (${signalLabel(port.signalType)}) — bidirectional${usbcPowerSuffix(port)}${lightingAddressLabel(port) ? ` — ${lightingAddressLabel(port)}` : ""}`}
                 >
                   ↔ {displayLabel(port.label)}
                 </span>

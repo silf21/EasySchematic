@@ -1,3 +1,5 @@
+import LightingReport from "./LightingReport";
+import { buildLightingReportCsv, computeLightingReport, createLightingReportLayout, getLightingReportTableData } from "../lightingReport";
 import SupplierReport from "./SupplierReport";
 import SupplierInput from "./SupplierInput";
 import { buildSupplierCsv, computeSupplierMaterials, createSupplierLayout, supplierTableData } from "../supplierReport";
@@ -58,7 +60,7 @@ import type { SpreadsheetColumn } from "../spreadsheet/types";
 import FillSeriesDialog from "../spreadsheet/FillSeriesDialog";
 import { deviceTypeDisplay } from "../typeRegistry";
 
-export type ReportsTab = "suppliers" | "network" | "devices" | "packList" | "cableSchedule" | "patchPanel" | "power";
+export type ReportsTab = "lighting" | "suppliers" | "network" | "devices" | "packList" | "cableSchedule" | "patchPanel" | "power";
 
 interface ReportsDialogProps {
   initialTab: ReportsTab;
@@ -74,6 +76,7 @@ const POWER_LAYOUT_KEY = "easyschematic-power-report-layout";
 function ReportsDialog({ initialTab, onClose }: ReportsDialogProps) {
   const [tab, setTab] = useState<ReportsTab>(initialTab);
   const [maximized, setMaximized] = useState(false);
+  const [showLightingPreview, setShowLightingPreview] = useState(false);
   const [showSupplierPreview, setShowSupplierPreview] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [showNetworkPreview, setShowNetworkPreview] = useState(false);
@@ -109,7 +112,9 @@ function ReportsDialog({ initialTab, onClose }: ReportsDialogProps) {
 
   const handleCsvExport = useCallback(() => {
     const ownedGear = useSchematicStore.getState().ownedGear;
-    if (tab === "suppliers") {
+    if (tab === "lighting") {
+      downloadCsv(buildLightingReportCsv(computeLightingReport(nodes)), `${schematicName} - Lighting.csv`);
+    } else if (tab === "suppliers") {
       const s = useSchematicStore.getState();
       downloadCsv(buildSupplierCsv(computeSupplierMaterials(nodes, edges, s.pages, s.cableCosts)), `${schematicName} - Suppliers.csv`);
     } else if (tab === "network") {
@@ -141,12 +146,14 @@ function ReportsDialog({ initialTab, onClose }: ReportsDialogProps) {
     }
   }, [tab, nodes, edges, schematicName]);
 
+  const lightingDefaultLayout = useMemo(() => createLightingReportLayout(), []);
   const defaultLayout = useMemo(() => createDefaultPackListLayout(), []);
   const networkDefaultLayout = useMemo(() => createDefaultNetworkReportLayout(), []);
   const cableScheduleDefaultLayout = useMemo(() => createDefaultCableScheduleLayout(), []);
   const powerDefaultLayout = useMemo(() => createDefaultPowerReportLayout(), []);
 
   const tabLabels: Record<ReportsTab, string> = {
+    lighting: "DMX / Lighting",
     suppliers: "By Supplier",
     devices: "Devices",
     cableSchedule: "Cable Schedule",
@@ -179,6 +186,7 @@ function ReportsDialog({ initialTab, onClose }: ReportsDialogProps) {
             <button onClick={handleCsvExport} className={btnClass}>
               CSV
             </button>
+            {tab === "lighting" && <button onClick={() => setShowLightingPreview(true)} className={btnClass}>PDF</button>}
             {tab === "suppliers" && <button onClick={() => setShowSupplierPreview(true)} className={btnClass}>PDF</button>}
             {tab === "network" && (
               <button onClick={() => setShowNetworkPreview(true)} className={btnClass}>
@@ -240,6 +248,7 @@ function ReportsDialog({ initialTab, onClose }: ReportsDialogProps) {
 
           {/* Body */}
           <div className="overflow-auto flex-1 p-4">
+            {tab === "lighting" && <LightingReport onEdit={nodeId => { useSchematicStore.getState().setEditingNodeId(nodeId); onClose(); }} />}
             {tab === "suppliers" && <SupplierReport />}
             {tab === "network" && <NetworkReportTab />}
             {tab === "devices" && <DeviceReportTab />}
@@ -251,6 +260,7 @@ function ReportsDialog({ initialTab, onClose }: ReportsDialogProps) {
         </div>
       </div>
 
+      {showLightingPreview && <ReportPreviewDialog reportKey="easyschematic-lighting-report-layout" defaultLayout={lightingDefaultLayout} titleBlock={titleBlock} getTableData={() => getLightingReportTableData(computeLightingReport(nodes))} onClose={() => setShowLightingPreview(false)} filename={`${schematicName} - Lighting.pdf`} />}
       {showSupplierPreview && <ReportPreviewDialog reportKey="easyschematic-supplier-layout" defaultLayout={createSupplierLayout()} titleBlock={titleBlock} getTableData={() => { const s = useSchematicStore.getState(); return supplierTableData(computeSupplierMaterials(nodes, edges, s.pages, s.cableCosts)); }} onClose={() => setShowSupplierPreview(false)} filename={`${schematicName} - Suppliers.pdf`} />}
       {showNetworkPreview && (
         <ReportPreviewDialog

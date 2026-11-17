@@ -1,3 +1,4 @@
+import { lightingConfigErrors, lightingProtocol } from "../lightingConfig";
 import type { DeviceTemplate, Port, SlotDefinition } from "../types";
 import { DEVICE_TYPE_TO_CATEGORY, DEVICE_TYPE_ALIASES } from "../deviceTypeCategories";
 import { isKnownConnector, isKnownSignal } from "../typeRegistry";
@@ -115,6 +116,7 @@ export function validateTemplate(t: Partial<DeviceTemplate>): TemplateValidation
           errors.push(`${prefix}.${field} must be a non-negative number`);
         }
       }
+      if (port.lightingConfig != null) errors.push(...lightingConfigErrors(port.lightingConfig, lightingProtocol(port.signalType ?? "dmx", port.lightingConfig)).map(error => `${prefix}.lightingConfig: ${error}`));
       const vlan = port.networkConfig?.vlan;
       if (vlan != null && (!Number.isInteger(vlan) || vlan < 0 || vlan > 4094)) {
         errors.push(`${prefix}.networkConfig.vlan must be an integer 0–4094`);

@@ -1,3 +1,5 @@
+import PortLightingSection from "./PortLightingSection";
+import { LIGHTING_SIGNAL_TYPES } from "../lightingConfig";
 import { useState, useEffect, useCallback, useRef, useMemo, type DragEvent } from "react";
 import { useSchematicStore } from "../store";
 import { buildBulkSlots, bulkLabel } from "../slotBulk";
@@ -316,6 +318,7 @@ export default function DeviceEditor() {
       connectorType: p.connectorType,
       gender: p.gender,
       networkConfig: p.networkConfig ? { ...p.networkConfig } : undefined,
+      lightingConfig: p.lightingConfig ? { ...p.lightingConfig } : undefined,
       capabilities: p.capabilities ? { ...p.capabilities } : undefined,
       isMulticable: p.isMulticable,
       channelCount: p.channelCount,
@@ -747,6 +750,7 @@ export default function DeviceEditor() {
         connectorType: p.connectorType,
         gender: p.gender,
         networkConfig: p.networkConfig ? { ...p.networkConfig } : undefined,
+        lightingConfig: p.lightingConfig ? { ...p.lightingConfig } : undefined,
         capabilities: p.capabilities ? { ...p.capabilities } : undefined,
         multiConnect: p.multiConnect,
         directAttach: p.directAttach,
@@ -812,6 +816,7 @@ export default function DeviceEditor() {
       connectorType: p.connectorType,
       gender: p.gender,
       networkConfig: p.networkConfig ? { ...p.networkConfig } : undefined,
+      lightingConfig: p.lightingConfig ? { ...p.lightingConfig } : undefined,
       capabilities: p.capabilities ? { ...p.capabilities } : undefined,
       directAttach: p.directAttach,
       notes: p.notes,
@@ -855,6 +860,7 @@ export default function DeviceEditor() {
         label: duplicatePortLabel(orig.label, prev.map((p) => p.label)),
         // Deep-copy nested objects so editing the clone can't mutate the original.
         networkConfig: orig.networkConfig ? { ...orig.networkConfig } : undefined,
+        lightingConfig: orig.lightingConfig ? { ...orig.lightingConfig } : undefined,
         capabilities: orig.capabilities ? { ...orig.capabilities } : undefined,
       };
       const next = [...prev];
@@ -3021,6 +3027,9 @@ function PortRow({
           </div>
         </div>
       )}
+
+      {LIGHTING_SIGNAL_TYPES.has(port.signalType) && <PortLightingSection signalType={port.signalType} config={port.lightingConfig}
+        onChange={lightingConfig => onUpdate({ lightingConfig })} />}
 
       {/* Network Config (collapsible, only for addressable network signal types) */}
       {NETWORK_SIGNAL_TYPES.has(port.signalType) && (

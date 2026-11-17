@@ -1375,6 +1375,7 @@ function clonePorts(ports: Port[]): Port[] {
     // Deep clone nested objects
     if (p.capabilities) clone.capabilities = { ...p.capabilities };
     if (p.networkConfig) clone.networkConfig = { ...p.networkConfig };
+    if (p.lightingConfig) clone.lightingConfig = { ...p.lightingConfig };
     if (p.activeConfig) clone.activeConfig = { ...p.activeConfig };
     return clone;
   });
@@ -1387,6 +1388,7 @@ function cloneCardPorts(ports: Port[], slotId: string, slotLabel: string): Port[
     const clone: Port = { ...p, id: `${prefix}-${i}`, section: slotLabel };
     if (p.capabilities) clone.capabilities = { ...p.capabilities };
     if (p.networkConfig) clone.networkConfig = { ...p.networkConfig };
+    if (p.lightingConfig) clone.lightingConfig = { ...p.lightingConfig };
     if (p.activeConfig) clone.activeConfig = { ...p.activeConfig };
     return clone;
   });

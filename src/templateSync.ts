@@ -96,6 +96,7 @@ function mergePort(templatePort: Port, devicePort: Port): Port {
   };
   if (devicePort.flipped) merged.flipped = devicePort.flipped;
   if (devicePort.networkConfig) merged.networkConfig = devicePort.networkConfig;
+  if (devicePort.lightingConfig) merged.lightingConfig = { ...devicePort.lightingConfig };
   if (devicePort.notes) merged.notes = devicePort.notes;
   if (devicePort.activeConfig) merged.activeConfig = devicePort.activeConfig;
   if (devicePort.poeDrawW != null) merged.poeDrawW = devicePort.poeDrawW;
