@@ -9,7 +9,8 @@ import {
   REPORT_MARGIN_MM,
   PAPER_LABELS,
 } from "../reportLayout";
-import { renderReportPdf, type ReportTableData } from "../reportPdf";
+import { jsPDF } from "jspdf";
+import { createReportTextMetrics, reportRowLayout, renderReportPdf, type ReportTableData } from "../reportPdf";
 import { useSchematicStore } from "../store";
 import {
   getCoveredPositions,
@@ -30,7 +31,7 @@ type PageItem =
   | { kind: "sectionTitle"; tableId: string; label: string }
   | { kind: "colHeaders"; tableId: string }
   | { kind: "groupHeader"; tableId: string; label: string }
-  | { kind: "dataRow"; tableId: string; row: Record<string, string>; rowIndex: number; isLastRow?: boolean }
+  | { kind: "dataRow"; tableId: string; row: Record<string, string>; rowIndex: number; rowLayout: ReturnType<typeof reportRowLayout>; isLastRow?: boolean }
   | { kind: "gap"; heightMm: number };
 
 interface PageDesc {
@@ -41,8 +42,9 @@ interface PageDesc {
 function computePages(
   layout: ReportLayout,
   tables: ReportTableData[],
+  metrics: jsPDF,
 ): PageDesc[] {
-  const { heightMm } = getPageDimensions(layout.paperSize, layout.orientation);
+  const { widthMm, heightMm } = getPageDimensions(layout.paperSize, layout.orientation);
   const bottomLimit = heightMm - REPORT_MARGIN_MM - layout.footerHeightMm - 2;
   const page1Top = REPORT_MARGIN_MM + layout.headerHeightMm + 4;
   const pageNTop = REPORT_MARGIN_MM;
@@ -83,12 +85,13 @@ function computePages(
     };
 
     const addRow = (row: Record<string, string>, rowIndex: number) => {
-      if (!fits(PDF_ROW_HEIGHT)) {
+      const rowLayout = reportRowLayout(metrics, tableDef, row, widthMm - 2 * REPORT_MARGIN_MM);
+      if (!fits(rowLayout.heightMm)) {
         newPage();
         repeatTableHeader();
       }
-      currentItems.push({ kind: "dataRow", tableId: tableDef.id, row, rowIndex });
-      y += PDF_ROW_HEIGHT;
+      currentItems.push({ kind: "dataRow", tableId: tableDef.id, row, rowIndex, rowLayout });
+      y += rowLayout.heightMm;
     };
 
     const addGroupHeader = (label: string) => {
@@ -189,6 +192,16 @@ function ReportPreviewDialog({
   });
 
   const tables = getTableData(layout);
+  const [textMetrics, setTextMetrics] = useState(() => {
+    const doc = new jsPDF();
+    doc.setFontSize(8);
+    return doc;
+  });
+  useEffect(() => {
+    let cancelled = false;
+    void createReportTextMetrics().then(doc => { if (!cancelled) setTextMetrics(doc); });
+    return () => { cancelled = true; };
+  }, []);
 
   // Persist to store (which auto-saves to localStorage + is included in file export)
   useEffect(() => {
@@ -266,7 +279,7 @@ function ReportPreviewDialog({
   // Zoom + pagination
   const [zoom, setZoom] = useState(1);
   const [currentPage, setCurrentPage] = useState(1);
-  const pages = useMemo(() => computePages(effectiveLayout, tables), [effectiveLayout, tables]);
+  const pages = useMemo(() => computePages(effectiveLayout, tables, textMetrics), [effectiveLayout, tables, textMetrics]);
   const totalPages = pages.length;
   const safePage = Math.min(currentPage, totalPages);
   // Clamp page if layout changes reduce page count
@@ -1001,6 +1014,7 @@ function PageContentRenderer({
             key={`dr-${i}`}
             row={item.row}
             rowIndex={item.rowIndex}
+            rowLayout={item.rowLayout}
             tableDef={tableDef}
             mm={mm}
             topMm={y}
@@ -1008,7 +1022,7 @@ function PageContentRenderer({
             contentWidthMm={contentWidthMm}
           />,
         );
-        y += PDF_ROW_HEIGHT;
+        y += item.rowLayout.heightMm;
         break;
     }
   }
@@ -1763,6 +1777,7 @@ function PreviewColumnHeaders({
 function PreviewDataRow({
   row,
   rowIndex,
+  rowLayout,
   tableDef,
   mm,
   topMm,
@@ -1771,6 +1786,7 @@ function PreviewDataRow({
 }: {
   row: Record<string, string>;
   rowIndex: number;
+  rowLayout: ReturnType<typeof reportRowLayout>;
   tableDef: ReportTableDef;
   mm: (v: number) => number;
   topMm: number;
@@ -1785,15 +1801,17 @@ function PreviewDataRow({
 
   return (
     <div
+      data-testid="report-preview-row"
       style={{
         position: "absolute",
         left: mm(REPORT_MARGIN_MM),
         right: mm(REPORT_MARGIN_MM),
         top: mm(topMm),
-        height: mm(PDF_ROW_HEIGHT),
+        height: mm(rowLayout.heightMm),
         display: "flex",
-        alignItems: "center",
-        background: rowIndex % 2 === 1 ? "#f8f8f8" : "transparent",
+        alignItems: tableDef.wrapText ? "flex-start" : "center",
+        background: row._rowKind ? "#e6ebf5" : rowIndex % 2 === 1 ? "#f8f8f8" : "transparent",
+        fontWeight: row._rowKind ? 700 : 400,
         borderBottom: borders === "horizontal" || borders === "grid" || (borders === "outer" && isLastRow) ? borderLine : undefined,
         borderLeft: borders === "outer" || borders === "grid" ? borderLine : undefined,
         borderRight: borders === "outer" || borders === "grid" ? borderLine : undefined,
@@ -1806,9 +1824,11 @@ function PreviewDataRow({
             key={col.key}
             style={{
               width: mm(col.widthMm + (i < visCols.length - 1 ? gapMm : 0)),
+              paddingTop: tableDef.wrapText ? mm(1.2) : undefined,
               paddingLeft: mm(0.5) + indent,
               paddingRight: mm(i < visCols.length - 1 ? gapMm : 0.5),
-              fontSize: mm(2.7),
+              fontSize: mm(tableDef.wrapText ? 8 * 25.4 / 72 : 2.7),
+              lineHeight: tableDef.wrapText ? `${mm(3.6)}px` : undefined,
               color: isSubItem ? "#888" : "#222",
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -1817,7 +1837,7 @@ function PreviewDataRow({
               borderRight: borders === "grid" && i < visCols.length - 1 ? borderLine : undefined,
             }}
           >
-            {row[col.key] ?? ""}
+            {tableDef.wrapText ? rowLayout.lines[i].map((line, index) => <div key={index}>{line || " "}</div>) : row[col.key] ?? ""}
           </div>
         );
       })}

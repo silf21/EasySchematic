@@ -27,6 +27,7 @@ export interface ReportTableDef {
   sortBy: string | null;
   sortDir: "asc" | "desc";
   borderStyle?: TableBorderStyle;
+  wrapText?: boolean;
 }
 
 export type PaperSize = "letter" | "legal" | "a4" | "tabloid";

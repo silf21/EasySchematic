@@ -45,9 +45,9 @@ export function supplierTableData(rows: SupplierMaterialRow[]): ReportTableData[
   const output: Record<string, string>[] = [];
   for (const g of supplierGroups(rows)) {
     for (const r of g.rows) output.push({ supplier: r.supplier, category: r.category, material: r.material, room: r.room, count: String(r.count), unitCost: r.unitCost ? r.unitCost.toFixed(2) : "", cost: r.cost ? r.cost.toFixed(2) : "" });
-    output.push({ supplier: g.supplier, material: `SUBTOTAL (${g.unpriced} unpriced)`, count: String(g.count), cost: g.cost.toFixed(2) });
+    output.push({ supplier: g.supplier, _rowKind: "subtotal", material: `SUBTOTAL (${g.unpriced} unpriced)`, count: String(g.count), cost: g.cost.toFixed(2) });
   }
-  output.push({ supplier: "TOTAL", count: String(rows.reduce((n, r) => n + r.count, 0)), cost: rows.reduce((n, r) => n + r.cost, 0).toFixed(2) });
+  output.push({ _rowKind: "total", supplier: "TOTAL", count: String(rows.reduce((n, r) => n + r.count, 0)), cost: rows.reduce((n, r) => n + r.cost, 0).toFixed(2) });
   return [{ id: "suppliers", rows: output }];
 }
 export function buildSupplierCsv(rows: SupplierMaterialRow[]): string {
@@ -57,11 +57,11 @@ export function buildSupplierCsv(rows: SupplierMaterialRow[]): string {
 export function createSupplierLayout(): ReportLayout {
   const layout = createDefaultPackListLayout();
   layout.headerLayout = { ...layout.headerLayout, cells: layout.headerLayout.cells.map(c => c.content.type === "static" && c.content.text === "Pack List" ? { ...c, content: { type: "static" as const, text: "Materials by Supplier" } } : c) };
-  layout.tables = [{ id: "suppliers", label: "Materials by Supplier", groupBy: null, groupByOptions: [], sortBy: null, sortDir: "asc", columns: [
+  layout.tables = [{ id: "suppliers", label: "Materials by Supplier", wrapText: true, groupBy: null, groupByOptions: [], sortBy: null, sortDir: "asc", columns: [
     { key: "supplier", header: "Supplier", widthMm: 28, visible: true },
     { key: "category", header: "Category", widthMm: 24, visible: true },
     { key: "material", header: "Material", widthMm: 60, visible: true },
-    { key: "room", header: "Room / Route", widthMm: 28, visible: true },
+    { key: "room", header: "Room / Route", widthMm: 40, visible: true },
     { key: "count", header: "Qty", widthMm: 12, visible: true },
     { key: "unitCost", header: "Unit Cost", widthMm: 20, visible: true },
     { key: "cost", header: "Cost", widthMm: 22, visible: true },
