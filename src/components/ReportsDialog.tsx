@@ -153,7 +153,7 @@ function ReportsDialog({ initialTab, onClose }: ReportsDialogProps) {
   const powerDefaultLayout = useMemo(() => createDefaultPowerReportLayout(), []);
 
   const tabLabels: Record<ReportsTab, string> = {
-    lighting: "DMX / Lighting",
+    lighting: "Virtual Channels / Lighting",
     suppliers: "By Supplier",
     devices: "Devices",
     cableSchedule: "Cable Schedule",

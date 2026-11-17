@@ -1,4 +1,4 @@
-import { cloneLightingChannelsForPorts, remapLightingChannels } from "./lightingChannels";
+import { cloneVirtualChannelsForPorts, remapVirtualChannels, upgradeVirtualChannelsInPlace } from "./virtualChannels";
 import { create } from "zustand";
 import {
   applyNodeChanges,
@@ -2050,6 +2050,7 @@ function readStoredCustomTemplates(): DeviceTemplate[] | null {
     if (!Array.isArray(templates)) return null;
     // Migrate legacy custom templates: move unique key from deviceType to id
     for (const t of templates) {
+      upgradeVirtualChannelsInPlace(t);
       if (!t.id && t.deviceType.startsWith("custom-")) {
         t.id = t.deviceType;
       }
@@ -2504,7 +2505,7 @@ export const useSchematicStore = create<SchematicState>((set, get) => ({
         label: template.label,
         deviceType: template.deviceType,
         ports,
-        lightingChannels: preset?.lightingChannels !== undefined ? cloneLightingChannelsForPorts(preset.lightingChannels, preset.ports, ports) : remapLightingChannels(template.lightingChannels, new Map(ports.filter(p => p.templatePortId).map(p => [p.templatePortId!, p.id])), new Set(ports.map(p => p.id))),
+        virtualChannels: preset?.virtualChannels !== undefined ? cloneVirtualChannelsForPorts(preset.virtualChannels, preset.ports, ports) : remapVirtualChannels(template.virtualChannels, new Map(ports.filter(p => p.templatePortId).map(p => [p.templatePortId!, p.id])), new Set(ports.map(p => p.id))),
         color,
         ...(headerColor ? { headerColor } : {}),
         baseLabel: template.label,
@@ -2892,7 +2893,7 @@ export const useSchematicStore = create<SchematicState>((set, get) => ({
           data: {
             ...deviceData,
             ports: newPorts,
-            lightingChannels: cloneLightingChannelsForPorts(deviceData.lightingChannels, deviceData.ports, newPorts),
+            virtualChannels: cloneVirtualChannelsForPorts(deviceData.virtualChannels, deviceData.ports, newPorts),
             hiddenPorts: remappedHidden && remappedHidden.length > 0 ? remappedHidden : undefined,
           },
         } as DeviceNode;
@@ -3514,7 +3515,7 @@ export const useSchematicStore = create<SchematicState>((set, get) => ({
       label: preservedLabel,
       deviceType: newTemplate.deviceType,
       ports: newPorts,
-      lightingChannels: remapLightingChannels(newTemplate.lightingChannels, new Map(newPorts.filter(p => p.templatePortId).map(p => [p.templatePortId!, p.id])), new Set(newPorts.map(p => p.id))),
+      virtualChannels: remapVirtualChannels(newTemplate.virtualChannels, new Map(newPorts.filter(p => p.templatePortId).map(p => [p.templatePortId!, p.id])), new Set(newPorts.map(p => p.id))),
       ...(newTemplate.color ? { color: newTemplate.color } : {}),
       ...(userRenamed ? {} : { baseLabel: newTemplate.label }),
       model: newTemplate.label,

@@ -43,7 +43,7 @@ test("lighting addresses and Art-Net IP settings persist and appear in lighting 
   await page.reload();
   await expect(page.locator('.react-flow__node[data-id="light"]')).toBeVisible();
   await page.evaluate(() => window.dispatchEvent(new CustomEvent("easyschematic:open-reports", { detail: "lighting" })));
-  await expect(page.getByRole("button", { name: "DMX / Lighting", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Virtual Channels / Lighting", exact: true })).toBeVisible();
   await expect(page.getByRole("cell", { name: "Standard 16ch", exact: true })).toBeVisible();
   await expect(page.getByRole("cell", { name: "116", exact: true })).toBeVisible();
   await expect(page.getByRole("cell", { name: "2.0.0.10", exact: true })).toBeVisible();

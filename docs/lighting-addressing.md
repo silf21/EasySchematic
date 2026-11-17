@@ -8,18 +8,24 @@ Open Device Properties and expand **DMX / Universe** under a DMX, Art-Net or sAC
 
 For a gateway, configure each DMX output's universe separately. For example, its LAN port can have Art-Net IP settings while DMX Out 1 maps to Art-Net universe 0. Configure a fixture's universe, start address and footprint on its DMX input. IP configuration remains independent, under **Network** on addressable Ethernet, Art-Net and sACN ports.
 
-**Reports → DMX / Lighting** lists configured lighting ports, their channel ranges, modes, IP addresses and validation warnings. CSV and PDF exports are available. A physical DMX port's report row includes the IP addresses configured on its device when it has no IP of its own. The Network report also supports Art-Net and sACN ports.
+**Reports → Virtual Channels / Lighting** lists configured lighting ports, their channel ranges, modes, IP addresses and validation warnings. CSV and PDF exports are available. A physical DMX port's report row includes the IP addresses configured on its device when it has no IP of its own. The Network report also supports Art-Net and sACN ports.
 
 For optional schematic labels, use the **DMX / Universe Patch** auxiliary field (`{{lightingPatch}}`). Port tooltips also include configured lighting addresses.
 
 Universe assignments are explicit per port. They are not propagated through the topology. Modes are free text; footprints are entered manually. Shared addresses are allowed, and overlapping fixture ranges are not automatically treated as errors.
 
-## Logical lighting channels and pixel-controller terminals
+## Virtual channels
 
-In Device Properties, use **Lighting Channels → + Add Lighting Channel** for outputs whose configuration applies to several terminals. Select, for example, B1, A1/D1, C1 and GND for Channel 1 and B2, A2/D2, C2 and the same GND for Channel 2. Membership is independent of the port's visual Section. A shared terminal may belong to more than one channel.
+Use **Device Properties → Virtual Channels → + Add Virtual Channel** for one logical configuration applied to selected physical ports. Give it a name, select its ports and assign a protocol. All registered protocols are available, including custom signal types. A port may belong to several channels; membership is independent of its visual Section. Virtual channels add no physical connectors or material items.
 
-Each logical channel has its own source protocol, start universe, DMX start address and mode. Optionally enter pixel count and channels per pixel (3 for RGB, 4 for RGBW); otherwise enter a manual channel footprint. The calculated end includes its universe. Choose **Continuous** for 512-channel addressing or **Whole pixels per universe** to avoid splitting a pixel across universes (for example 170 RGB pixels / 510 channels per full universe). Set this to match the actual controller; it is not inferred from its model. Art-Net universe numbers start at 0 and sACN at 1.
+Configuration follows the selected protocol:
 
-Physical outputs may use the **SPI** signal type. Their terminals remain individually connectable. A grouped port's lighting configuration is edited in its channel; IP settings stay on the network port. The Lighting report lists a group once with its terminals and calculated range, and omits separate per-port lighting rows for its members. CSV/PDF and the optional `{{lightingPatch}}` auxiliary field include logical channels. Port tooltips show their shared mapping.
+- **DMX, Art-Net, sACN:** start universe, DMX start address, manual footprint and mode. Art-Net uses zero-based universes; sACN and local DMX use one-based universes.
+- **SPI output:** pixel count, channels per pixel and pixel mode. Select SPI either as the protocol for a direct SPI channel or as the separate **Output signal**. Selecting Art-Net alone does not expose pixel settings.
+- **Any protocol:** optional named protocol parameters. These are recorded as text; protocols without a dedicated editor use these parameters instead of showing lighting-specific fields. IP configuration remains on the physical network port.
 
-Mappings are retained by schematic save/reload, user templates, project presets, device copying and template placement. Template synchronization remaps terminal IDs and preserves each existing channel's instance addressing. Deleting a terminal removes it from the saved membership; a group with no remaining ports is flagged for review.
+For an Art-Net-to-SPI controller, select **Protocol: Art-Net** and **Output signal: SPI**, then assign B1, A1/D1, C1 and GND to Channel 1. Channel 2 can use B2, A2/D2, C2 and the same shared GND. Each channel has independent addressing. The calculated end includes its universe. Select continuous 512-channel packing or whole-pixel packing to match the actual controller (for example 170 RGB pixels / 510 channels per full universe). This is not inferred from the controller model.
+
+The **Virtual Channels / Lighting** report lists each channel once, including protocol, member ports, applicable address range and named parameters; CSV/PDF use the same rows. Individual per-port lighting rows are suppressed only when a lighting virtual channel owns their addressing. The optional `{{virtualChannels}}` auxiliary field and port tooltips show the shared configuration.
+
+Mappings survive schematic save/reload, user-template and project-preset saves, copying, placement and synchronization. Earlier Lighting Channels are automatically upgraded with their original protocol, member ports and pixel settings. Inactive protocol settings are preserved when changing protocol but are not applied or reported. Sections remain a separate visual grouping mechanism.

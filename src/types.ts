@@ -41,8 +41,12 @@ export interface PortLightingConfig {
   mode?: string;
 }
 
-/** A logical lighting output may own several terminals; terminals may be shared. */
-export interface LightingChannel {
+/** Logical protocol configuration applied to selected ports; ports may be shared. */
+export interface VirtualChannel {
+  /** Optional only for compatibility with earlier lighting-channel definitions. */
+  protocol?: SignalType;
+  outputSignal?: SignalType;
+  parameters?: CustomField[];
   id: string;
   label: string;
   portIds: string[];
@@ -268,7 +272,7 @@ export interface InstalledSlot {
 }
 
 export interface DeviceData {
-  lightingChannels?: LightingChannel[];
+  virtualChannels?: VirtualChannel[];
   supplier?: string;
   [key: string]: unknown;
   label: string;
@@ -628,7 +632,7 @@ export interface ConnectionData {
 export type ConnectionEdge = Edge<ConnectionData>;
 
 export interface DeviceTemplate {
-  lightingChannels?: LightingChannel[];
+  virtualChannels?: VirtualChannel[];
   id?: string;
   version?: number;
   deviceType: string;
@@ -681,7 +685,7 @@ export interface CustomTemplateMeta {
 }
 
 export interface TemplatePreset {
-  lightingChannels?: LightingChannel[];
+  virtualChannels?: VirtualChannel[];
   ports: Port[];
   hiddenPorts?: string[];
   color?: string;

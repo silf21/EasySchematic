@@ -1,4 +1,4 @@
-import { validateLightingChannels } from "../lightingChannels";
+import { validateVirtualChannels } from "../virtualChannels";
 import { lightingConfigErrors, lightingProtocol } from "../lightingConfig";
 import type { DeviceTemplate, Port, SlotDefinition } from "../types";
 import { DEVICE_TYPE_TO_CATEGORY, DEVICE_TYPE_ALIASES } from "../deviceTypeCategories";
@@ -78,7 +78,7 @@ export function validateTemplate(t: Partial<DeviceTemplate>): TemplateValidation
     }
   }
 
-  errors.push(...validateLightingChannels(t.lightingChannels, Array.isArray(t.ports) ? t.ports : []));
+  errors.push(...validateVirtualChannels(t.virtualChannels, Array.isArray(t.ports) ? t.ports : []));
 
   // Ports
   if (!Array.isArray(t.ports)) {

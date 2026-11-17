@@ -1,3 +1,4 @@
+import { upgradeVirtualChannelsInPlace } from "./virtualChannels";
 /**
  * Schema migrations for EasySchematic save files.
  *
@@ -16,7 +17,7 @@ import { getPortAbsolutePositions } from "./snapUtils";
 import type { SchematicNode } from "./types";
 import { defaultConnector } from "./typeRegistry";
 
-export const CURRENT_SCHEMA_VERSION = 47;
+export const CURRENT_SCHEMA_VERSION = 48;
 
 /** Stub-label nodes paint at this z-index so connection lines render UNDER their
  *  white box (matches waypoint/junction z — above edge z, below the 10000 edge labels). */
@@ -611,6 +612,11 @@ const migrations: Record<number, Migration> = {
     // v42 → v43: patch panel view — adds optional edge.data.patchHops/patchSegments,
     // DeviceData.offCanvas, and the "patch-panel" page variant. Purely additive.
     data.version = 43;
+    return data;
+  },
+  47: (data) => {
+    upgradeVirtualChannelsInPlace(data);
+    data.version = 48;
     return data;
   },
   46: (data) => {

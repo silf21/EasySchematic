@@ -1,4 +1,4 @@
-import { lightingChannelLabel } from "../lightingChannels";
+import { virtualChannelLabel, hasVirtualLightingConfig } from "../virtualChannels";
 import { lightingAddressLabel } from "../lightingConfig";
 import { openPatchBay } from "../patchBayNavigation";
 import { memo, useMemo, useCallback } from "react";
@@ -60,8 +60,8 @@ function DeviceNodeComponent({ id, data, selected }: NodeProps<DeviceNodeType>) 
   const setEditingNodeId = useSchematicStore((s) => s.setEditingNodeId);
   const displayLabel = useDisplayLabel();
   const portLightingLabel = (port: Port) => {
-    const channels = data.lightingChannels?.filter(channel => channel.portIds.includes(port.id));
-    return channels?.length ? channels.map(lightingChannelLabel).join("; ") : lightingAddressLabel(port);
+    const channels = data.virtualChannels?.filter(channel => channel.portIds.includes(port.id));
+    return [...(channels ?? []).map(virtualChannelLabel), !channels?.some(hasVirtualLightingConfig) ? lightingAddressLabel(port) : ""].filter(Boolean).join("; ");
   };
   const useShortNames = useSchematicStore((s) => s.useShortNames);
   const wrapDeviceLabels = useSchematicStore((s) => s.wrapDeviceLabels);

@@ -1,4 +1,4 @@
-import { remapLightingChannels } from "./lightingChannels";
+import { remapVirtualChannels } from "./virtualChannels";
 import type {
   DeviceData,
   DeviceTemplate,
@@ -203,14 +203,14 @@ export function syncDeviceWithTemplate(
   }
   const channelPortMap = new Map(updatedPorts.filter(p => p.templatePortId).map(p => [p.templatePortId!, p.id]));
   const validPortIds = new Set(updatedPorts.map(p => p.id));
-  const templateChannels = remapLightingChannels(template.lightingChannels, channelPortMap, validPortIds);
-  if (template.lightingChannels !== undefined) {
-    updatedData.lightingChannels = (templateChannels ?? []).map(channel => {
-      const prior = device.lightingChannels?.find(c => c.id === channel.id);
-      return prior ? { ...channel, config: { ...prior.config }, pixelCount: prior.pixelCount, channelsPerPixel: prior.channelsPerPixel, universePacking: prior.universePacking } : channel;
+  const templateChannels = remapVirtualChannels(template.virtualChannels, channelPortMap, validPortIds);
+  if (template.virtualChannels !== undefined) {
+    updatedData.virtualChannels = (templateChannels ?? []).map(channel => {
+      const prior = device.virtualChannels?.find(c => c.id === channel.id);
+      return prior ? { ...channel, protocol: prior.protocol, outputSignal: prior.outputSignal, parameters: prior.parameters?.map(p => ({ ...p })), config: { ...prior.config }, pixelCount: prior.pixelCount, channelsPerPixel: prior.channelsPerPixel, universePacking: prior.universePacking } : channel;
     });
   } else {
-    updatedData.lightingChannels = remapLightingChannels(device.lightingChannels, new Map(), validPortIds);
+    updatedData.virtualChannels = remapVirtualChannels(device.virtualChannels, new Map(), validPortIds);
   }
   if (template.version != null) {
     updatedData.templateVersion = template.version;
