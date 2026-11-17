@@ -1,3 +1,4 @@
+import { upgradeVirtualChannelsInPlace } from "../virtualChannels";
 import type { AuxRow, DeviceTemplate, Port, PortCapabilities, PortNetworkConfig, SlotDefinition } from "../types";
 import { DEVICE_TYPE_TO_CATEGORY } from "../deviceTypeCategories";
 import { validateTemplate } from "./validate";
@@ -47,6 +48,8 @@ const PORT_NUMBER_FIELDS = ["channelCount", "poeDrawW", "usbcPowerSourceW", "usb
 const PORT_BOOLEAN_FIELDS = ["inheritsSignal", "addressable", "isMulticable", "multiConnect", "directAttach", "flipped"] as const;
 
 function normalizeTemplate(raw: Record<string, unknown>): Partial<DeviceTemplate> {
+  raw = { ...raw };
+  upgradeVirtualChannelsInPlace(raw);
   const ports = Array.isArray(raw.ports)
     ? raw.ports
         .filter((p): p is Record<string, unknown> => !!p && typeof p === "object")
@@ -62,6 +65,7 @@ function normalizeTemplate(raw: Record<string, unknown>): Partial<DeviceTemplate
 
   return {
     id: typeof raw.id === "string" ? raw.id : generateTemplateId(),
+    virtualChannels: raw.virtualChannels as DeviceTemplate["virtualChannels"],
     label: str(raw.label),
     shortName: str(raw.shortName),
     hostname: str(raw.hostname),
@@ -163,6 +167,7 @@ function normalizePort(raw: Record<string, unknown>, index: number): Partial<Por
     if (typeof raw[f] === "boolean") port[f] = raw[f];
   }
 
+  if (raw.lightingConfig !== undefined) port.lightingConfig = raw.lightingConfig;
   const networkConfig = normalizeNetworkConfig(raw.networkConfig);
   if (networkConfig) port.networkConfig = networkConfig;
   const capabilities = normalizeCapabilities(raw.capabilities);

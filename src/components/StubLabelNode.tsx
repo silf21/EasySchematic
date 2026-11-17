@@ -222,6 +222,7 @@ function StubLabelNodeComponent({ id, data, selected }: NodeProps<StubLabelNodeT
       <Handle type={handleType} position={Position.Bottom} id="b" isConnectable={false} style={{ opacity: 0, width: 6, height: 6 }} />
       <Handle type={handleType} position={Position.Left} id="l" isConnectable={false} style={{ opacity: 0, width: 6, height: 6 }} />
       <div
+        data-pdf-stub-id={id}
         style={{
           // Pin to STUB_H_EST so the box's geometric center (where handles sit
           // via top:50%) actually lands at position.y + STUB_H_EST/2. Without

@@ -1,3 +1,4 @@
+import { upgradeVirtualChannelsInPlace } from "./virtualChannels";
 import type { DeviceTemplate } from "./types";
 import { isEmptyTypeDefs, normalizeTypeDefs, type CustomTypeDefs } from "./customTypes/model";
 
@@ -34,6 +35,7 @@ export function parseTemplateFile(json: string): DeviceTemplate[] {
 /** Templates plus the archive's custom types (empty lists when it carries none). */
 export function parseTemplateArchive(json: string): { templates: DeviceTemplate[]; customTypes: CustomTypeDefs } {
   const data = JSON.parse(json);
+  upgradeVirtualChannelsInPlace(data);
   if (
     typeof data !== "object" ||
     data === null ||

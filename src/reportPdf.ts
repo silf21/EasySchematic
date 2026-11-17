@@ -87,6 +87,30 @@ export interface ReportTableData {
   groupedRows?: Map<string, Record<string, string>[]>;
 }
 
+/** The preview uses the embedded PDF font metrics for identical wrapping. */
+export async function createReportTextMetrics(): Promise<jsPDF> {
+  const doc = new jsPDF();
+  await loadInterFont(doc);
+  doc.setFont("Inter", "normal");
+  doc.setFontSize(FONT_SIZE);
+  return doc;
+}
+
+export function reportRowLayout(doc: jsPDF, table: ReportTableDef, row: Record<string, string>, contentWidthMm: number) {
+  const gap = getTableColumnGapMm(table, contentWidthMm);
+  const columns = getVisibleColumns(table, contentWidthMm, gap);
+  const font = doc.getFont().fontName;
+  doc.setFont(font, row._rowKind ? "bold" : "normal");
+  doc.setFontSize(FONT_SIZE);
+  const lines = columns.map(col => {
+    const indent = row._isSubItem === "true" && col.key !== "count" ? 4 : 0;
+    const width = Math.max(0.5, col.widthMm - indent - 1);
+    const text = row[col.key] ?? "";
+    return table.wrapText ? doc.splitTextToSize(text, width) as string[] : [text];
+  });
+  return { lines, heightMm: table.wrapText ? Math.max(ROW_HEIGHT, 2 + Math.max(1, ...lines.map(l => l.length)) * 3.6) : ROW_HEIGHT };
+}
+
 // ─── Grid Block Renderer (shared by header + footer) ───
 
 function drawGridBlock(
@@ -259,7 +283,7 @@ function drawTableSection(
     doc.setFontSize(11);
     doc.setFont("Inter", "bold");
     doc.setTextColor(0);
-    doc.text(fitText(doc, label, contentWidthMm), REPORT_MARGIN_MM, y);
+    doc.text(fitText(doc, label, contentWidthMm), REPORT_MARGIN_MM, y + (tableDef.wrapText ? 4 : 0));
     y += HEADER_HEIGHT;
     doc.setFont("Inter", "normal");
   };
@@ -267,7 +291,7 @@ function drawTableSection(
   drawSectionTitle(tableDef.label);
 
   const drawHeaders = () => {
-    const headerTop = y - HEADER_HEIGHT + 2;
+    const headerTop = tableDef.wrapText ? y : y - HEADER_HEIGHT + 2;
     sectionTopY = headerTop;
 
     doc.setFontSize(HEADER_FONT_SIZE);
@@ -277,12 +301,12 @@ function drawTableSection(
     doc.setTextColor(0);
     let x = REPORT_MARGIN_MM;
     for (const col of visCols) {
-      doc.text(fitText(doc, col.header, col.widthMm), x, y);
+      doc.text(fitText(doc, col.header, col.widthMm), x, y + (tableDef.wrapText ? 4.5 : 0));
       x += col.widthMm + colGap;
     }
     doc.setFont("Inter", "normal");
     doc.setFontSize(FONT_SIZE);
-    y += 2;
+    y += tableDef.wrapText ? HEADER_HEIGHT + 2 : 2;
 
     // Border under header
     if (borders !== "none") {
@@ -304,32 +328,33 @@ function drawTableSection(
   };
 
   const drawRow = (row: Record<string, string>, rowIndex: number) => {
-    y += ROW_HEIGHT;
-    if (y > bottomLimit) {
-      repeatOnNewPage();
-      y += ROW_HEIGHT;
+    const wrapped = reportRowLayout(doc, tableDef, row, contentWidthMm);
+    const rowHeight = wrapped.heightMm;
+    if (y + rowHeight > bottomLimit) repeatOnNewPage();
+    const rowTop = tableDef.wrapText ? y : y + 2;
+    const baseline = tableDef.wrapText ? y + 4 : y + rowHeight;
+    y += rowHeight;
+    const summary = !!row._rowKind;
+    if (summary || rowIndex % 2 === 1) {
+      doc.setFillColor(...(summary ? [230, 235, 245] : [248, 248, 248]) as [number, number, number]);
+      doc.rect(tableLeft, rowTop, tableWidth, rowHeight, "F");
     }
-
-    const rowTop = y - ROW_HEIGHT + 2;
-
-    if (rowIndex % 2 === 1) {
-      doc.setFillColor(248, 248, 248);
-      doc.rect(tableLeft, rowTop, tableWidth, ROW_HEIGHT, "F");
-    }
-
+    doc.setFont("Inter", summary ? "bold" : "normal");
     const isSubItem = row._isSubItem === "true";
     doc.setTextColor(isSubItem ? 120 : 0);
     let x = REPORT_MARGIN_MM;
-    for (const col of visCols) {
+    for (const [index, col] of visCols.entries()) {
       const text = row[col.key] ?? "";
       const indent = isSubItem && col.key !== "count" ? 4 : 0;
-      doc.text(fitText(doc, text, col.widthMm - indent), x + indent, y);
+      if (tableDef.wrapText) {
+        wrapped.lines[index].forEach((line, i) => doc.text(line, x + indent, baseline + i * 3.6));
+      } else doc.text(fitText(doc, text, col.widthMm - indent), x + indent, baseline);
       x += col.widthMm + colGap;
     }
 
     // Horizontal line under this row
     if (borders === "horizontal" || borders === "grid") {
-      hLine(rowTop + ROW_HEIGHT);
+      hLine(rowTop + rowHeight);
     }
   };
 

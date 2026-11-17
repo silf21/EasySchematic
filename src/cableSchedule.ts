@@ -10,6 +10,7 @@ import { resolvePort, resolvePortLabel, getRoomLabel, escapeCsv, csvRow, groupBy
 import { transformLabelNow, withRawLabels } from "./labelCaseUtils";
 import type { ReportLayout } from "./reportLayout";
 import type { ReportTableData } from "./reportPdf";
+import { supplierName } from "./suppliers";
 import type { DeviceData } from "./types";
 import { getPatchSegments, resolvableHops, type PatchPointInfo } from "./patchCircuits";
 // Room-distance estimation moved behind this shared helper (#100) — it backs both the
@@ -23,6 +24,8 @@ export interface CableScheduleDistanceContext {
 }
 
 export interface CableScheduleRow {
+  supplier?: string;
+  unitCost?: number;
   edgeId: string;
   cableId: string;
   sourceDevice: string;
@@ -98,7 +101,7 @@ export function computeCableSchedule(
   };
 
   const connections = edges
-    .filter((e) => e.data?.signalType && !e.data?.directAttach)
+    .filter((e) => e.data?.signalType && (!e.data?.directAttach || resolvableHops(e, nodes).length > 0))
     // For linked pairs, only process the source-side leg (the one whose source is a real device).
     .filter((e) => !e.data?.linkedConnectionId || isSourceLeg(e))
     .map((e) => {
@@ -210,7 +213,7 @@ export function computeCableSchedule(
         cableUse: c.cableUse,
       };
     });
-    return expandPatchedRows(rows, nodes, edges, linkedPartner);
+    return expandMaterials(expandPatchedRows(rows, nodes, edges, linkedPartner), edges, nodes);
   }
 
   rows = connections.map((c) => ({
@@ -235,7 +238,19 @@ export function computeCableSchedule(
     tested: c.tested,
     cableUse: c.cableUse,
   }));
-  return expandPatchedRows(rows, nodes, edges, linkedPartner);
+  return expandMaterials(expandPatchedRows(rows, nodes, edges, linkedPartner), edges, nodes);
+}
+
+/** Inherit supplier and price per physical section; never invent extra inline cables. */
+function expandMaterials(rows: CableScheduleRow[], edges: ConnectionEdge[], nodes: SchematicNode[]): CableScheduleRow[] {
+  const byId = new Map(edges.map(edge => [edge.id, edge]));
+  return rows.map(row => {
+    const edge = byId.get(row.edgeId)!;
+    const data = edge.data;
+    const validOverrides = data?.patchHops?.length === resolvableHops(edge, nodes).length;
+    const segment = row.segIndex === undefined || !validOverrides ? undefined : data?.patchSegments?.[row.segIndex];
+    return { ...row, supplier: supplierName(segment?.supplier ?? data?.supplier), unitCost: segment?.unitCost ?? data?.unitCost };
+  });
 }
 
 /** Replace each patched connection's single row with one row per physical segment
@@ -269,6 +284,7 @@ function expandPatchedRows(
     const signalType = (edge.data?.signalType ?? "custom") as SignalType;
     const segs = getPatchSegments(edge, nodes, row.cableId, srcPoint, tgtPoint);
     for (const seg of segs) {
+      if (seg.directAttach) continue;
       out.push({
         ...row,
         segIndex: seg.index,
@@ -346,7 +362,7 @@ export function buildCableScheduleCsv(
     "Target", "Tgt Port", "Tgt Conn",
     "Cable Type", "Signal", "Length", "Est. Length",
     "Gauge (AWG)", "Alias", "Tested", "Use",
-    "Src Room", "Tgt Room", "Snake", "Bundle",
+    "Src Room", "Tgt Room", "Snake", "Bundle", "Supplier", "Unit Cost",
   ]));
   for (const r of rows) {
     lines.push(csvRow([
@@ -355,7 +371,7 @@ export function buildCableScheduleCsv(
       r.cableType, r.signalType, r.cableLength, r.computedLength ?? "",
       r.gaugeAwg, r.cableAlias, r.tested,
       r.cableUse ? r.cableUse.charAt(0).toUpperCase() + r.cableUse.slice(1) : "",
-      r.sourceRoom, r.targetRoom, r.multicableLabel, r.bundle,
+      r.sourceRoom, r.targetRoom, r.multicableLabel, r.bundle, r.supplier ?? "", r.unitCost?.toFixed(2) ?? "",
     ]));
   }
 
@@ -382,6 +398,7 @@ export function getCableScheduleTableData(
   const tableDef = layout.tables.find((t) => t.id === "cableSchedule");
 
   const tableRows = rows.map((r) => ({
+    supplier: r.supplier ?? "",
     cableId: r.cableId,
     sourceDevice: r.sourceDevice,
     sourcePort: r.sourcePort,

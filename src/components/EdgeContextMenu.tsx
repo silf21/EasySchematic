@@ -1,3 +1,4 @@
+import { segmentsForEdge } from "../patchCircuits";
 import { useEffect, useCallback, useState } from "react";
 import { useReactFlow } from "@xyflow/react";
 import { useSchematicStore, GRID_SIZE } from "../store";
@@ -6,6 +7,7 @@ import { LINE_STYLE_LABELS, LINE_STYLE_DASHARRAY, type DeviceData, type LineStyl
 import { isAdapterHidden, toggleAdapterVisibility as nextAdapterVisibility } from "../adapterVisibility";
 import { selectedConnectionEdges, stubbedLinkIdsOf } from "../stubSelection";
 import { useContextMenuPosition } from "../hooks/useContextMenuPosition";
+import SupplierInput from "./SupplierInput";
 import MenuSubmenu from "./MenuSubmenu";
 
 /** Project a point onto the nearest segment and return the projected point. */
@@ -42,6 +44,7 @@ function projectOntoSegments(
 
 export default function EdgeContextMenu() {
   const menu = useSchematicStore((s) => s.edgeContextMenu);
+  const liveEdges = useSchematicStore(s => s.edges);
   const { setCenter, getZoom, getInternalNode } = useReactFlow();
 
   // Close on click anywhere or Escape
@@ -233,7 +236,7 @@ export default function EdgeContextMenu() {
     if (!menu) return;
     if (menu.initialEdit === "length") {
       const edge = useSchematicStore.getState().edges.find((e) => e.id === menu.edgeId);
-      setLabelValue((edge?.data?.cableLength as string) ?? "");
+      setLabelValue(menu.segmentIndex != null ? edge?.data?.patchSegments?.[menu.segmentIndex]?.cableLength ?? "" : (edge?.data?.cableLength as string) ?? "");
       setEditingLabel("length");
     } else {
       setEditingLabel(false);
@@ -254,7 +257,7 @@ export default function EdgeContextMenu() {
   const { ref: menuRef, pos: menuPos } = useContextMenuPosition(
     menu?.screenX ?? 0,
     menu?.screenY ?? 0,
-    [editingLabel],
+    [editingLabel, !!menu],
   );
 
   const setConnectionLabel = useCallback(() => {
@@ -277,7 +280,7 @@ export default function EdgeContextMenu() {
     if (!menu) return;
     const store = useSchematicStore.getState();
     const edge = store.edges.find((e) => e.id === menu.edgeId);
-    setLabelValue((edge?.data?.cableLength as string) ?? "");
+    setLabelValue(menu.segmentIndex != null ? edge?.data?.patchSegments?.[menu.segmentIndex]?.cableLength ?? "" : (edge?.data?.cableLength as string) ?? "");
     setEditingLabel("length");
   }, [menu]);
 
@@ -306,7 +309,11 @@ export default function EdgeContextMenu() {
       : editingLabel === "target" ? "targetLabel"
       : editingLabel === "length" ? "cableLength"
       : "label";
-    store.patchEdgeData(menu.edgeId, { [field]: labelValue.trim() || undefined });
+    if (editingLabel === "length" && menu.segmentIndex != null) {
+      store.setPatchSegmentOverride(menu.edgeId, menu.segmentIndex, { cableLength: labelValue.trim() || undefined });
+    } else {
+      store.patchEdgeData(menu.edgeId, { [field]: labelValue.trim() || undefined });
+    }
     useSchematicStore.setState({ edgeContextMenu: null });
     setEditingLabel(false);
   }, [menu, labelValue, editingLabel]);
@@ -324,7 +331,10 @@ export default function EdgeContextMenu() {
     if (!menu) return;
     const store = useSchematicStore.getState();
     const edge = store.edges.find((e) => e.id === menu.edgeId);
-    if (edge?.data?.linkedConnectionId) {
+    if (menu.segmentIndex != null) {
+      const stubbed = edge?.data?.patchSegments?.[menu.segmentIndex]?.stubbed === true;
+      store.setPatchSegmentOverride(menu.edgeId, menu.segmentIndex, { stubbed: !stubbed });
+    } else if (edge?.data?.linkedConnectionId) {
       store.collapseStubsForEdge(menu.edgeId);
     } else {
       store.convertEdgeToStubs(menu.edgeId);
@@ -442,9 +452,9 @@ export default function EdgeContextMenu() {
   if (!menu) return null;
 
   const store = useSchematicStore.getState();
-  const edge = store.edges.find((e) => e.id === menu.edgeId);
+  const edge = liveEdges.find((e) => e.id === menu.edgeId);
   const hasManual = !!(edge?.data?.manualWaypoints?.length);
-  const isStubbed = !!edge?.data?.linkedConnectionId;
+  const isStubbed = menu.segmentIndex != null ? edge?.data?.patchSegments?.[menu.segmentIndex]?.stubbed === true : !!edge?.data?.linkedConnectionId;
   const isCableIdHidden = edge?.data?.hideCableId === true;
   const edgeCableIdMode = (edge?.data?.cableIdLabelMode as string) ?? useSchematicStore.getState().cableIdLabelMode;
   // NOTE: Stub label show-port / page-mode overrides moved to StubLabelNode.data
@@ -453,7 +463,6 @@ export default function EdgeContextMenu() {
   const currentLineStyle: LineStyle = (edge?.data?.lineStyle as LineStyle) ?? "solid";
   const hasMismatch = edge?.data?.connectorMismatch === true;
   const allowIncompatible = edge?.data?.allowIncompatible === true;
-  const isDirectAttach = edge?.data?.directAttach === true;
   const customColor = (edge?.data?.color as string | undefined) ?? "";
 
   // Patch panel routing (#232): hops live on the source-side leg of a stubbed pair —
@@ -468,6 +477,12 @@ export default function EdgeContextMenu() {
     ) ?? edge;
   })();
   const isPatched = ((patchEdge?.data?.patchHops?.length ?? 0) as number) > 0;
+  const section = menu.segmentIndex != null && patchEdge
+    ? segmentsForEdge(patchEdge, store.nodes, store.edges, patchEdge.data?.cableId ?? patchEdge.id)[menu.segmentIndex]
+    : undefined;
+  const sectionOverride = menu.segmentIndex != null ? patchEdge?.data?.patchSegments?.[menu.segmentIndex] : undefined;
+  const isDirectAttach = section ? section.directAttach === true : edge?.data?.directAttach === true;
+
 
   const patchViaPanel = () => {
     const s = useSchematicStore.getState();
@@ -539,6 +554,7 @@ export default function EdgeContextMenu() {
     return (
       <div
         ref={menuRef}
+      data-testid="connection-context-menu"
         className="fixed z-50 bg-white border border-gray-300 rounded shadow-lg p-2 min-w-[200px]"
         style={{
           left: menuPos.x,
@@ -596,6 +612,7 @@ export default function EdgeContextMenu() {
   return (
     <div
       ref={menuRef}
+      data-testid="connection-context-menu"
       className="fixed z-50 bg-white border border-gray-300 rounded shadow-lg py-1 min-w-[160px]"
       style={{
         left: menuPos.x,
@@ -606,7 +623,34 @@ export default function EdgeContextMenu() {
       }}
       onClick={(e) => e.stopPropagation()}
     >
-      <MenuItem label="Add Handle" onClick={addHandle} />
+      {edge && !isPatched && <div data-testid="connection-properties" className="px-3 py-2 border-b border-gray-200 space-y-2 text-xs w-72" onKeyDown={e => { e.stopPropagation(); if (e.key === "Escape") useSchematicStore.setState({ edgeContextMenu: null }); }}>
+        <div className="font-semibold">Connection properties</div>
+        {isDirectAttach ? <p className="text-[10px] text-gray-500">Direct attachment — no separate cable.</p> : <>
+          <label className="block">Cable ID<input aria-label="Cable ID" className="w-full border rounded px-2 py-1 text-xs" value={edge.data?.cableId ?? ""} onChange={e => store.patchEdgeData(edge.id, { cableId: e.target.value || undefined })} /></label>
+          <label className="block">Cable length<input aria-label="Cable length" className="w-full border rounded px-2 py-1 text-xs" value={edge.data?.cableLength ?? ""} placeholder="e.g. 10m" onChange={e => store.patchEdgeData(edge.id, { cableLength: e.target.value || undefined })} /></label>
+          <div>Supplier<SupplierInput value={edge.data?.supplier ?? ""} onChange={supplier => store.patchEdgeData(edge.id, { supplier })} /></div>
+          <label className="block">Unit cost<input aria-label="Unit cost" className="w-full border rounded px-2 py-1 text-xs" type="number" min={0} step="0.01" value={edge.data?.unitCost ?? ""} onChange={e => { const value = e.target.value === "" ? undefined : Number(e.target.value); if (value === undefined || Number.isFinite(value) && value >= 0) store.patchEdgeData(edge.id, { unitCost: value }); }} /></label>
+        </>}
+      </div>}
+      {isPatched && !section && patchEdge && <div className="px-3 py-2 border-b border-gray-200 text-xs w-72">
+        <label>Physical cable section
+          <select aria-label="Physical cable section" className="w-full border rounded px-2 py-1 mt-1" value="" onChange={e => useSchematicStore.setState({ edgeContextMenu: { ...menu, edgeId: patchEdge.id, segmentIndex: Number(e.target.value) } })}>
+            <option value="" disabled>Select section to edit…</option>
+            {segmentsForEdge(patchEdge, store.nodes, store.edges, patchEdge.data?.cableId ?? patchEdge.id).map(segment => <option key={segment.index} value={segment.index}>{segment.suffix || segment.index + 1}: {segment.from.label} → {segment.to.label}</option>)}
+          </select>
+        </label>
+      </div>}
+      {section && patchEdge && <div onKeyDownCapture={e => { if (e.key === "Escape") { e.stopPropagation(); useSchematicStore.setState({ edgeContextMenu: null }); } }} data-testid="patch-section-properties" className="px-3 py-2 border-b border-gray-200 space-y-2 text-xs w-72">
+        <div className="font-semibold">Patch section {section.suffix || section.index + 1}</div>
+        <div className="text-[10px] text-gray-500">{section.from.label} [{section.from.portLabel}] → {section.to.label} [{section.to.portLabel}]</div>
+        {isDirectAttach ? <p className="text-[10px] text-gray-500">Direct attachment — no separate cable.</p> : <>
+          <label className="block">Cable ID<input aria-label="Section cable ID" className="w-full border rounded px-2 py-1 text-xs" value={sectionOverride?.label ?? ""} placeholder={section.autoLabel} onChange={e => store.setPatchSegmentOverride(patchEdge.id, menu.segmentIndex!, { label: e.target.value })} onKeyDown={e => e.stopPropagation()} /></label>
+          <label className="block">Cable length<input aria-label="Section cable length" className="w-full border rounded px-2 py-1 text-xs" value={sectionOverride?.cableLength ?? ""} placeholder="e.g. 10m" onChange={e => store.setPatchSegmentOverride(patchEdge.id, menu.segmentIndex!, { cableLength: e.target.value })} onKeyDown={e => e.stopPropagation()} /></label>
+          <div>Supplier<SupplierInput value={sectionOverride?.supplier ?? patchEdge.data?.supplier ?? ""} onChange={supplier => store.setPatchSegmentOverride(patchEdge.id, menu.segmentIndex!, { supplier })} /></div>
+          <label className="block">Unit cost<input aria-label="Section unit cost" className="w-full border rounded px-2 py-1 text-xs" type="number" min={0} step="0.01" value={sectionOverride?.unitCost ?? patchEdge.data?.unitCost ?? ""} onChange={e => { const value = e.target.value === "" ? undefined : Number(e.target.value); if (value === undefined || Number.isFinite(value) && value >= 0) store.setPatchSegmentOverride(patchEdge.id, menu.segmentIndex!, { unitCost: value }); }} onKeyDown={e => e.stopPropagation()} /></label>
+        </>}
+      </div>}
+      {(!isPatched || patchEdge?.data?.showPatchReferences === false) && <MenuItem label="Add Handle" onClick={addHandle} />}
       {nearWaypoint && (
         <MenuItem label="Remove Handle" onClick={removeHandle} />
       )}
@@ -657,7 +701,7 @@ export default function EdgeContextMenu() {
           )}
         </>
       )}
-      {!isDirectAttach && (
+      {patchEdge && (
         <>
           <MenuItem
             label={isPatched ? "Patch via Panel (Add Hop)..." : "Patch via Panel..."}
@@ -692,6 +736,11 @@ export default function EdgeContextMenu() {
           onClick={toggleAdapterVisibility}
         />
       )}
+      {!section && patchEdge && <div className="px-3 py-2 text-xs"><div className="mb-1">Supplier</div><SupplierInput value={patchEdge.data?.supplier ?? ""} onChange={supplier => useSchematicStore.getState().patchEdgeData(patchEdge.id, { supplier })} /></div>}
+      {isPatched && <MenuItem label={patchEdge?.data?.showPatchReferences !== false ? "Hide panel references" : "Show panel references"} onClick={() => {
+        if (patchEdge) useSchematicStore.getState().patchEdgeData(patchEdge.id, { showPatchReferences: patchEdge.data?.showPatchReferences === false });
+        useSchematicStore.setState({ edgeContextMenu: null });
+      }} />}
       {!isDirectAttach && (
         <>
           <div className="h-px bg-gray-200 my-1" />

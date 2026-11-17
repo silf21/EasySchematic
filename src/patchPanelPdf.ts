@@ -96,7 +96,7 @@ export function exportPatchPanelStripsPdf(
         if (i > 0) doc.line(x, y, x, y + CELL_H);
 
         const display = resolvePortDisplay(panel.id, port.id, occupancy, nodes, edges, baseIdFor);
-        const portNo = String(start + i + 1).padStart(2, "0");
+        const portNo = port.label || String(start + i + 1).padStart(2, "0");
 
         doc.setFont("helvetica", "normal");
         doc.setFontSize(5);

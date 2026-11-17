@@ -11,9 +11,9 @@ const cacheDir = path.join(os.tmpdir(), 'vite-easyschematic')
 
 const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'))
 
-let gitHash = 'unknown'
+let gitHash = process.env.BUILD_HASH || 'local'
 try {
-  gitHash = execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim()
+  gitHash = process.env.BUILD_HASH || execSync('git rev-parse --short HEAD', { encoding: 'utf-8' }).trim()
 } catch { /* not a git repo or git not available */ }
 
 export default defineConfig({
@@ -70,5 +70,6 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
     __BUILD_HASH__: JSON.stringify(gitHash),
+    __BUILD_NUMBER__: JSON.stringify(process.env.BUILD_NUMBER || "local"),
   },
 })

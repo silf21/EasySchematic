@@ -30,6 +30,7 @@ export interface PatchPointInfo {
 }
 
 export interface PatchSegmentInfo {
+  directAttach?: boolean;
   index: number;
   /** "A", "B", … — "" when the connection has no hops. */
   suffix: string;
@@ -43,6 +44,9 @@ export interface PatchSegmentInfo {
   /** Per-segment length override, "" when unset. */
   cableLength: string;
 }
+
+export function entryFace(hop: PatchHop): "rear" | "front" { return hop.entryFace ?? "rear"; }
+export function exitFace(hop: PatchHop): "rear" | "front" { return entryFace(hop) === "rear" ? "front" : "rear"; }
 
 const SUFFIXES = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
@@ -66,9 +70,8 @@ export function devicePoint(
   };
 }
 
-/** Panel-side point. `face` picks the connector reported for cable typing:
- *  a segment ARRIVING at a panel lands on the rear (field) face; a segment
- *  LEAVING a panel departs from the front (patch) face. */
+/** Resolve the chosen physical face's connector. The face mapping does not constrain
+ *  signal direction; the same Ethernet link can carry traffic in both directions. */
 function panelPoint(
   nodes: SchematicNode[],
   hop: PatchHop,
@@ -132,17 +135,19 @@ export function getPatchSegments(
   const segs: PatchSegmentInfo[] = [];
   const segCount = hops.length + 1;
   for (let i = 0; i < segCount; i++) {
-    const from = i === 0 ? srcPoint : panelPoint(nodes, hops[i - 1], "front")!;
-    const to = i === segCount - 1 ? tgtPoint : panelPoint(nodes, hops[i], "rear")!;
+    const from = i === 0 ? srcPoint : panelPoint(nodes, hops[i - 1], exitFace(hops[i - 1]))!;
+    const to = i === segCount - 1 ? tgtPoint : panelPoint(nodes, hops[i], entryFace(hops[i]))!;
     const suffix = SUFFIXES[i] ?? `Z${i}`;
-    const autoLabel = `${baseCableId}-${suffix}`;
+    const directAttach = (i === 0 && srcPoint.port?.directAttach) || (i === segCount - 1 && tgtPoint.port?.directAttach);
+    const autoLabel = directAttach ? "" : `${baseCableId}-${suffix}`;
     const ov = overrides[i];
     segs.push({
       index: i,
       suffix,
       autoLabel,
-      label: ov?.label?.trim() || autoLabel,
-      overridden: !!ov?.label?.trim(),
+      label: directAttach ? "" : ov?.label?.trim() || autoLabel,
+      directAttach: directAttach || undefined,
+      overridden: !directAttach && !!ov?.label?.trim(),
       from,
       to,
       cableLength: ov?.cableLength ?? "",
@@ -165,8 +170,8 @@ export interface HopConnectorMismatch {
  * A patch panel is signal-agnostic conduit — AES3 through an analog XLR panel is a real
  * thing people do — but BNC does not fit an RJ45 jack no matter the signal.
  *
- * Hops append to the end of the path, so the new panel's REAR face takes over arrival
- * from the previous point and its FRONT face feeds the remaining run to the target.
+ * Hops append to the path. Check the chosen face toward the preceding station and
+ * the opposite physical face toward the target.
  * Returns null when compatible, or when either side's connector is unknown
  * (`areConnectorsCompatible` treats missing info as "no mismatch").
  */
@@ -177,18 +182,18 @@ export function checkHopConnectors(
   srcPoint: PatchPointInfo,
   tgtPoint: PatchPointInfo,
 ): HopConnectorMismatch | null {
-  const newRear = panelPoint(nodes, hop, "rear");
-  const newFront = panelPoint(nodes, hop, "front");
-  if (!newRear || !newFront) return null;
+  const newEntry = panelPoint(nodes, hop, entryFace(hop));
+  const newExit = panelPoint(nodes, hop, exitFace(hop));
+  if (!newEntry || !newExit) return null;
 
   const hops = resolvableHops(edge, nodes);
   const prev = hops.length === 0
     ? srcPoint
-    : panelPoint(nodes, hops[hops.length - 1], "front") ?? srcPoint;
+    : panelPoint(nodes, hops[hops.length - 1], exitFace(hops[hops.length - 1])) ?? srcPoint;
 
   const checks = [
-    { face: "rear" as const, panel: newRear, other: prev },
-    { face: "front" as const, panel: newFront, other: tgtPoint },
+    { face: entryFace(hop), panel: newEntry, other: prev },
+    { face: exitFace(hop), panel: newExit, other: tgtPoint },
   ];
   for (const c of checks) {
     const panelConnector = c.panel.port?.connectorType;
@@ -286,6 +291,7 @@ export function segmentsForEdge(
 }
 
 export interface PortFaceDisplay {
+  directAttach?: boolean;
   /** Segment (or wired-cable) label shown on the chip / strip. */
   cableLabel: string;
   /** Far-end device/panel name. */
@@ -301,9 +307,9 @@ export interface PortDisplay {
   /** The hop edge, or the first wired edge, occupying this port. */
   edgeId: string;
   signalType?: string;
-  /** Arriving / field side. */
+  /** Physical rear face. */
   rear?: PortFaceDisplay;
-  /** Departing / patch side. */
+  /** Physical front face. */
   front?: PortFaceDisplay;
 }
 
@@ -332,12 +338,12 @@ export function resolvePortDisplay(
       kind: "hop",
       edgeId: edge.id,
       signalType: edge.data?.signalType as string | undefined,
-      rear: {
-        cableLabel: inn.label, farLabel: inn.from.label, farPortLabel: inn.from.portLabel,
+      [entryFace(resolvableHops(edge, nodes)[occupant.hopIndex])]: {
+        directAttach: inn.directAttach, cableLabel: inn.label, farLabel: inn.from.label, farPortLabel: inn.from.portLabel,
         segIndex: inn.index, overridden: inn.overridden,
       },
-      front: {
-        cableLabel: outSeg.label, farLabel: outSeg.to.label, farPortLabel: outSeg.to.portLabel,
+      [exitFace(resolvableHops(edge, nodes)[occupant.hopIndex])]: {
+        directAttach: outSeg.directAttach, cableLabel: outSeg.label, farLabel: outSeg.to.label, farPortLabel: outSeg.to.portLabel,
         segIndex: outSeg.index, overridden: outSeg.overridden,
       },
     };

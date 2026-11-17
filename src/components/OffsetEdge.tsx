@@ -720,8 +720,7 @@ function OffsetEdgeComponent({
   ) : null;
 
   // All labels + reconnect visuals rendered via EdgeLabelRenderer (HTML layer above all SVG edges)
-  const hasPortalContent = customLabels || cableIdLabels || reconnectVisuals || usbcWarningBadge || cableLengthBadge || pathEditHint;
-  const edgeLabelsPortal = hasPortalContent ? (
+  const edgeLabelsPortal = (
     <EdgeLabelRenderer>
       {cableIdLabels}
       {customLabels}
@@ -730,7 +729,7 @@ function OffsetEdgeComponent({
       {reconnectVisuals}
       {pathEditHint}
     </EdgeLabelRenderer>
-  ) : null;
+  );
 
   // Log routing data when debug mode is active
   const prevDebugRef = useRef(false);

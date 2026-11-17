@@ -237,6 +237,19 @@ make dev`}</code>
       </p>
 
       <p>
+        Google sign-in already sends the current page URL as <code>returnTo</code>.
+        The API must allow that origin for both credentialed CORS and login
+        redirects. This branch includes <code>https://easyschematic.silvanfrei.synology.me</code>
+        in that policy, but the change only takes effect after deploying the API
+        worker; updating the Docker frontend does not update <code>api.easyschematic.live</code>.
+        The Google OAuth callback remains on the API host. Also note that the
+        current API session cookie uses <code>SameSite=Lax</code>: a frontend on a
+        different site cannot use that cookie for authenticated API fetches.
+        Reliable cloud login on a custom domain therefore also requires an API
+        hosted on the same site, or an explicit cross-site authentication setup.
+      </p>
+
+      <p>
         The production nginx container does not read <code>.env</code> at
         runtime; the API URL is baked in at build time. To change it for
         production self-hosting you would need to pass{" "}

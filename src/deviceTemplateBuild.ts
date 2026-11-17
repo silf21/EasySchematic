@@ -1,3 +1,5 @@
+import { cloneVirtualChannelsForPorts, remapVirtualChannels } from "./virtualChannels";
+import type { VirtualChannel } from "./types";
 /**
  * The objects the device editor's template-family save actions write: a `DeviceTemplate` for
  * Save as User Template / Update User Template / Update as Custom, and a `TemplatePreset` for
@@ -18,6 +20,7 @@ import type {
   PortCapabilities,
   PortDirection,
   PortNetworkConfig,
+  PortLightingConfig,
   SignalType,
   TemplatePreset,
 } from "./types";
@@ -27,6 +30,7 @@ import { capturedHeaderColorField, type HeaderColorCapture } from "./deviceHeade
 
 /** One row of the device editor's port table, before it is normalized into a `Port`. */
 export interface PortDraft {
+  templatePortId?: string;
   id: string;
   label: string;
   signalType: SignalType;
@@ -35,6 +39,7 @@ export interface PortDraft {
   connectorType?: ConnectorType;
   gender?: Gender;
   networkConfig?: PortNetworkConfig;
+  lightingConfig?: PortLightingConfig;
   addressable?: boolean;
   capabilities?: PortCapabilities;
   isMulticable?: boolean;
@@ -90,6 +95,7 @@ export interface TemplateFormValues {
   rackForm: DeviceData["rackForm"];
   isVenueProvided: boolean;
   auxiliaryData: AuxRow[];
+  virtualChannels?: VirtualChannel[];
   searchTermsRaw: string;
   /** The device being saved, for the fields a template inherits from the placed instance. */
   existing: DeviceData | undefined;
@@ -117,6 +123,7 @@ export function buildDeviceTemplate(
     label: form.label.trim() || "Custom Device",
     ...(form.shortName.trim() ? { shortName: form.shortName.trim() } : {}),
     ports: finalPorts,
+    virtualChannels: form.virtualChannels === undefined ? undefined : cloneVirtualChannelsForPorts(form.virtualChannels, form.ports.filter(p => p.label.trim()), finalPorts) ?? [],
     ...(form.color ? { color: form.color } : {}),
     // Save the device's header color with the template, so every device placed from it comes
     // out that color regardless of the two default settings (#354).
@@ -160,6 +167,7 @@ export function buildDeviceTemplate(
 
 /** Everything the preset builder reads out of the device editor's form. */
 export interface PresetFormValues {
+  virtualChannels?: VirtualChannel[];
   ports: PortDraft[];
   hiddenPorts: string[];
   color: string | undefined;
@@ -181,6 +189,7 @@ export function buildTemplatePreset(form: PresetFormValues): TemplatePreset {
 
   return {
     ports: presetPorts,
+    virtualChannels: form.virtualChannels === undefined ? undefined : remapVirtualChannels(form.virtualChannels, idMap, new Set(presetPorts.map(p => p.id))) ?? [],
     ...(presetHidden.length > 0 ? { hiddenPorts: presetHidden } : {}),
     ...(form.color ? { color: form.color } : {}),
     // The header color rides along with the preset, so every later device placed from this

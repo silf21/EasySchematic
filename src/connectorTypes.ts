@@ -421,7 +421,7 @@ export function usbcPowerShortfallW(
 
 /** Signal types that can have network configuration */
 export const NETWORK_SIGNAL_TYPES: Set<SignalType> = new Set<BuiltinSignalType>([
-  "ethernet", "ndi", "dante", "avb", "srt", "hdbaset", "aes67", "st2110",
+  "ethernet", "ndi", "dante", "avb", "srt", "hdbaset", "aes67", "st2110", "artnet", "sacn",
 ]);
 
 /** Signal types that can have video capabilities */

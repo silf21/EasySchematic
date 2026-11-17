@@ -6,9 +6,11 @@ export default function PatchPanelsPage() {
       <p>
         In a real installation a cable rarely runs straight from device to device — it lands on a
         patch panel, crosses a patch lead, and continues to its destination. The <strong>Patch Bay </strong>
-        page lets you document that path <em>without</em> drawing the panel into your schematic: the
-        drawing stays a clean single-line diagram, while the Patch Bay tracks exactly which panel
-        port every cable lands on.
+        page documents the physical panel positions without forcing every circuit through one
+        central device on the drawing. The schematic shows independently movable references to
+        the used positions. The same real panel can appear at several places without adding
+        devices or material. Choose <strong>Compact schematic</strong> on a connection to hide
+        its references; their positions are retained when you show them again.
       </p>
 
       <h2>Adding the Patch Bay page</h2>
@@ -21,8 +23,9 @@ export default function PatchPanelsPage() {
       <h2>Virtual panels</h2>
       <p>
         Use <strong>+ Add panel</strong> in the Patch Bay sidebar to create a <strong>virtual panel </strong>
-        from the device library. Virtual panels never appear on the schematic and never affect
-        connection routing, but they are real project devices: they show up in the pack list, the
+        from the device library. The central virtual panel does not appear on the schematic. Its distributed port references
+        can appear along individual circuits and their attached lines are routed normally. Panels
+        are real project devices: they show up in the pack list, the
         patch panel schedule, and can be placed in rack elevations. You can convert a virtual panel
         to an on-schematic device (and back) from the sidebar — converting to virtual is only
         possible while the panel has no drawn connections.
@@ -54,7 +57,7 @@ export default function PatchPanelsPage() {
         A patched connection is one signal but two or three physical cables, and reports treat it
         that way. Each segment inherits the connection's cable ID with a letter suffix:
         <code> E001</code> becomes <code>E001-A</code> (device → panel), <code>E001-B</code> (panel →
-        panel or panel → device), and so on. The schematic keeps showing the base ID.
+        panel or panel → device), and so on. The compact view keeps the base ID; the distributed view shows each section's ID.
       </p>
       <p>
         Double-click any segment chip in the Patch Bay to <strong>override its label</strong> (marked
@@ -64,14 +67,23 @@ export default function PatchPanelsPage() {
 
       <h2>Reading the panel view</h2>
       <p>
-        Each panel renders as a front face with one jack per port. Under every occupied port two
-        chips show the circuit: <strong>◀</strong> the cable arriving at the rear (field) side and
-        <strong> ▶</strong> the cable leaving the front (patch) side, each with its cable ID and
-        far-end device. Hovering any chip, jack, or sidebar cable row highlights the whole circuit
-        across every panel it passes through. Ports wired by drawing connections to an on-schematic
-        panel appear too, read-only — manage those on the canvas.
+        Each panel renders as a front face with one jack per port. Under each occupied port,
+        the Rear and Front chips show the physical attachment, cable ID and far-end device.
+        Use <strong>Previous: Front · Next: Rear ⇄</strong> to swap which face is toward the
+        preceding station. This is a physical connection mapping, not a signal-direction setting;
+        Ethernet can still communicate in both directions. Names, connector types, schematic
+        references and reports use the same mapping. Physically drawn panel connections remain
+        managed on the canvas.
       </p>
 
+      <h2>Suppliers and fixed installation</h2>
+      <p>
+        Set Supplier on devices, connections or individual physical sections. The reserved
+        supplier <strong>Festinstalliert</strong> keeps the item in the installation schedule
+        while excluding it from the Pack List, By Supplier report and their material totals.
+        Directly attached adapter ends are plug connections and add no extra cable position;
+        an actual cable between panels is still documented separately.
+      </p>
       <h2>Printing</h2>
       <ul>
         <li>
@@ -96,8 +108,8 @@ export default function PatchPanelsPage() {
       <ul>
         <li>Copy/pasting a patched connection pastes it <em>unpatched</em> — two cables can't share one physical port.</li>
         <li>
-          A connection can only be patched through a port whose connector actually mates with it —
-          an SDI run on BNC won't land in an RJ45 panel. Signal type isn't checked, since a panel is
+          Connector compatibility is checked and an adapter warning is shown when direct mating is
+          unavailable. Signal type is not checked, since a panel is
           signal-agnostic conduit: running AES3 through an analog XLR panel is fine.
         </li>
         <li>Estimated lengths (from room distances) apply to whole runs, not per-segment; enter segment lengths via the label override editor or the cable schedule.</li>

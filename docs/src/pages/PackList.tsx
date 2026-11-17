@@ -8,6 +8,36 @@ export default function PackListPage() {
         and cable you need. Open it from the <strong>Reports</strong> menu in the menu bar.
       </p>
 
+      <h2>Column order</h2>
+      <p>
+        Every report table has a <strong>Column order</strong> control. Drag a column
+        or use its left/right arrows to move it. <strong>Reset column order</strong>
+        restores the default. Each table has its own order, saved with the project
+        and restored when reopening it. PDF previews and exports use that order;
+        the preview sidebar also has arrows for arranging print columns.
+      </p>
+      <p>
+        The Cable Schedule starts with Label, Cable ID, Signal, Cable Type and Length.
+        The Devices report places Supplier at the right by default. Supplier remains
+        editable and searchable in Devices; there is no separate By Supplier tab.
+      </p>
+
+      <h2>Multi-level sorting</h2>
+      <p>
+        Open <strong>Sort priority</strong> to add several sort columns, choose
+        ascending or descending order for each, and move priorities up or down.
+        Rules apply from top to bottom, within existing groups. Click a table
+        heading for a single sort, or Shift-click to add or reverse another level.
+        Header arrows show the direction and priority number. Reset sorting restores
+        the default. Priorities are saved with the project and used by PDF and CSV
+        exports; PDF previews also expose the same editor.
+      </p>
+      <p>
+        <strong>Model</strong> is the permanent device/template identity used for
+        material grouping. <strong>Model #</strong> is the separate manufacturer
+        model or part number. Renaming a device changes its display name, not its model.
+      </p>
+
       <h2>Browsing the pack list</h2>
       <p>
         The pack list dialog has two tabs:

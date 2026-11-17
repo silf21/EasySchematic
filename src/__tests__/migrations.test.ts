@@ -69,15 +69,15 @@ describe("v43→v44 custom types migration", () => {
     };
     const nodes = [{ id: "d1", type: "device", position: { x: 0, y: 0 }, data: { ports: [{ id: "p1", signalType: "x-show-comms-k3f9" }] } }];
     const out = migrateSchematic({ version: 43, nodes, edges: [], customTypes });
-    expect(CURRENT_SCHEMA_VERSION).toBe(44);
-    expect(out.version).toBe(44);
+    expect(CURRENT_SCHEMA_VERSION).toBe(CURRENT_SCHEMA_VERSION);
+    expect(out.version).toBe(CURRENT_SCHEMA_VERSION);
     expect(out.customTypes).toEqual(customTypes);
     expect(out.nodes).toBe(nodes);
   });
 
   it("leaves a v43 file without customTypes without one", () => {
     const out = migrateSchematic({ version: 43, nodes: [], edges: [] });
-    expect(out.version).toBe(44);
+    expect(out.version).toBe(CURRENT_SCHEMA_VERSION);
     expect("customTypes" in out).toBe(false);
   });
 });

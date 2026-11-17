@@ -5,6 +5,7 @@
  * Pure algorithm — no React dependencies.
  */
 
+import { patchSectionStubEnds } from "./patchSectionStubs";
 import type { SchematicNode, ConnectionEdge, BundleMeta } from "./types";
 import { computeBundleTrunk } from "./routing/bundleRoute";
 import { bundleJunctionsFor, splitMemberWaypoints } from "./bundles";
@@ -688,6 +689,7 @@ export function routeAllEdges(
   };
 
   // Resolve edge endpoints
+  const sectionStubRoutes: Record<string, RoutedEdge> = {};
   const edgeEndpoints: EdgeEndpoints[] = [];
   for (const edge of edges) {
     let srcHandle = resolveHandle(edge.source, edge.sourceHandle, "source");
@@ -714,6 +716,20 @@ export function routeAllEdges(
     const tgtFallbackW = tgtNode?.type === "stub-label" ? STUB_W_EST : 144;
     const srcCenterX = srcPos.x + (srcNode?.measured?.width ?? srcFallbackW) / 2;
     const tgtCenterX = tgtPos.x + (tgtNode?.measured?.width ?? tgtFallbackW) / 2;
+
+    if (edge.data?.patchSectionStubbed) {
+      const ends = patchSectionStubEnds(edge, nodes,
+        { x: srcHandle.absX, y: srcHandle.absY, side: srcHandle.absX >= srcCenterX ? "right" : "left" },
+        { x: tgtHandle.absX, y: tgtHandle.absY, side: tgtHandle.absX <= tgtCenterX ? "left" : "right" });
+      const [a] = ends;
+      const points = ends.map(end => [{ x: end.x, y: end.y }, { x: end.endX, y: end.endY }]);
+      sectionStubRoutes[edge.id] = {
+        edgeId: edge.id, svgPath: ends.map(end => `M ${end.x} ${end.y} L ${end.endX} ${end.endY}`).join(" "),
+        waypoints: [points[0][0], points[0][1], points[1][1], points[1][0]],
+        segments: points.flatMap(extractSegments), labelX: a.endX, labelY: a.endY, turns: "section-stubs", crossingPoints: [],
+      };
+      continue;
+    }
 
     edgeEndpoints.push({
       edge,
@@ -805,7 +821,7 @@ export function routeAllEdges(
     return aX - bX;
   });
 
-  const results: Record<string, RoutedEdge> = {};
+  const results: Record<string, RoutedEdge> = { ...sectionStubRoutes };
   const routeStates: RouteState[] = [];
 
   // Incremental penalty zones — append after each edge instead of rebuilding from scratch

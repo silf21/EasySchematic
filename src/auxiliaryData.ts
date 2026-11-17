@@ -1,4 +1,6 @@
+import { virtualChannelLabel, hasVirtualLightingConfig } from "./virtualChannels";
 import type { AuxRow, DeviceData, Port } from "./types";
+import { lightingAddressLabel } from "./lightingConfig";
 import { effectiveThermalBtuh } from "./thermal";
 import { GRID_SIZE } from "./gridConstants";
 import { deviceTypeDisplay } from "./typeRegistry";
@@ -47,6 +49,9 @@ export const AUX_FIELDS: AuxField[] = [
   { token: "manufacturer", label: "Manufacturer", group: "Identity", resolve: (d) => str(d.manufacturer) },
   { token: "modelNumber", label: "Model Number", group: "Identity", resolve: (d) => str(d.modelNumber) },
   { token: "deviceType", label: "Device Type", group: "Identity", resolve: (d) => prettyDeviceType(d.deviceType) },
+
+  { token: "virtualChannels", label: "Virtual Channels", group: "Configuration", resolve: d => (d.virtualChannels ?? []).map(virtualChannelLabel).join("; ") },
+  { token: "lightingPatch", label: "DMX / Universe Patch", group: "Lighting", resolve: d => [...(d.virtualChannels ?? []).filter(hasVirtualLightingConfig).map(virtualChannelLabel), ...d.ports.filter(p => p.lightingConfig && !d.virtualChannels?.some(c => hasVirtualLightingConfig(c) && c.portIds.includes(p.id))).map(p => { const label = lightingAddressLabel(p); return label ? `${p.label}: ${label}` : ""; })].filter(Boolean).join("; ") },
 
   // Power
   { token: "powerDrawW", label: "Power Draw", group: "Power", resolve: (d) => fmtW(d.powerDrawW) },

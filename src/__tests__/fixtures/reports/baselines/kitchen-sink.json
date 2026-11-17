@@ -21,7 +21,8 @@
         "gaugeAwg": "22",
         "cableAlias": "CAM-A",
         "tested": "✓ 2026-06-01",
-        "cableUse": "field"
+        "cableUse": "field",
+        "supplier": ""
       },
       {
         "edgeId": "e-ad-sw",
@@ -42,7 +43,8 @@
         "gaugeAwg": "",
         "cableAlias": "",
         "tested": "",
-        "cableUse": "patch"
+        "cableUse": "patch",
+        "supplier": ""
       },
       {
         "edgeId": "e-cam2-sw",
@@ -63,7 +65,8 @@
         "gaugeAwg": "",
         "cableAlias": "",
         "tested": "",
-        "cableUse": ""
+        "cableUse": "",
+        "supplier": ""
       },
       {
         "edgeId": "e-aud1",
@@ -84,7 +87,8 @@
         "gaugeAwg": "",
         "cableAlias": "",
         "tested": "",
-        "cableUse": ""
+        "cableUse": "",
+        "supplier": ""
       },
       {
         "edgeId": "e-aud2",
@@ -105,7 +109,8 @@
         "gaugeAwg": "",
         "cableAlias": "",
         "tested": "",
-        "cableUse": ""
+        "cableUse": "",
+        "supplier": ""
       },
       {
         "edgeId": "e-cam1-net",
@@ -126,7 +131,8 @@
         "gaugeAwg": "",
         "cableAlias": "",
         "tested": "",
-        "cableUse": ""
+        "cableUse": "",
+        "supplier": ""
       },
       {
         "edgeId": "e-cam2-net",
@@ -147,7 +153,8 @@
         "gaugeAwg": "",
         "cableAlias": "",
         "tested": "",
-        "cableUse": ""
+        "cableUse": "",
+        "supplier": ""
       },
       {
         "edgeId": "e-legacy",
@@ -168,7 +175,8 @@
         "gaugeAwg": "",
         "cableAlias": "",
         "tested": "",
-        "cableUse": ""
+        "cableUse": "",
+        "supplier": ""
       },
       {
         "edgeId": "e-sw-net",
@@ -189,7 +197,8 @@
         "gaugeAwg": "",
         "cableAlias": "",
         "tested": "",
-        "cableUse": ""
+        "cableUse": "",
+        "supplier": ""
       },
       {
         "edgeId": "stub-net-src",
@@ -210,7 +219,8 @@
         "gaugeAwg": "",
         "cableAlias": "",
         "tested": "",
-        "cableUse": ""
+        "cableUse": "",
+        "supplier": ""
       },
       {
         "edgeId": "e-sw-pp",
@@ -231,7 +241,8 @@
         "gaugeAwg": "",
         "cableAlias": "",
         "tested": "",
-        "cableUse": ""
+        "cableUse": "",
+        "supplier": ""
       },
       {
         "edgeId": "e-pp-disp",
@@ -252,7 +263,8 @@
         "gaugeAwg": "",
         "cableAlias": "",
         "tested": "",
-        "cableUse": ""
+        "cableUse": "",
+        "supplier": ""
       },
       {
         "edgeId": "e-pwr-sw",
@@ -273,7 +285,8 @@
         "gaugeAwg": "",
         "cableAlias": "",
         "tested": "",
-        "cableUse": ""
+        "cableUse": "",
+        "supplier": ""
       },
       {
         "edgeId": "stub-pwr-src",
@@ -294,15 +307,17 @@
         "gaugeAwg": "",
         "cableAlias": "",
         "tested": "",
-        "cableUse": ""
+        "cableUse": "",
+        "supplier": ""
       }
     ],
-    "csv": "﻿Cable Schedule — kitchen-sink\nGenerated 2026-01-01\n\nCable ID,Source,Src Port,Src Conn,Target,Tgt Port,Tgt Conn,Cable Type,Signal,Length,Est. Length,Gauge (AWG),Alias,Tested,Use,Src Room,Tgt Room,Snake,Bundle\nV001,Camera 1,SDI Out,BNC,SDI-HDMI Adapter,SDI In,BNC,BNC M-M,SDI,25 ft,,22,CAM-A,✓ 2026-06-01,Field,Stage,Control Room,,\nC001,SDI-HDMI Adapter,HDMI Out,HDMI,Vision Switcher,SDI In 1,BNC,HDMI M-M,HDMI,,,,,,Patch,Control Room,Control Room,,\nC002,Camera 2,SDI Out,BNC,Vision Switcher,SDI In 2,BNC,BNC M-M,SDI,50 ft,,,,,,Stage,Control Room,,\nC003,FOH Mixer,Main L,XLR-3,Vision Switcher,Audio In 1,XLR-3,XLR,Analog,,,,,,,Stage,Control Room,Audio Snake,\nC004,FOH Mixer,Main R,XLR-3,Vision Switcher,Audio In 2,XLR-3,XLR,Analog,,,,,,,Stage,Control Room,Audio Snake,\nC005,Camera 1,LAN,RJ45,Core Router,Port 1,RJ45,Cat6 M-M,Ethernet,,,,,,,Stage,Control Room,,Camera Loom\nC006,Camera 2,LAN,RJ45,Core Router,Port 3,RJ45,Cat6 M-M,Ethernet,,,,,,,Stage,Control Room,,Camera Loom\nC007,Legacy Encoder,LAN,RJ45,Core Router,Port 4,RJ45,Cat6 M-M,Ethernet,,,,,,,Stage,Control Room,,\nC008,Vision Switcher,Control,RJ45,Core Router,Port 1,RJ45,Cat6 M-M,Ethernet,,,,,,,Control Room,Control Room,,\nE010,Core Router,Port 2,RJ45,Show PC,LAN,RJ45,Cat6 M-M,Ethernet,,,,,,,Control Room,Control Room,,\nC009,Vision Switcher,PGM Out,HDMI,PP-01,Port 1,HDMI,HDMI M-M,HDMI,,,,,,,Control Room,Control Room,,\nC010,PP-01,Port 1,HDMI,Stage Display,HDMI In,HDMI,HDMI M-M,HDMI,,,,,,,Control Room,Stage,,\nC011,Power Distro,Circuit 1,powerCON,Vision Switcher,AC In,powerCON,powerCON,Power,,,,,,,Control Room,Control Room,,\nC012,Power Distro,Circuit 2,Edison,Show PC,AC In,Edison,Edison,Power,,,,,,,Control Room,Control Room,,",
+    "csv": "﻿Cable Schedule — kitchen-sink\nGenerated 2026-01-01\n\nCable ID,Source,Src Port,Src Conn,Target,Tgt Port,Tgt Conn,Cable Type,Signal,Length,Est. Length,Gauge (AWG),Alias,Tested,Use,Src Room,Tgt Room,Snake,Bundle,Supplier,Unit Cost\nV001,Camera 1,SDI Out,BNC,SDI-HDMI Adapter,SDI In,BNC,BNC M-M,SDI,25 ft,,22,CAM-A,✓ 2026-06-01,Field,Stage,Control Room,,,,\nC001,SDI-HDMI Adapter,HDMI Out,HDMI,Vision Switcher,SDI In 1,BNC,HDMI M-M,HDMI,,,,,,Patch,Control Room,Control Room,,,,\nC002,Camera 2,SDI Out,BNC,Vision Switcher,SDI In 2,BNC,BNC M-M,SDI,50 ft,,,,,,Stage,Control Room,,,,\nC003,FOH Mixer,Main L,XLR-3,Vision Switcher,Audio In 1,XLR-3,XLR,Analog,,,,,,,Stage,Control Room,Audio Snake,,,\nC004,FOH Mixer,Main R,XLR-3,Vision Switcher,Audio In 2,XLR-3,XLR,Analog,,,,,,,Stage,Control Room,Audio Snake,,,\nC005,Camera 1,LAN,RJ45,Core Router,Port 1,RJ45,Cat6 M-M,Ethernet,,,,,,,Stage,Control Room,,Camera Loom,,\nC006,Camera 2,LAN,RJ45,Core Router,Port 3,RJ45,Cat6 M-M,Ethernet,,,,,,,Stage,Control Room,,Camera Loom,,\nC007,Legacy Encoder,LAN,RJ45,Core Router,Port 4,RJ45,Cat6 M-M,Ethernet,,,,,,,Stage,Control Room,,,,\nC008,Vision Switcher,Control,RJ45,Core Router,Port 1,RJ45,Cat6 M-M,Ethernet,,,,,,,Control Room,Control Room,,,,\nE010,Core Router,Port 2,RJ45,Show PC,LAN,RJ45,Cat6 M-M,Ethernet,,,,,,,Control Room,Control Room,,,,\nC009,Vision Switcher,PGM Out,HDMI,PP-01,Port 1,HDMI,HDMI M-M,HDMI,,,,,,,Control Room,Control Room,,,,\nC010,PP-01,Port 1,HDMI,Stage Display,HDMI In,HDMI,HDMI M-M,HDMI,,,,,,,Control Room,Stage,,,,\nC011,Power Distro,Circuit 1,powerCON,Vision Switcher,AC In,powerCON,powerCON,Power,,,,,,,Control Room,Control Room,,,,\nC012,Power Distro,Circuit 2,Edison,Show PC,AC In,Edison,Edison,Power,,,,,,,Control Room,Control Room,,,,",
     "printTables": [
       {
         "id": "cableSchedule",
         "rows": [
           {
+            "supplier": "",
             "cableId": "C001",
             "sourceDevice": "SDI-HDMI Adapter",
             "sourcePort": "HDMI Out",
@@ -324,6 +339,7 @@
             "bundle": ""
           },
           {
+            "supplier": "",
             "cableId": "C002",
             "sourceDevice": "Camera 2",
             "sourcePort": "SDI Out",
@@ -345,6 +361,7 @@
             "bundle": ""
           },
           {
+            "supplier": "",
             "cableId": "C003",
             "sourceDevice": "FOH Mixer",
             "sourcePort": "Main L",
@@ -366,6 +383,7 @@
             "bundle": ""
           },
           {
+            "supplier": "",
             "cableId": "C004",
             "sourceDevice": "FOH Mixer",
             "sourcePort": "Main R",
@@ -387,6 +405,7 @@
             "bundle": ""
           },
           {
+            "supplier": "",
             "cableId": "C005",
             "sourceDevice": "Camera 1",
             "sourcePort": "LAN",
@@ -408,6 +427,7 @@
             "bundle": "Camera Loom"
           },
           {
+            "supplier": "",
             "cableId": "C006",
             "sourceDevice": "Camera 2",
             "sourcePort": "LAN",
@@ -429,6 +449,7 @@
             "bundle": "Camera Loom"
           },
           {
+            "supplier": "",
             "cableId": "C007",
             "sourceDevice": "Legacy Encoder",
             "sourcePort": "LAN",
@@ -450,6 +471,7 @@
             "bundle": ""
           },
           {
+            "supplier": "",
             "cableId": "C008",
             "sourceDevice": "Vision Switcher",
             "sourcePort": "Control",
@@ -471,6 +493,7 @@
             "bundle": ""
           },
           {
+            "supplier": "",
             "cableId": "C009",
             "sourceDevice": "Vision Switcher",
             "sourcePort": "PGM Out",
@@ -492,6 +515,7 @@
             "bundle": ""
           },
           {
+            "supplier": "",
             "cableId": "C010",
             "sourceDevice": "PP-01",
             "sourcePort": "Port 1",
@@ -513,6 +537,7 @@
             "bundle": ""
           },
           {
+            "supplier": "",
             "cableId": "C011",
             "sourceDevice": "Power Distro",
             "sourcePort": "Circuit 1",
@@ -534,6 +559,7 @@
             "bundle": ""
           },
           {
+            "supplier": "",
             "cableId": "C012",
             "sourceDevice": "Power Distro",
             "sourcePort": "Circuit 2",
@@ -555,6 +581,7 @@
             "bundle": ""
           },
           {
+            "supplier": "",
             "cableId": "E010",
             "sourceDevice": "Core Router",
             "sourcePort": "Port 2",
@@ -576,6 +603,7 @@
             "bundle": ""
           },
           {
+            "supplier": "",
             "cableId": "V001",
             "sourceDevice": "Camera 1",
             "sourcePort": "SDI Out",
@@ -740,162 +768,317 @@
       ],
       "cables": [
         {
+          "edgeId": "e-cam1-ad",
+          "cableId": "V001",
+          "sourceDevice": "Camera 1",
+          "sourcePort": "SDI Out",
+          "sourceConnector": "BNC",
+          "targetDevice": "SDI-HDMI Adapter",
+          "targetPort": "SDI In",
+          "targetConnector": "BNC",
           "cableType": "BNC M-M",
           "signalType": "SDI",
           "cableLength": "25 ft",
-          "sourceDevice": "Camera 1",
-          "sourcePort": "SDI Out",
           "sourceRoom": "Stage",
-          "targetDevice": "SDI-HDMI Adapter",
-          "targetPort": "SDI In",
-          "targetRoom": "Control Room"
+          "targetRoom": "Control Room",
+          "multicableLabel": "",
+          "bundle": "",
+          "gaugeAwg": "22",
+          "cableAlias": "CAM-A",
+          "tested": "✓ 2026-06-01",
+          "cableUse": "field",
+          "supplier": ""
         },
         {
+          "edgeId": "e-ad-sw",
+          "cableId": "C001",
+          "sourceDevice": "SDI-HDMI Adapter",
+          "sourcePort": "HDMI Out",
+          "sourceConnector": "HDMI",
+          "targetDevice": "Vision Switcher",
+          "targetPort": "SDI In 1",
+          "targetConnector": "BNC",
+          "cableType": "HDMI M-M",
+          "signalType": "HDMI",
+          "cableLength": "",
+          "sourceRoom": "Control Room",
+          "targetRoom": "Control Room",
+          "multicableLabel": "",
+          "bundle": "",
+          "gaugeAwg": "",
+          "cableAlias": "",
+          "tested": "",
+          "cableUse": "patch",
+          "supplier": ""
+        },
+        {
+          "edgeId": "e-cam2-sw",
+          "cableId": "C002",
+          "sourceDevice": "Camera 2",
+          "sourcePort": "SDI Out",
+          "sourceConnector": "BNC",
+          "targetDevice": "Vision Switcher",
+          "targetPort": "SDI In 2",
+          "targetConnector": "BNC",
           "cableType": "BNC M-M",
           "signalType": "SDI",
           "cableLength": "50 ft",
-          "sourceDevice": "Camera 2",
-          "sourcePort": "SDI Out",
           "sourceRoom": "Stage",
-          "targetDevice": "Vision Switcher",
-          "targetPort": "SDI In 2",
-          "targetRoom": "Control Room"
+          "targetRoom": "Control Room",
+          "multicableLabel": "",
+          "bundle": "",
+          "gaugeAwg": "",
+          "cableAlias": "",
+          "tested": "",
+          "cableUse": "",
+          "supplier": ""
         },
         {
-          "cableType": "Cat6 M-M",
-          "signalType": "Ethernet",
+          "edgeId": "e-aud1",
+          "cableId": "C003",
+          "sourceDevice": "FOH Mixer",
+          "sourcePort": "Main L",
+          "sourceConnector": "XLR-3",
+          "targetDevice": "Vision Switcher",
+          "targetPort": "Audio In 1",
+          "targetConnector": "XLR-3",
+          "cableType": "XLR",
+          "signalType": "Analog",
           "cableLength": "",
+          "sourceRoom": "Stage",
+          "targetRoom": "Control Room",
+          "multicableLabel": "Audio Snake",
+          "bundle": "",
+          "gaugeAwg": "",
+          "cableAlias": "",
+          "tested": "",
+          "cableUse": "",
+          "supplier": ""
+        },
+        {
+          "edgeId": "e-aud2",
+          "cableId": "C004",
+          "sourceDevice": "FOH Mixer",
+          "sourcePort": "Main R",
+          "sourceConnector": "XLR-3",
+          "targetDevice": "Vision Switcher",
+          "targetPort": "Audio In 2",
+          "targetConnector": "XLR-3",
+          "cableType": "XLR",
+          "signalType": "Analog",
+          "cableLength": "",
+          "sourceRoom": "Stage",
+          "targetRoom": "Control Room",
+          "multicableLabel": "Audio Snake",
+          "bundle": "",
+          "gaugeAwg": "",
+          "cableAlias": "",
+          "tested": "",
+          "cableUse": "",
+          "supplier": ""
+        },
+        {
+          "edgeId": "e-cam1-net",
+          "cableId": "C005",
           "sourceDevice": "Camera 1",
           "sourcePort": "LAN",
-          "sourceRoom": "Stage",
+          "sourceConnector": "RJ45",
           "targetDevice": "Core Router",
           "targetPort": "Port 1",
-          "targetRoom": "Control Room"
-        },
-        {
+          "targetConnector": "RJ45",
           "cableType": "Cat6 M-M",
           "signalType": "Ethernet",
           "cableLength": "",
+          "sourceRoom": "Stage",
+          "targetRoom": "Control Room",
+          "multicableLabel": "",
+          "bundle": "Bundle 1",
+          "gaugeAwg": "",
+          "cableAlias": "",
+          "tested": "",
+          "cableUse": "",
+          "supplier": ""
+        },
+        {
+          "edgeId": "e-cam2-net",
+          "cableId": "C006",
           "sourceDevice": "Camera 2",
           "sourcePort": "LAN",
-          "sourceRoom": "Stage",
+          "sourceConnector": "RJ45",
           "targetDevice": "Core Router",
           "targetPort": "Port 3",
-          "targetRoom": "Control Room"
-        },
-        {
+          "targetConnector": "RJ45",
           "cableType": "Cat6 M-M",
           "signalType": "Ethernet",
           "cableLength": "",
+          "sourceRoom": "Stage",
+          "targetRoom": "Control Room",
+          "multicableLabel": "",
+          "bundle": "Bundle 1",
+          "gaugeAwg": "",
+          "cableAlias": "",
+          "tested": "",
+          "cableUse": "",
+          "supplier": ""
+        },
+        {
+          "edgeId": "e-legacy",
+          "cableId": "C007",
           "sourceDevice": "Legacy Encoder",
           "sourcePort": "LAN",
-          "sourceRoom": "Stage",
+          "sourceConnector": "RJ45",
           "targetDevice": "Core Router",
           "targetPort": "Port 4",
-          "targetRoom": "Control Room"
-        },
-        {
+          "targetConnector": "RJ45",
           "cableType": "Cat6 M-M",
           "signalType": "Ethernet",
           "cableLength": "",
+          "sourceRoom": "Stage",
+          "targetRoom": "Control Room",
+          "multicableLabel": "",
+          "bundle": "",
+          "gaugeAwg": "",
+          "cableAlias": "",
+          "tested": "",
+          "cableUse": "",
+          "supplier": ""
+        },
+        {
+          "edgeId": "e-sw-net",
+          "cableId": "C008",
           "sourceDevice": "Vision Switcher",
           "sourcePort": "Control",
-          "sourceRoom": "Control Room",
+          "sourceConnector": "RJ45",
           "targetDevice": "Core Router",
           "targetPort": "Port 1",
-          "targetRoom": "Control Room"
-        },
-        {
+          "targetConnector": "RJ45",
           "cableType": "Cat6 M-M",
           "signalType": "Ethernet",
           "cableLength": "",
+          "sourceRoom": "Control Room",
+          "targetRoom": "Control Room",
+          "multicableLabel": "",
+          "bundle": "",
+          "gaugeAwg": "",
+          "cableAlias": "",
+          "tested": "",
+          "cableUse": "",
+          "supplier": ""
+        },
+        {
+          "edgeId": "stub-net-src",
+          "cableId": "E010",
           "sourceDevice": "Core Router",
           "sourcePort": "Port 2",
-          "sourceRoom": "Control Room",
+          "sourceConnector": "RJ45",
           "targetDevice": "Show PC",
           "targetPort": "LAN",
-          "targetRoom": "Control Room"
-        },
-        {
-          "cableType": "Edison",
-          "signalType": "Power",
+          "targetConnector": "RJ45",
+          "cableType": "Cat6 M-M",
+          "signalType": "Ethernet",
           "cableLength": "",
-          "sourceDevice": "Power Distro",
-          "sourcePort": "Circuit 2",
           "sourceRoom": "Control Room",
-          "targetDevice": "Show PC",
-          "targetPort": "AC In",
-          "targetRoom": "Control Room"
+          "targetRoom": "Control Room",
+          "multicableLabel": "",
+          "bundle": "",
+          "gaugeAwg": "",
+          "cableAlias": "",
+          "tested": "",
+          "cableUse": "",
+          "supplier": ""
         },
         {
-          "cableType": "HDMI M-M",
-          "signalType": "HDMI",
-          "cableLength": "",
-          "sourceDevice": "SDI-HDMI Adapter",
-          "sourcePort": "HDMI Out",
-          "sourceRoom": "Control Room",
-          "targetDevice": "Vision Switcher",
-          "targetPort": "SDI In 1",
-          "targetRoom": "Control Room"
-        },
-        {
-          "cableType": "HDMI M-M",
-          "signalType": "HDMI",
-          "cableLength": "",
+          "edgeId": "e-sw-pp",
+          "cableId": "C009",
           "sourceDevice": "Vision Switcher",
           "sourcePort": "PGM Out",
-          "sourceRoom": "Control Room",
+          "sourceConnector": "HDMI",
           "targetDevice": "PP-01",
           "targetPort": "Port 1",
-          "targetRoom": "Control Room"
-        },
-        {
+          "targetConnector": "HDMI",
           "cableType": "HDMI M-M",
           "signalType": "HDMI",
           "cableLength": "",
-          "sourceDevice": "PP-01",
-          "sourcePort": "Port 1",
           "sourceRoom": "Control Room",
-          "targetDevice": "Stage Display",
-          "targetPort": "HDMI In",
-          "targetRoom": "Stage"
+          "targetRoom": "Control Room",
+          "multicableLabel": "",
+          "bundle": "",
+          "gaugeAwg": "",
+          "cableAlias": "",
+          "tested": "",
+          "cableUse": "",
+          "supplier": ""
         },
         {
+          "edgeId": "e-pp-disp",
+          "cableId": "C010",
+          "sourceDevice": "PP-01",
+          "sourcePort": "Port 1",
+          "sourceConnector": "HDMI",
+          "targetDevice": "Stage Display",
+          "targetPort": "HDMI In",
+          "targetConnector": "HDMI",
+          "cableType": "HDMI M-M",
+          "signalType": "HDMI",
+          "cableLength": "",
+          "sourceRoom": "Control Room",
+          "targetRoom": "Stage",
+          "multicableLabel": "",
+          "bundle": "",
+          "gaugeAwg": "",
+          "cableAlias": "",
+          "tested": "",
+          "cableUse": "",
+          "supplier": ""
+        },
+        {
+          "edgeId": "e-pwr-sw",
+          "cableId": "C011",
+          "sourceDevice": "Power Distro",
+          "sourcePort": "Circuit 1",
+          "sourceConnector": "powerCON",
+          "targetDevice": "Vision Switcher",
+          "targetPort": "AC In",
+          "targetConnector": "powerCON",
           "cableType": "powerCON",
           "signalType": "Power",
           "cableLength": "",
-          "sourceDevice": "Power Distro",
-          "sourcePort": "Circuit 1",
           "sourceRoom": "Control Room",
-          "targetDevice": "Vision Switcher",
+          "targetRoom": "Control Room",
+          "multicableLabel": "",
+          "bundle": "",
+          "gaugeAwg": "",
+          "cableAlias": "",
+          "tested": "",
+          "cableUse": "",
+          "supplier": ""
+        },
+        {
+          "edgeId": "stub-pwr-src",
+          "cableId": "C012",
+          "sourceDevice": "Power Distro",
+          "sourcePort": "Circuit 2",
+          "sourceConnector": "Edison",
+          "targetDevice": "Show PC",
           "targetPort": "AC In",
-          "targetRoom": "Control Room"
-        },
-        {
-          "cableType": "XLR",
-          "signalType": "Analog",
+          "targetConnector": "Edison",
+          "cableType": "Edison",
+          "signalType": "Power",
           "cableLength": "",
-          "sourceDevice": "FOH Mixer",
-          "sourcePort": "Main L",
-          "sourceRoom": "Stage",
-          "targetDevice": "Vision Switcher",
-          "targetPort": "Audio In 1",
-          "targetRoom": "Control Room"
-        },
-        {
-          "cableType": "XLR",
-          "signalType": "Analog",
-          "cableLength": "",
-          "sourceDevice": "FOH Mixer",
-          "sourcePort": "Main R",
-          "sourceRoom": "Stage",
-          "targetDevice": "Vision Switcher",
-          "targetPort": "Audio In 2",
-          "targetRoom": "Control Room"
+          "sourceRoom": "Control Room",
+          "targetRoom": "Control Room",
+          "multicableLabel": "",
+          "bundle": "",
+          "gaugeAwg": "",
+          "cableAlias": "",
+          "tested": "",
+          "cableUse": "",
+          "supplier": ""
         }
       ],
       "summary": [
         {
+          "supplier": "",
           "cableType": "Cat6 M-M",
           "signalType": "Ethernet",
           "cableLength": "",
@@ -903,6 +1086,7 @@
           "count": 3
         },
         {
+          "supplier": "",
           "cableType": "Cat6 M-M",
           "signalType": "Ethernet",
           "cableLength": "",
@@ -910,6 +1094,7 @@
           "count": 2
         },
         {
+          "supplier": "",
           "cableType": "HDMI M-M",
           "signalType": "HDMI",
           "cableLength": "",
@@ -917,6 +1102,7 @@
           "count": 2
         },
         {
+          "supplier": "",
           "cableType": "XLR",
           "signalType": "Analog",
           "cableLength": "",
@@ -924,6 +1110,7 @@
           "count": 2
         },
         {
+          "supplier": "",
           "cableType": "BNC M-M",
           "signalType": "SDI",
           "cableLength": "25 ft",
@@ -931,6 +1118,7 @@
           "count": 1
         },
         {
+          "supplier": "",
           "cableType": "BNC M-M",
           "signalType": "SDI",
           "cableLength": "50 ft",
@@ -938,6 +1126,7 @@
           "count": 1
         },
         {
+          "supplier": "",
           "cableType": "Edison",
           "signalType": "Power",
           "cableLength": "",
@@ -945,6 +1134,7 @@
           "count": 1
         },
         {
+          "supplier": "",
           "cableType": "HDMI M-M",
           "signalType": "HDMI",
           "cableLength": "",
@@ -952,6 +1142,7 @@
           "count": 1
         },
         {
+          "supplier": "",
           "cableType": "powerCON",
           "signalType": "Power",
           "cableLength": "",
@@ -997,13 +1188,14 @@
       ]
     },
     "documentSummary": "This document contains 13 devices, 14 connections (1 patch / 1 field), 2 rooms and 3 racks.",
-    "csv": "﻿Pack List — kitchen-sink\nGenerated 2026-01-01\nThis document contains 13 devices, 14 connections (1 patch / 1 field), 2 rooms and 3 racks.\n\nDEVICE LIST\nQty,Device,Manufacturer,Model #,Type,Room,Unit Cost,Extended Cost,Serial #,Spare,Note\n1,HDMI Panel 8,,,patch-panel,Control Room,,,,,\n1,NetHub 8,NetCo,,custom,Control Room,,,,,\n1,PD-2000,,,power,Control Room,,,,,\n1,Show PC,,,custom,Control Room,,,,,\n1,VS-800,SwitchCorp,VS-800,custom,Control Room,8000.00,8000.00,,,\n1,BigScreen 85,,,custom,Stage,,,,,\n1,Encoder X,,,custom,Stage,,,,,\n2,MixDesk 24,AudioCo,,custom,Stage,3200.00,6400.00,\"SN-MIX-1, SN-MIX-2\",1,\n2,ProCam 4K,CamCo,PC-4K,custom,Stage,1500.00,3000.00,\"SN-001, SN-002\",,Check lens before load-in\n,,,,,,TOTAL,17400.00\n\nCABLE ACCESSORIES\nQty,Accessory,Type,Room\n1,Ramp 5ch,cable-ramp,Stage\n\nADAPTERS\nQty,Adapter,Manufacturer,Model #,Room\n1,SDI2HDMI,AdaptCo,A-100,Control Room\n\nRACKS\nQty,Rack,Type,Height (U),Room,Unit Cost,Extended Cost\n2,Main Rack,\"19\"\" Floor Standing\",42,Control Room,1200.00,2400.00\n1,Stage Rack,Wall Mount,12,Stage,,\n,,,,,TOTAL,2400.00\n\nCABLE LIST\nQty,Cable Type,Signal,Length,Route,Unit Cost,Extended Cost\n3,Cat6 M-M,Ethernet,,Stage > Control Room,,\n2,Cat6 M-M,Ethernet,,Within Control Room,,\n2,HDMI M-M,HDMI,,Within Control Room,,\n2,XLR,Analog,,Stage > Control Room,,\n1,BNC M-M,SDI,25 ft,Stage > Control Room,,\n1,BNC M-M,SDI,50 ft,Stage > Control Room,,\n1,Edison,Power,,Within Control Room,,\n1,HDMI M-M,HDMI,,Control Room > Stage,,\n1,powerCON,Power,,Within Control Room,,",
+    "csv": "﻿Pack List — kitchen-sink\nGenerated 2026-01-01\nThis document contains 13 devices, 14 connections (1 patch / 1 field), 2 rooms and 3 racks.\n\nDEVICE LIST\nQty,Device,Manufacturer,Model #,Type,Room,Unit Cost,Extended Cost,Serial #,Spare,Note,Supplier\n1,HDMI Panel 8,,,patch-panel,Control Room,,,,,,\n1,NetHub 8,NetCo,,custom,Control Room,,,,,,\n1,PD-2000,,,power,Control Room,,,,,,\n1,Show PC,,,custom,Control Room,,,,,,\n1,VS-800,SwitchCorp,VS-800,custom,Control Room,8000.00,8000.00,,,,\n1,BigScreen 85,,,custom,Stage,,,,,,\n1,Encoder X,,,custom,Stage,,,,,,\n2,MixDesk 24,AudioCo,,custom,Stage,3200.00,6400.00,\"SN-MIX-1, SN-MIX-2\",1,,\n2,ProCam 4K,CamCo,PC-4K,custom,Stage,1500.00,3000.00,\"SN-001, SN-002\",,Check lens before load-in,\n,,,,,,TOTAL,17400.00\n\nCABLE ACCESSORIES\nQty,Accessory,Type,Room,Supplier\n1,Ramp 5ch,cable-ramp,Stage,\n\nADAPTERS\nQty,Adapter,Manufacturer,Model #,Room,Supplier\n1,SDI2HDMI,AdaptCo,A-100,Control Room,\n\nRACKS\nQty,Rack,Type,Height (U),Room,Unit Cost,Extended Cost\n2,Main Rack,\"19\"\" Floor Standing\",42,Control Room,1200.00,2400.00\n1,Stage Rack,Wall Mount,12,Stage,,\n,,,,,TOTAL,2400.00\n\nCABLE LIST\nQty,Cable Type,Signal,Length,Route,Unit Cost,Extended Cost,Supplier\n3,Cat6 M-M,Ethernet,,Stage > Control Room,,,\n2,Cat6 M-M,Ethernet,,Within Control Room,,,\n2,HDMI M-M,HDMI,,Within Control Room,,,\n2,XLR,Analog,,Stage > Control Room,,,\n1,BNC M-M,SDI,25 ft,Stage > Control Room,,,\n1,BNC M-M,SDI,50 ft,Stage > Control Room,,,\n1,Edison,Power,,Within Control Room,,,\n1,HDMI M-M,HDMI,,Control Room > Stage,,,\n1,powerCON,Power,,Within Control Room,,,",
     "printTables": [
       {
         "id": "devices",
         "rows": [
           {
             "count": "1x",
+            "supplier": "",
             "model": "HDMI Panel 8",
             "manufacturer": "",
             "modelNumber": "",
@@ -1018,6 +1210,7 @@
           },
           {
             "count": "1x",
+            "supplier": "",
             "model": "NetHub 8",
             "manufacturer": "NetCo",
             "modelNumber": "",
@@ -1032,6 +1225,7 @@
           },
           {
             "count": "1x",
+            "supplier": "",
             "model": "PD-2000",
             "manufacturer": "",
             "modelNumber": "",
@@ -1046,6 +1240,7 @@
           },
           {
             "count": "1x",
+            "supplier": "",
             "model": "Show PC",
             "manufacturer": "",
             "modelNumber": "",
@@ -1060,6 +1255,7 @@
           },
           {
             "count": "1x",
+            "supplier": "",
             "model": "VS-800",
             "manufacturer": "SwitchCorp",
             "modelNumber": "VS-800",
@@ -1074,6 +1270,7 @@
           },
           {
             "count": "1x",
+            "supplier": "",
             "model": "BigScreen 85",
             "manufacturer": "",
             "modelNumber": "",
@@ -1088,6 +1285,7 @@
           },
           {
             "count": "1x",
+            "supplier": "",
             "model": "Encoder X",
             "manufacturer": "",
             "modelNumber": "",
@@ -1102,6 +1300,7 @@
           },
           {
             "count": "2x",
+            "supplier": "",
             "model": "MixDesk 24",
             "manufacturer": "AudioCo",
             "modelNumber": "",
@@ -1116,6 +1315,7 @@
           },
           {
             "count": "2x",
+            "supplier": "",
             "model": "ProCam 4K",
             "manufacturer": "CamCo",
             "modelNumber": "PC-4K",
@@ -1135,6 +1335,7 @@
         "rows": [
           {
             "count": "3x",
+            "supplier": "",
             "cableType": "Cat6 M-M",
             "signalType": "Ethernet",
             "cableLength": "",
@@ -1144,6 +1345,7 @@
           },
           {
             "count": "2x",
+            "supplier": "",
             "cableType": "Cat6 M-M",
             "signalType": "Ethernet",
             "cableLength": "",
@@ -1153,6 +1355,7 @@
           },
           {
             "count": "2x",
+            "supplier": "",
             "cableType": "HDMI M-M",
             "signalType": "HDMI",
             "cableLength": "",
@@ -1162,6 +1365,7 @@
           },
           {
             "count": "2x",
+            "supplier": "",
             "cableType": "XLR",
             "signalType": "Analog",
             "cableLength": "",
@@ -1171,6 +1375,7 @@
           },
           {
             "count": "1x",
+            "supplier": "",
             "cableType": "BNC M-M",
             "signalType": "SDI",
             "cableLength": "25 ft",
@@ -1180,6 +1385,7 @@
           },
           {
             "count": "1x",
+            "supplier": "",
             "cableType": "BNC M-M",
             "signalType": "SDI",
             "cableLength": "50 ft",
@@ -1189,6 +1395,7 @@
           },
           {
             "count": "1x",
+            "supplier": "",
             "cableType": "Edison",
             "signalType": "Power",
             "cableLength": "",
@@ -1198,6 +1405,7 @@
           },
           {
             "count": "1x",
+            "supplier": "",
             "cableType": "HDMI M-M",
             "signalType": "HDMI",
             "cableLength": "",
@@ -1207,6 +1415,7 @@
           },
           {
             "count": "1x",
+            "supplier": "",
             "cableType": "powerCON",
             "signalType": "Power",
             "cableLength": "",
@@ -1216,6 +1425,7 @@
           },
           {
             "count": "1x",
+            "supplier": "",
             "cableType": "SDI2HDMI",
             "signalType": "",
             "cableLength": "",
@@ -1230,6 +1440,7 @@
         "rows": [
           {
             "count": "1x",
+            "supplier": "",
             "model": "Ramp 5ch",
             "accessoryType": "cable-ramp",
             "room": "Stage"
@@ -1921,6 +2132,8 @@
         "remoteDevice": "—",
         "remotePort": "—",
         "remoteRoom": "—",
+        "originDevice": "—",
+        "originPort": "—",
         "cableId": "",
         "cableType": "",
         "signalType": "HDMI",
@@ -1932,6 +2145,8 @@
         "rearRemoteDevice": "Vision Switcher",
         "rearRemotePort": "PGM Out",
         "rearRemoteRoom": "Control Room",
+        "rearOriginDevice": "Vision Switcher",
+        "rearOriginPort": "PGM Out",
         "rearCableId": "C009",
         "rearCableType": "HDMI M-M",
         "rearCableLength": "",
@@ -1941,6 +2156,8 @@
         "frontRemoteDevice": "Stage Display",
         "frontRemotePort": "HDMI In",
         "frontRemoteRoom": "Stage",
+        "frontOriginDevice": "Stage Display",
+        "frontOriginPort": "HDMI In",
         "frontCableId": "C010",
         "frontCableType": "HDMI M-M",
         "frontCableLength": "",
@@ -1948,7 +2165,7 @@
         "normalling": "None"
       }
     ],
-    "csv": "﻿Patch Panel Schedule — kitchen-sink\nGenerated 2026-01-01\n\nPanel,Panel Room,Face,Position,Signal,Connector,M/F,Remote Device,Remote Port,Remote Room,Cable ID,Cable Type,Length,Est. Length,Snake,Rear Connector,Rear M/F,Rear Remote Device,Rear Remote Port,Rear Remote Room,Rear Cable ID,Rear Cable Type,Rear Length,Rear Est. Length,Front Connector,Front M/F,Front Remote Device,Front Remote Port,Front Remote Room,Front Cable ID,Front Cable Type,Front Length,Front Est. Length,Normalling\nPP-01,Control Room,Passthrough,Port 1,HDMI,,,,,,,,,,,HDMI,F,Vision Switcher,PGM Out,Control Room,C009,HDMI M-M,,,HDMI,F,Stage Display,HDMI In,Stage,C010,HDMI M-M,,,None",
+    "csv": "﻿Patch Panel Schedule — kitchen-sink\nGenerated 2026-01-01\n\nPanel,Panel Room,Face,Position,Signal,Connector,M/F,Remote Device,Remote Port,Remote Room,Cable ID,Cable Type,Length,Est. Length,Snake,Rear Connector,Rear M/F,Rear Remote Device,Rear Remote Port,Rear Remote Room,Rear Cable ID,Rear Cable Type,Rear Length,Rear Est. Length,Front Connector,Front M/F,Front Remote Device,Front Remote Port,Front Remote Room,Front Cable ID,Front Cable Type,Front Length,Front Est. Length,Normalling,Origin Device,Origin Port,Rear Origin Device,Rear Origin Port,Front Origin Device,Front Origin Port\nPP-01,Control Room,Passthrough,Port 1,HDMI,,,,,,,,,,,HDMI,F,Vision Switcher,PGM Out,Control Room,C009,HDMI M-M,,,HDMI,F,Stage Display,HDMI In,Stage,C010,HDMI M-M,,,None,,,Vision Switcher,PGM Out,Stage Display,HDMI In",
     "printTables": [
       {
         "id": "patchPanelSchedule",
@@ -1964,6 +2181,8 @@
             "rearRemoteDevice": "Vision Switcher",
             "rearRemotePort": "PGM Out",
             "rearRemoteRoom": "Control Room",
+            "rearOriginDevice": "Vision Switcher",
+            "rearOriginPort": "PGM Out",
             "rearCableId": "C009",
             "rearCableType": "HDMI M-M",
             "rearCableLength": "—",
@@ -1973,6 +2192,8 @@
             "frontRemoteDevice": "Stage Display",
             "frontRemotePort": "HDMI In",
             "frontRemoteRoom": "Stage",
+            "frontOriginDevice": "Stage Display",
+            "frontOriginPort": "HDMI In",
             "frontCableId": "C010",
             "frontCableType": "HDMI M-M",
             "frontCableLength": "—",
@@ -1993,6 +2214,8 @@
               "rearRemoteDevice": "Vision Switcher",
               "rearRemotePort": "PGM Out",
               "rearRemoteRoom": "Control Room",
+              "rearOriginDevice": "Vision Switcher",
+              "rearOriginPort": "PGM Out",
               "rearCableId": "C009",
               "rearCableType": "HDMI M-M",
               "rearCableLength": "—",
@@ -2002,6 +2225,8 @@
               "frontRemoteDevice": "Stage Display",
               "frontRemotePort": "HDMI In",
               "frontRemoteRoom": "Stage",
+              "frontOriginDevice": "Stage Display",
+              "frontOriginPort": "HDMI In",
               "frontCableId": "C010",
               "frontCableType": "HDMI M-M",
               "frontCableLength": "—",
