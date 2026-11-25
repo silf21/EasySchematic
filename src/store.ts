@@ -1,3 +1,4 @@
+import { cloneVirtualChannelsForPorts, remapVirtualChannels, upgradeVirtualChannelsInPlace } from "./virtualChannels";
 import { create } from "zustand";
 import {
   applyNodeChanges,
@@ -86,6 +87,7 @@ import { syncDeviceWithTemplate, type SyncResult } from "./templateSync";
 import { chooseNewHandleSuffix, type SwapPlan, type NewPortRef } from "./deviceSwap";
 import { getSignalColorOverrides, applySignalColors, loadSignalColors, saveSignalColors } from "./signalColors";
 import { computeCableSchedule } from "./cableSchedule";
+import { patchReferenceEdges, reconcilePatchReferences } from "./patchReferences";
 import { getPanelOccupancy, isPortAvailable } from "./patchCircuits";
 import { autoFillSheetForRack } from "./printSheetAutoFill";
 import { allocateEdgeId, maxEdgeCounterFromIds, newLinkedConnectionId, uniquifyEdgeIds } from "./idUtils";
@@ -473,9 +475,9 @@ interface SchematicState {
    *  unchanged "already in this room" device for a successful placement. Used by the
    *  bridge's place_device_in_room tool. */
   placeDeviceInRoom: (nodeId: string, roomId: string, relativePosition?: { x: number; y: number }) => boolean;
-  /** Re-evaluate room membership for every non-room node. Used after a room is
-   *  created, resized, or moved so devices get parented/unparented to match
-   *  the new layout. */
+  /** Re-evaluate midpoint membership for rooms and devices. Room parents must
+   *  have greater area, preventing cycles and creation-order dependence.
+   *  Used after creation, resize, move and load; excludes routing anchors. */
   reparentAllDevices: (options?: { skipUndo?: boolean }) => void;
   /** Called when a room's NodeResizer finishes. Snapshots undo and reconciles
    *  device membership against the new bounds. */
@@ -559,7 +561,7 @@ interface SchematicState {
   clearAllManualWaypoints: () => void;
   deviceContextMenu: { nodeId: string; screenX: number; screenY: number } | null;
   setDeviceContextMenu: (menu: { nodeId: string; screenX: number; screenY: number } | null) => void;
-  edgeContextMenu: { edgeId: string; screenX: number; screenY: number; flowX: number; flowY: number; initialEdit?: "length" } | null;
+  edgeContextMenu: { segmentIndex?: number; edgeId: string; screenX: number; screenY: number; flowX: number; flowY: number; initialEdit?: "length" } | null;
   roomContextMenu: { nodeId: string; screenX: number; screenY: number } | null;
   stubLabelContextMenu: { nodeId: string; screenX: number; screenY: number } | null;
   textStubContextMenu: { nodeId: string; screenX: number; screenY: number } | null;
@@ -1374,6 +1376,7 @@ function clonePorts(ports: Port[]): Port[] {
     // Deep clone nested objects
     if (p.capabilities) clone.capabilities = { ...p.capabilities };
     if (p.networkConfig) clone.networkConfig = { ...p.networkConfig };
+    if (p.lightingConfig) clone.lightingConfig = { ...p.lightingConfig };
     if (p.activeConfig) clone.activeConfig = { ...p.activeConfig };
     return clone;
   });
@@ -1386,6 +1389,7 @@ function cloneCardPorts(ports: Port[], slotId: string, slotLabel: string): Port[
     const clone: Port = { ...p, id: `${prefix}-${i}`, section: slotLabel };
     if (p.capabilities) clone.capabilities = { ...p.capabilities };
     if (p.networkConfig) clone.networkConfig = { ...p.networkConfig };
+    if (p.lightingConfig) clone.lightingConfig = { ...p.lightingConfig };
     if (p.activeConfig) clone.activeConfig = { ...p.activeConfig };
     return clone;
   });
@@ -1514,6 +1518,12 @@ export function isAutoNamedDevice(
   return suffix.length > 0 && /^\d+$/.test(suffix);
 }
 
+/** Stable room rank: larger rooms are containers; equal-sized overlaps stay peers. */
+function roomArea(node: SchematicNode): number {
+  return (node.measured?.width ?? (node.style?.width as number) ?? node.width ?? 400)
+    * (node.measured?.height ?? (node.style?.height as number) ?? node.height ?? 300);
+}
+
 /** Ensure parent nodes appear before their children in the array (topological sort). */
 function sortNodesParentFirst(nodes: SchematicNode[]): SchematicNode[] {
   const nodeMap = new Map(nodes.map((n) => [n.id, n]));
@@ -1530,7 +1540,7 @@ function sortNodesParentFirst(nodes: SchematicNode[]): SchematicNode[] {
   }
 
   // Visit rooms first so all rooms precede non-room nodes
-  for (const n of nodes) if (n.type === "room") visit(n);
+  for (const n of nodes.filter(n => n.type === "room").sort((a, b) => roomArea(b) - roomArea(a) || a.id.localeCompare(b.id))) visit(n);
   for (const n of nodes) if (n.type !== "room") visit(n);
   return result;
 }
@@ -1575,13 +1585,16 @@ function findBestEnclosingRoom(
   centerY: number,
   nodes: SchematicNode[],
   nodeMap: Map<string, SchematicNode>,
+  reconcilingAll = false,
 ): SchematicNode | undefined {
   let best: SchematicNode | undefined;
   let bestArea = Infinity;
   for (const n of nodes) {
     if (n.type !== "room") continue;
     if (n.id === candidateId) continue;
-    if (candidateIsRoom && isAncestorOf(candidateId, n.id, nodeMap)) continue;
+    if (candidateIsRoom && !reconcilingAll && isAncestorOf(candidateId, n.id, nodeMap)) continue;
+    const candidate = nodeMap.get(candidateId);
+    if (candidateIsRoom && candidate && roomArea(n) <= roomArea(candidate)) continue;
     const rw = n.measured?.width ?? (n.style?.width as number) ?? (n.width as number) ?? 400;
     const rh = n.measured?.height ?? (n.style?.height as number) ?? (n.height as number) ?? 300;
     const absPos = getAbsolutePosition(n.id, nodeMap);
@@ -1590,7 +1603,7 @@ function findBestEnclosingRoom(
       centerY >= absPos.y && centerY <= absPos.y + rh
     ) {
       const area = rw * rh;
-      if (area < bestArea) {
+      if (area < bestArea || (area === bestArea && best && n.id.localeCompare(best.id) < 0)) {
         best = n;
         bestArea = area;
       }
@@ -1608,8 +1621,8 @@ function nodeCenterFromAbsolute(
   absolutePosition: { x: number; y: number },
 ): { x: number; y: number } {
   const isRoom = node.type === "room";
-  const w = node.measured?.width ?? (isRoom ? 400 : 144);
-  const h = node.measured?.height ?? (isRoom ? 300 : 48);
+  const w = node.measured?.width ?? (isRoom ? (node.style?.width as number) ?? node.width ?? 400 : node.width ?? 144);
+  const h = node.measured?.height ?? (isRoom ? (node.style?.height as number) ?? node.height ?? 300 : node.height ?? 48);
   return { x: absolutePosition.x + w / 2, y: absolutePosition.y + h / 2 };
 }
 
@@ -2037,6 +2050,7 @@ function readStoredCustomTemplates(): DeviceTemplate[] | null {
     if (!Array.isArray(templates)) return null;
     // Migrate legacy custom templates: move unique key from deviceType to id
     for (const t of templates) {
+      upgradeVirtualChannelsInPlace(t);
       if (!t.id && t.deviceType.startsWith("custom-")) {
         t.id = t.deviceType;
       }
@@ -2491,6 +2505,7 @@ export const useSchematicStore = create<SchematicState>((set, get) => ({
         label: template.label,
         deviceType: template.deviceType,
         ports,
+        virtualChannels: preset?.virtualChannels !== undefined ? cloneVirtualChannelsForPorts(preset.virtualChannels, preset.ports, ports) : remapVirtualChannels(template.virtualChannels, new Map(ports.filter(p => p.templatePortId).map(p => [p.templatePortId!, p.id])), new Set(ports.map(p => p.id))),
         color,
         ...(headerColor ? { headerColor } : {}),
         baseLabel: template.label,
@@ -2576,12 +2591,13 @@ export const useSchematicStore = create<SchematicState>((set, get) => ({
         return n && n.type !== "waypoint";
       }),
     );
+    const referenceOwners = new Set(state.nodes.filter(n => n.type === "patch-reference" && n.selected).map(n => n.data.connectionId));
     const survivingEdges = state.edges.filter(
       (e) =>
         !selectedEdgeIds.has(e.id) &&
         !deletedConnectingNodes.has(e.source) &&
         !deletedConnectingNodes.has(e.target),
-    );
+    ).map(e => referenceOwners.has(e.id) ? { ...e, data: { ...e.data!, showPatchReferences: false } } : e);
 
     // Splice manualWaypoints entries for each selected waypoint node so their
     // indices vanish from the canonical store. Waypoints belonging to deleted
@@ -2589,8 +2605,9 @@ export const useSchematicStore = create<SchematicState>((set, get) => ({
     const edgesAfterSplice = spliceWaypointsForRemovedNodes(survivingEdges, selectedWaypoints);
 
     const remainingNodes = state.nodes
-      .filter((n) => !n.selected)
+      .filter((n) => !n.selected || n.type === "patch-reference")
       .map((n) => {
+        if (n.type === "patch-reference" && n.selected) return { ...n, selected: false };
         if (n.parentId && deletedRoomIds.has(n.parentId)) {
           // Convert to absolute position — walk the full parent chain
           return {
@@ -2876,6 +2893,7 @@ export const useSchematicStore = create<SchematicState>((set, get) => ({
           data: {
             ...deviceData,
             ports: newPorts,
+            virtualChannels: cloneVirtualChannelsForPorts(deviceData.virtualChannels, deviceData.ports, newPorts),
             hiddenPorts: remappedHidden && remappedHidden.length > 0 ? remappedHidden : undefined,
           },
         } as DeviceNode;
@@ -3497,6 +3515,7 @@ export const useSchematicStore = create<SchematicState>((set, get) => ({
       label: preservedLabel,
       deviceType: newTemplate.deviceType,
       ports: newPorts,
+      virtualChannels: remapVirtualChannels(newTemplate.virtualChannels, new Map(newPorts.filter(p => p.templatePortId).map(p => [p.templatePortId!, p.id])), new Set(newPorts.map(p => p.id))),
       ...(newTemplate.color ? { color: newTemplate.color } : {}),
       ...(userRenamed ? {} : { baseLabel: newTemplate.label }),
       model: newTemplate.label,
@@ -3884,8 +3903,8 @@ export const useSchematicStore = create<SchematicState>((set, get) => ({
     // Rooms must appear before their potential children in the array
     // Deselect everything else so the new room is the sole selection
     const deselected = state.nodes.map((n) => (n.selected ? { ...n, selected: false } : n));
-    set({ nodes: [newRoom, ...deselected] });
-    // Capture any existing devices that now fall inside the new room's bounds
+    set({ nodes: sortNodesParentFirst([newRoom, ...deselected]) });
+    // Reconcile existing rooms and devices by their absolute midpoints
     get().reparentAllDevices({ skipUndo: true });
     get().saveToLocalStorage();
   },
@@ -4146,15 +4165,11 @@ export const useSchematicStore = create<SchematicState>((set, get) => ({
       // Waypoints belong to edges, not rooms — reparenting them turns their
       // .position into relative-to-room coords, which downstream sync code
       // mistakes for absolute and corrupts manualWaypoints.
-      if (node.type === "room" || node.type === "waypoint") continue;
+      if (node.type === "waypoint") continue;
 
       const absPos = getAbsolutePosition(node.id, nodeMap);
-      const nodeW = node.measured?.width ?? 144;
-      const nodeH = node.measured?.height ?? 48;
-      const centerX = absPos.x + nodeW / 2;
-      const centerY = absPos.y + nodeH / 2;
-
-      const targetRoom = findBestEnclosingRoom(node.id, false, centerX, centerY, state.nodes, nodeMap);
+      const center = nodeCenterFromAbsolute(node, absPos);
+      const targetRoom = findBestEnclosingRoom(node.id, node.type === "room", center.x, center.y, state.nodes, nodeMap, true);
       const newParent = targetRoom?.id;
       if (node.parentId === newParent) continue;
 
@@ -7220,6 +7235,7 @@ export const useSchematicStore = create<SchematicState>((set, get) => ({
     // double-book the panel ports and orphan them when the source leg unpatches.
     delete (tgtLegData as Record<string, unknown>).patchHops;
     delete (tgtLegData as Record<string, unknown>).patchSegments;
+    delete (tgtLegData as Record<string, unknown>).showPatchReferences;
     // The custom middle label (data.label) is intentionally KEPT on the target
     // leg (#201): each leg carries the same logical connection's custom label so
     // it shows on both halves, between the cable ID and the stub-label box. Cable
@@ -7563,7 +7579,7 @@ export const useSchematicStore = create<SchematicState>((set, get) => ({
       );
     };
 
-    for (const edge of state.edges) {
+    for (const edge of patchReferenceEdges(state.nodes, state.edges)) {
       const srcInternal = rfInstance.getInternalNode(edge.source);
       const tgtInternal = rfInstance.getInternalNode(edge.target);
       if (!srcInternal || !tgtInternal) continue;
@@ -7765,9 +7781,10 @@ export const useSchematicStore = create<SchematicState>((set, get) => ({
   recomputeRoutes: (rfInstance) => {
     const state = get();
     const hiddenSet = state.hiddenSignalTypes ? new Set(state.hiddenSignalTypes.split(",")) : null;
+    const diagramEdges = patchReferenceEdges(state.nodes, state.edges);
     let visibleEdges = hiddenSet
-      ? state.edges.filter((e) => !hiddenSet.has(e.data?.signalType ?? ""))
-      : state.edges;
+      ? diagramEdges.filter((e) => !hiddenSet.has(e.data?.signalType ?? ""))
+      : diagramEdges;
 
     // --- Adapter visibility: compute hidden adapters and virtual edges ---
     const hiddenAdapterNodeIds = resolveHiddenAdapterIds(state.nodes, state.hideAdapters);
@@ -7835,7 +7852,7 @@ export const useSchematicStore = create<SchematicState>((set, get) => ({
     // obstacle computation — neither is rendered, so neither should block routes.
     const offCanvasIds = new Set(
       state.nodes
-        .filter((n) => n.type === "device" && (n.data as DeviceData).offCanvas)
+        .filter((n) => n.type === "device" && (n.data as DeviceData).offCanvas || n.type === "patch-reference" && n.hidden)
         .map((n) => n.id),
     );
     const routingNodes = (hiddenAdapterNodeIds.size > 0 || offCanvasIds.size > 0)
@@ -8047,3 +8064,20 @@ if (typeof window !== "undefined") {
     if (e.persisted) reloadCustomTemplatesFromStorage();
   });
 }
+
+// References are presentation nodes. Reconcile from canonical patch assignments after
+// edits/load/undo; never turn reference wiring into extra material or port occupancy.
+useSchematicStore.subscribe((state, previous) => {
+  if (state.loadSeq !== previous.loadSeq) {
+    state.reparentAllDevices({ skipUndo: true });
+    if (useSchematicStore.getState().nodes !== state.nodes) return;
+  }
+  if (state.nodes === previous.nodes && state.edges === previous.edges && state.useShortNames === previous.useShortNames && state.wrapDeviceLabels === previous.wrapDeviceLabels) return;
+  const nodes = reconcilePatchReferences(state.nodes, state.edges, state);
+  if (nodes !== state.nodes) {
+    const previousIds = new Set(state.nodes.map(n => n.id));
+    const addedReference = nodes.some(n => n.type === "patch-reference" && !previousIds.has(n.id));
+    useSchematicStore.setState({ nodes });
+    if (addedReference) useSchematicStore.getState().reparentAllDevices({ skipUndo: true });
+  }
+});

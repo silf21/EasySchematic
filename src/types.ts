@@ -28,6 +28,34 @@ export type BuiltinConnectorType =
  *  Look its label, cable, gender and mating up through `typeRegistry`. */
 export type ConnectorType = BuiltinConnectorType | (string & {});
 
+/** Lighting patch metadata, independent of a port's IP configuration. */
+export type LightingProtocol = "dmx" | "artnet" | "sacn";
+export interface PortLightingConfig {
+  /** On a physical DMX port: the source protocol of its assigned universe. */
+  protocol?: LightingProtocol;
+  /** Art-Net: 0–32767; sACN and logical local DMX universes: 1–63999. */
+  universe?: number;
+  startAddress?: number;
+  /** DMX channels occupied by this fixture/mode, independent of multicable channelCount. */
+  footprint?: number;
+  mode?: string;
+}
+
+/** Logical protocol configuration applied to selected ports; ports may be shared. */
+export interface VirtualChannel {
+  /** Optional only for compatibility with earlier lighting-channel definitions. */
+  protocol?: SignalType;
+  outputSignal?: SignalType;
+  parameters?: CustomField[];
+  id: string;
+  label: string;
+  portIds: string[];
+  config: PortLightingConfig;
+  pixelCount?: number;
+  channelsPerPixel?: number;
+  universePacking?: "continuous" | "whole-pixels";
+}
+
 export interface PortNetworkConfig {
   ip?: string;
   subnetMask?: string;
@@ -107,6 +135,7 @@ export type BuiltinSignalType =
   | "ydif"
   | "rf"
   | "st2110"
+  | "spi"
   | "artnet"
   | "sacn"
   | "ir"
@@ -187,6 +216,7 @@ export interface Port {
   normalling?: "full" | "half" | "none";
   capabilities?: PortCapabilities;
   networkConfig?: PortNetworkConfig;
+  lightingConfig?: PortLightingConfig;
   addressable?: boolean;
   activeConfig?: PortActiveConfig;
   isMulticable?: boolean;
@@ -242,6 +272,8 @@ export interface InstalledSlot {
 }
 
 export interface DeviceData {
+  virtualChannels?: VirtualChannel[];
+  supplier?: string;
   [key: string]: unknown;
   label: string;
   /** Short alternative name (e.g. "HDC-5500" instead of "Sony HDC-5500 Studio Camera").
@@ -389,6 +421,10 @@ export interface AnnotationData {
   shape: "rectangle" | "ellipse" | "circle" | "diamond" | "triangle";
   /** Fill color */
   color?: string;
+  /** Embedded PNG image for rectangle backgrounds. */
+  backgroundImage?: string;
+  backgroundImageFit?: "contain" | "cover" | "fill";
+  backgroundImageOpacity?: number;
   /** Border color */
   borderColor?: string;
   /** Optional text label */
@@ -486,11 +522,21 @@ export interface BundleJunctionData {
 
 export type BundleJunctionNode = Node<BundleJunctionData, "bundle-junction">;
 
-export type SchematicNode = DeviceNode | RoomNode | NoteNode | AnnotationNode | StubLabelNode | TextStubNode | WaypointNode | BundleJunctionNode;
+export interface PatchReferenceData {
+  [key: string]: unknown;
+  connectionId: string;
+  panelNodeId: string;
+  portId: string;
+}
+export type PatchReferenceNode = Node<PatchReferenceData, "patch-reference">;
+
+export type SchematicNode = PatchReferenceNode | DeviceNode | RoomNode | NoteNode | AnnotationNode | StubLabelNode | TextStubNode | WaypointNode | BundleJunctionNode;
 
 /** One intermediate patch-panel hop on a connection's physical path (source → target order).
  *  The panel is a real device node (deviceType "patch-panel"), possibly off-canvas. */
 export interface PatchHop {
+  /** Physical face toward the preceding station in the connection; no signal-direction constraint. */
+  entryFace?: "rear" | "front";
   panelNodeId: string;
   /** Passthrough port id on that panel. */
   portId: string;
@@ -499,11 +545,22 @@ export interface PatchHop {
 /** Per-segment user overrides for a patched connection. Index i = physical segment i
  *  (0 = source-side). Cleared wholesale whenever patchHops change (indices would shift). */
 export interface PatchSegmentOverride {
+  /** Presentation only: show this section as paired endpoint stubs. */
+  stubbed?: boolean;
+  supplier?: string;
+  unitCost?: number;
   label?: string;
   cableLength?: string;
 }
 
 export interface ConnectionData {
+  supplier?: string;
+  unitCost?: number;
+  /** Show local, independently placed references to the used panel positions. */
+  showPatchReferences?: boolean;
+  /** Presentation-only segment metadata; never persisted as a material connection. */
+  patchReference?: { edgeId: string; segmentIndex: number };
+  patchSectionStubbed?: boolean;
   [key: string]: unknown;
   signalType: SignalType;
   manualWaypoints?: { x: number; y: number }[];
@@ -579,6 +636,7 @@ export interface ConnectionData {
 export type ConnectionEdge = Edge<ConnectionData>;
 
 export interface DeviceTemplate {
+  virtualChannels?: VirtualChannel[];
   id?: string;
   version?: number;
   deviceType: string;
@@ -631,6 +689,7 @@ export interface CustomTemplateMeta {
 }
 
 export interface TemplatePreset {
+  virtualChannels?: VirtualChannel[];
   ports: Port[];
   hiddenPorts?: string[];
   color?: string;
@@ -1100,6 +1159,7 @@ export const SIGNAL_COLORS: Record<BuiltinSignalType, string> = {
   ydif: "var(--color-ydif)",
   rf: "var(--color-rf)",
   st2110: "var(--color-st2110)",
+  spi: "var(--color-spi)",
   artnet: "var(--color-artnet)",
   sacn: "var(--color-sacn)",
   ir: "var(--color-ir)",
@@ -1279,6 +1339,7 @@ export const SIGNAL_LABELS: Record<BuiltinSignalType, string> = {
   ydif: "YDIF",
   rf: "RF",
   st2110: "ST 2110",
+  spi: "SPI",
   artnet: "Art-Net",
   sacn: "sACN",
   ir: "IR",
@@ -1315,7 +1376,7 @@ export const SIGNAL_GROUPS: Record<string, BuiltinSignalType[]> = {
   "Video over IP": ["ndi", "srt", "hdbaset", "st2110"],
   "Audio": ["analog-audio", "speaker-level", "bluetooth", "aes", "dante", "avb", "aes67", "madi", "spdif", "adat", "ultranet", "aes50", "stageconnect", "ydif", "soundgrid", "gigaace", "dx5", "dsnake", "slink", "fibreace", "digilink", "extron-exp", "pots", "blu-link"],
   "Network": ["ethernet", "fiber"],
-  "Control / Data": ["dmx", "artnet", "sacn", "rs422", "rs485", "serial", "gpio", "contact-closure", "ir", "midi", "tally", "usb", "thunderbolt", "dxlink", "ebus", "control-voltage", "cresnet", "nlight", "dcp", "sensor"],
+  "Control / Data": ["dmx", "spi", "artnet", "sacn", "rs422", "rs485", "serial", "gpio", "contact-closure", "ir", "midi", "tally", "usb", "thunderbolt", "dxlink", "ebus", "control-voltage", "cresnet", "nlight", "dcp", "sensor"],
   "Sync / Clock": ["genlock", "wordclock", "timecode", "dars", "gps"],
   "Power": ["power", "power-l1", "power-l2", "power-l3", "power-neutral", "power-ground"],
   "Streaming": ["rtmp", "rtsp", "mpeg-ts", "rf"],

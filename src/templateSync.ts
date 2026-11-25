@@ -1,3 +1,4 @@
+import { remapVirtualChannels } from "./virtualChannels";
 import type {
   DeviceData,
   DeviceTemplate,
@@ -96,6 +97,7 @@ function mergePort(templatePort: Port, devicePort: Port): Port {
   };
   if (devicePort.flipped) merged.flipped = devicePort.flipped;
   if (devicePort.networkConfig) merged.networkConfig = devicePort.networkConfig;
+  if (devicePort.lightingConfig) merged.lightingConfig = { ...devicePort.lightingConfig };
   if (devicePort.notes) merged.notes = devicePort.notes;
   if (devicePort.activeConfig) merged.activeConfig = devicePort.activeConfig;
   if (devicePort.poeDrawW != null) merged.poeDrawW = devicePort.poeDrawW;
@@ -183,7 +185,7 @@ export function syncDeviceWithTemplate(
   const factualChanges: FactualChange[] = [];
   for (const field of FACTUAL_FIELDS) {
     const before = (device as Record<string, unknown>)[field];
-    const after = (template as unknown as Record<string, unknown>)[field];
+    const after = field === "model" ? template.label : (template as unknown as Record<string, unknown>)[field];
     if (before !== after) {
       factualChanges.push({ field, before, after });
     }
@@ -192,12 +194,23 @@ export function syncDeviceWithTemplate(
   // Apply factual overwrites.
   const updatedData: DeviceData = { ...device, ports: updatedPorts };
   for (const field of FACTUAL_FIELDS) {
-    const value = (template as unknown as Record<string, unknown>)[field];
+    const value = field === "model" ? template.label : (template as unknown as Record<string, unknown>)[field];
     if (value == null) {
       delete (updatedData as Record<string, unknown>)[field];
     } else {
       (updatedData as Record<string, unknown>)[field] = value;
     }
+  }
+  const channelPortMap = new Map(updatedPorts.filter(p => p.templatePortId).map(p => [p.templatePortId!, p.id]));
+  const validPortIds = new Set(updatedPorts.map(p => p.id));
+  const templateChannels = remapVirtualChannels(template.virtualChannels, channelPortMap, validPortIds);
+  if (template.virtualChannels !== undefined) {
+    updatedData.virtualChannels = (templateChannels ?? []).map(channel => {
+      const prior = device.virtualChannels?.find(c => c.id === channel.id);
+      return prior ? { ...channel, protocol: prior.protocol, outputSignal: prior.outputSignal, parameters: prior.parameters?.map(p => ({ ...p })), config: { ...prior.config }, pixelCount: prior.pixelCount, channelsPerPixel: prior.channelsPerPixel, universePacking: prior.universePacking } : channel;
+    });
+  } else {
+    updatedData.virtualChannels = remapVirtualChannels(device.virtualChannels, new Map(), validPortIds);
   }
   if (template.version != null) {
     updatedData.templateVersion = template.version;

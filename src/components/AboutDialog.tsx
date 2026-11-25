@@ -4,6 +4,7 @@ import { forceFullReset } from "../sw-register";
 
 declare const __APP_VERSION__: string;
 declare const __BUILD_HASH__: string;
+declare const __BUILD_NUMBER__: string;
 
 type Env = "prod" | "beta" | "dev";
 
@@ -19,13 +20,14 @@ export default function AboutDialog({ onClose }: { onClose: () => void }) {
   const [resetting, setResetting] = useState(false);
 
   const version = typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "dev";
+  const build = typeof __BUILD_NUMBER__ !== "undefined" ? __BUILD_NUMBER__ : "local";
   const hash = typeof __BUILD_HASH__ !== "undefined" ? __BUILD_HASH__ : "local";
   const shortHash = hash.length > 7 ? hash.slice(0, 7) : hash;
   const env = detectEnv();
 
   const copyDebugInfo = async () => {
     const info = [
-      `EasySchematic v${version} (${shortHash}) \u00b7 ${env}`,
+      `EasySchematic v${version} · Build ${build} (${shortHash}) \u00b7 ${env}`,
       `UA: ${navigator.userAgent}`,
       `Viewport: ${window.innerWidth}\u00d7${window.innerHeight}`,
       `Date: ${new Date().toISOString().split("T")[0]}`,
@@ -76,7 +78,7 @@ export default function AboutDialog({ onClose }: { onClose: () => void }) {
               EasySchematic
             </div>
             <div className="text-xs text-[var(--color-text-muted)] mt-0.5">
-              Version {version} ({shortHash}) ·{" "}
+              Version {version} · Build {build} ({shortHash}) ·{" "}
               <span
                 className="inline-block px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide font-semibold"
                 style={{

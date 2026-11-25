@@ -1,9 +1,11 @@
+import { buildPdfVectorScene } from "./pdfVectorScene";
+import { findPortByHandle } from "./portHandles";
+import { resolveStubLabelPartsForMode } from "./stubLabelResolve";
+import { collectPdfStubReferences, formatPdfReference } from "./pdfStubReferences";
 import { type ReactFlowInstance } from "@xyflow/react";
 import { jsPDF } from "jspdf";
-import { toBlob } from "html-to-image";
-import { freezeSvgColors } from "./freezeSvgColors";
-import { capExportPixelRatio } from "./exportUtils";
-import { describeExportError, scrubXmlIllegalDom } from "./exportCapturePrep";
+import { suspendExportSelection } from "./exportSelection";
+import { describeExportError } from "./exportCapturePrep";
 import {
   type PaperSize,
   type Orientation,
@@ -31,24 +33,6 @@ import {
 import { signalColor } from "./typeRegistry";
 
 const DPI = 96;
-// 5 × 96 = 480 DPI — well above the 300 DPI print standard, sharp even at high
-// zoom in PDF viewers. Bumped from 1.5 to fix soft/pixelated printed output.
-// The "FAST" deflate compression on addImage below keeps PDF sizes in check
-// independently of pixelRatio — see commit 38ce285.
-const TARGET_PIXEL_RATIO = 5;
-// PDF pages get a larger raster budget than image export: the 64MP cap made
-// big custom sheets visibly fuzzy (~104 DPI on a 100×60in sheet) and the
-// 2026-09-05 test pass rejected that — "trade back memory". 16000px stays
-// under Chrome's 16384px hard canvas limit; 160MP is a ~640MB RGBA transient
-// per page — heavy but bounded, and it only engages beyond standard paper
-// (Letter/Arch keep the full 480 DPI target). The ratio may still fall below 1
-// at the 200in/side extreme — Chrome physically cannot raster larger, so the
-// old Math.max(1, …) floor there only bought broken output for more memory.
-const PDF_PAGE_RASTER_BUDGET = {
-  maxDimensionPx: 16000,
-  maxAreaPx: 160_000_000,
-};
-
 // ─── Inter font embedding for jsPDF ───
 
 let interRegularB64: string | null = null;
@@ -83,16 +67,6 @@ async function loadInterFont(doc: jsPDF) {
   doc.addFileToVFS("Inter-Bold.ttf", interBoldB64!);
   doc.addFont("Inter-Regular.ttf", "Inter", "normal");
   doc.addFont("Inter-Bold.ttf", "Inter", "bold");
-}
-
-/** Build @font-face CSS with base64-embedded Inter for html-to-image.
- *  Bypasses html-to-image's flaky auto font-embedding so glyphs like → survive. */
-function getInterFontEmbedCSS(): string {
-  if (!interRegularB64 || !interBoldB64) return "";
-  return [
-    `@font-face { font-family: 'Inter'; font-weight: 400; font-style: normal; src: url(data:font/truetype;base64,${interRegularB64}) format('truetype'); }`,
-    `@font-face { font-family: 'Inter'; font-weight: 700; font-style: normal; src: url(data:font/truetype;base64,${interBoldB64}) format('truetype'); }`,
-  ].join("\n");
 }
 
 /** Wait for rendering to settle (edge routing debounce, etc.) */
@@ -166,7 +140,7 @@ async function drawTitleBlock(
   const cellRects = computeCellRects(layout);
   const pad = 0.05;
 
-  // Border. The block is drawn over the captured drawing raster, so a stroke-only
+  // Border. The block is drawn over the exported drawing, so a stroke-only
   // rect lets cables routed under the band show through it — fill it white (#359).
   doc.setDrawColor(100, 100, 100);
   doc.setFillColor(255, 255, 255);
@@ -342,6 +316,7 @@ function drawContentBorder(
 }
 
 export interface PdfCrossingLabel {
+  reference?: { device: string; port: string; room: string; sameRoom: boolean };
   /** X position in inches */
   x: number;
   /** Y position in inches */
@@ -371,6 +346,7 @@ export function computePdfCrossingLabels(
   edges: ConnectionEdge[],
   nodes: SchematicNode[],
   scale: number,
+  orderedReferences = false,
 ): PdfCrossingLabel[] {
   if (pages.length <= 1) return [];
 
@@ -390,7 +366,7 @@ export function computePdfCrossingLabels(
 
   // Band of canvas the page actually shows. The capture below spans the whole
   // sheet inside the print margins — `page.contentH` additionally subtracts the
-  // title-block strip, which the raster still covers (the block is drawn over it
+  // title-block strip, which the vector scene still covers (the block is drawn over it
   // afterwards, and crossing labels are drawn over that). Bounding against
   // contentH dropped every label for a wire leaving the BOTTOM of a page, since
   // that label sits a title-block height below it (#317).
@@ -436,6 +412,21 @@ export function computePdfCrossingLabels(
     if (!sourceInfo || !targetInfo) continue;
 
     const edgeColor = resolveColor(edge);
+    const labelFor = (info: typeof sourceInfo): Pick<PdfCrossingLabel, "text" | "reference"> => {
+      const text = crossingLabelText(info);
+      if (!orderedReferences) return { text };
+      const isTarget = info === targetInfo;
+      const node = nodes.find(n => n.id === (isTarget ? edge.target : edge.source));
+      const near = nodes.find(n => n.id === (isTarget ? edge.source : edge.target));
+      const handle = isTarget ? edge.targetHandle : edge.sourceHandle;
+      if (node?.type === "stub-label") {
+        const parts = resolveStubLabelPartsForMode(node.id, node.data, { nodes, edges, hiddenAdapterIds: useSchematicStore.getState().hiddenAdapterNodeIds, includePhysicalFace: true });
+        return { text, reference: { device: info.label, room: parts?.farRoom ?? info.room ?? "", port: parts?.farPort ?? "", sameRoom: parts?.sameRoom ?? false } };
+      }
+      const port = node?.type === "device" && handle ? findPortByHandle(node.data, handle) : undefined;
+      const face = port?.direction === "passthrough" ? handle === `${port.id}-front` ? "front" : handle === `${port.id}-rear` ? "rear" : "" : "";
+      return { text, reference: { device: info.label, room: info.room ?? "", port: [transformLabelNow(port?.label ?? handle ?? ""), face].filter(Boolean).join(" / "), sameRoom: !!node?.parentId && node.parentId === near?.parentId } };
+    };
 
     for (const seg of route.segments) {
       if (seg.axis === "h") {
@@ -462,12 +453,12 @@ export function computePdfCrossingLabels(
             const leftPageNum = pdfPageAtPoint(bx - 1, y, pages);
 
             if (leftPx >= drawnLeft && leftPx <= drawnRight) {
-              const text = crossingLabelText(rightwardTarget);
-              labels.push({ x: toPageX(leftPx), y: toPageY(y), text, anchor: "left", color: edgeColor, pageNum: rightPageNum });
+              const label = labelFor(rightwardTarget);
+              labels.push({ x: toPageX(leftPx), y: toPageY(y), ...label, anchor: "left", color: edgeColor, pageNum: rightPageNum });
             }
             if (rightPx >= drawnLeft && rightPx <= drawnRight) {
-              const text = crossingLabelText(leftwardTarget);
-              labels.push({ x: toPageX(rightPx), y: toPageY(y), text, anchor: "right", color: edgeColor, pageNum: leftPageNum });
+              const label = labelFor(leftwardTarget);
+              labels.push({ x: toPageX(rightPx), y: toPageY(y), ...label, anchor: "right", color: edgeColor, pageNum: leftPageNum });
             }
           }
         }
@@ -490,12 +481,12 @@ export function computePdfCrossingLabels(
             const upPageNum = pdfPageAtPoint(x, by - 1, pages);
 
             if (upPx >= drawnTop && upPx <= drawnBottom) {
-              const text = crossingLabelText(downwardTarget);
-              labels.push({ x: toPageX(x), y: toPageY(upPx), text, anchor: "up", color: edgeColor, pageNum: downPageNum });
+              const label = labelFor(downwardTarget);
+              labels.push({ x: toPageX(x), y: toPageY(upPx), ...label, anchor: "up", color: edgeColor, pageNum: downPageNum });
             }
             if (downPx >= drawnTop && downPx <= drawnBottom) {
-              const text = crossingLabelText(upwardTarget);
-              labels.push({ x: toPageX(x), y: toPageY(downPx), text, anchor: "down", color: edgeColor, pageNum: upPageNum });
+              const label = labelFor(upwardTarget);
+              labels.push({ x: toPageX(x), y: toPageY(downPx), ...label, anchor: "down", color: edgeColor, pageNum: upPageNum });
             }
           }
         }
@@ -512,6 +503,7 @@ function drawCrossingLabels(
   titleBlockBand: TitleBlockBand | null,
   pageWIn: number,
   pageHIn: number,
+  ownPage: number,
 ) {
   if (labels.length === 0) return;
   doc.saveGraphicsState();
@@ -533,7 +525,7 @@ function drawCrossingLabels(
   const acrossSheet = { min: PAGE_MARGIN_IN, max: pageWIn - PAGE_MARGIN_IN };
   const downSheet = { min: PAGE_MARGIN_IN, max: pageHIn - PAGE_MARGIN_IN };
 
-  const texts = labels.map((l) => continuationPillText(l.text, l.pageNum));
+  const texts = labels.map(l => l.reference ? formatPdfReference(l.reference.device, l.reference.port, l.reference.room, l.pageNum, ownPage, l.reference.sameRoom) : continuationPillText(l.text, l.pageNum));
   const boxH = fontSize / 72 + pad * 2;
 
   // Grows inward from the boundary along its own wire — top/bottom-edge pills come
@@ -559,6 +551,8 @@ function drawCrossingLabels(
   labels.forEach((l, i) => {
     const displayText = texts[i];
     const box = boxes[i];
+
+    if (l.pageNum > 0) doc.link(box.x, box.y, box.width, box.height, { pageNumber: l.pageNum });
 
     // White pill background with signal-colored border. The 90° rotation keeps the
     // box axis-aligned, so roundedRect draws both orientations as-is.
@@ -731,14 +725,7 @@ export async function exportPdf(
   const savedWidth = container.style.width;
   const savedHeight = container.style.height;
 
-  // Save selection state
-  const selectedNodeIds = nodes.filter((n) => n.selected).map((n) => n.id);
-  const edges = rfInstance.getEdges();
-  const selectedEdgeIds = edges.filter((e) => e.selected).map((e) => e.id);
-
-  // Deselect all
-  rfInstance.setNodes(nodes.map((n) => ({ ...n, selected: false })));
-  rfInstance.setEdges(edges.map((e) => ({ ...e, selected: false })));
+  const restoreSelection = suspendExportSelection();
 
   // Add capturing attribute to hide overlays
   document.documentElement.setAttribute("data-export-capturing", "");
@@ -775,58 +762,28 @@ export async function exportPdf(
         { duration: 0 },
       );
 
+      await document.fonts.ready;
       // Wait for edges to route and render to settle
       await waitForRender(200);
 
       // Capture the viewport element
       const viewportEl = document.querySelector(".react-flow__viewport") as HTMLElement;
       if (!viewportEl) continue;
+      await Promise.all(Array.from(viewportEl.querySelectorAll("img")).map(image => image.decode().catch(() => undefined)));
 
-      // Firefox returns `undefined` from getPropertyValue() for unrecognized CSS
-      // properties, but html-to-image calls .trim() on the result without a null
-      // check. Patch it to return '' instead while html-to-image runs.
-      const origGetPropertyValue = CSSStyleDeclaration.prototype.getPropertyValue;
-      CSSStyleDeclaration.prototype.getPropertyValue = function (prop) {
-        return origGetPropertyValue.call(this, prop) ?? '';
-      };
-      const pixelRatio = capExportPixelRatio(TARGET_PIXEL_RATIO, contentWPx, contentHPx, PDF_PAGE_RASTER_BUDGET);
-      // Freeze var(--color-…) strokes to concrete colors so Chromium's
-      // html-to-image clone keeps the connection lines (#173).
-      const restoreColors = freezeSvgColors(viewportEl);
-      const restoreText = scrubXmlIllegalDom(viewportEl);
-      // Capture to a Blob, not a base64 data URL — the URL held each page's raster
-      // twice over as a giant string on top of jsPDF's own copy (#383).
-      let pageBlob: Blob | null;
-      try {
-        pageBlob = await toBlob(viewportEl, {
-          backgroundColor: "#ffffff",
-          width: contentWPx,
-          height: contentHPx,
-          pixelRatio,
-          fontEmbedCSS: getInterFontEmbedCSS(),
-          style: {
-            width: `${contentWPx}px`,
-            height: `${contentHPx}px`,
-            transform: `translate(${-page.contentX * scale}px, ${-page.contentY * scale}px) scale(${scale})`,
-          },
-        });
-      } finally {
-        restoreText();
-        restoreColors();
-        CSSStyleDeclaration.prototype.getPropertyValue = origGetPropertyValue;
+      const captureState = useSchematicStore.getState();
+      const references = collectPdfStubReferences(viewportEl, captureState.nodes, captureState.edges, pages, captureState.hiddenAdapterNodeIds, captureState.cableIdMap, page.index + 1);
+      const { scene, links } = buildPdfVectorScene(viewportEl, container, contentWPx, contentHPx, references);
+      const { svg2pdf } = await import("svg2pdf.js");
+      // SVG primitives preserve the browser's layout and the routed curves, while
+      // emitting real text and paths instead of a full-sheet bitmap.
+      await svg2pdf(scene, doc, { x: PAGE_MARGIN_IN, y: PAGE_MARGIN_IN, width: contentWPx / DPI, height: contentHPx / DPI });
+      for (const link of links) {
+        const x = Math.max(0, link.x), y = Math.max(0, link.y);
+        const w = Math.min(contentWPx, link.x + link.width) - x;
+        const h = Math.min(contentHPx, link.y + link.height) - y;
+        if (w > 0 && h > 0) doc.link(PAGE_MARGIN_IN + x / DPI, PAGE_MARGIN_IN + y / DPI, w / DPI, h / DPI, { pageNumber: link.targetPage });
       }
-      // canvas.toBlob resolves null when the browser can't encode the raster.
-      // The page was already added to the doc, so continuing here would ship a
-      // silently blank sheet in the middle of a client deliverable — abort loudly.
-      if (!pageBlob) {
-        throw new Error(`Couldn't render page ${i + 1} of ${pages.length} — the sheet is too large for this browser.`);
-      }
-      const pagePng = new Uint8Array(await pageBlob.arrayBuffer());
-
-      // Add image to PDF page (full height minus margins — title block drawn on top)
-      const imgWidthIn = pageWIn - 2 * PAGE_MARGIN_IN;
-      const imgHeightIn = pageHIn - 2 * PAGE_MARGIN_IN;
-      doc.addImage(pagePng, "PNG", PAGE_MARGIN_IN, PAGE_MARGIN_IN, imgWidthIn, imgHeightIn, undefined, "FAST");
 
       // Draw content border and title block with vector graphics
       drawContentBorder(doc, pageWIn, pageHIn);
@@ -835,7 +792,7 @@ export async function exportPdf(
       // Draw crossing labels
       const storeState = useSchematicStore.getState();
       const pdfLabels = computePdfCrossingLabels(
-        page, pages, storeState.routedEdges, storeState.edges, storeState.nodes, scale,
+        page, pages, storeState.routedEdges, storeState.edges, storeState.nodes, scale, true,
       );
       drawCrossingLabels(
         doc,
@@ -843,6 +800,7 @@ export async function exportPdf(
         titleBlockBandInches(pageWIn, pageHIn, layout.widthIn, layout.heightIn),
         pageWIn,
         pageHIn,
+        page.index + 1,
       );
 
       // Draw color key / signal legend
@@ -873,13 +831,7 @@ export async function exportPdf(
     container.style.height = savedHeight;
     rfInstance.setViewport(savedViewport, { duration: 0 });
 
-    // Restore selection
-    rfInstance.setNodes((nds) =>
-      nds.map((n) => ({ ...n, selected: selectedNodeIds.includes(n.id) })),
-    );
-    rfInstance.setEdges((eds) =>
-      eds.map((e) => ({ ...e, selected: selectedEdgeIds.includes(e.id) })),
-    );
+    restoreSelection();
 
     removeLoadingOverlay();
   }

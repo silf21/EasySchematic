@@ -9,12 +9,13 @@ import {
   type PortDisplay,
   type PortFaceDisplay,
 } from "../patchCircuits";
+import SupplierInput from "./SupplierInput";
 import { exportPatchPanelStripsPdf } from "../patchPanelPdf";
 import { connectorLabel, signalCssColor } from "../typeRegistry";
 import { useTypeRegistryVersion } from "../hooks/useTypeRegistryVersion";
 
 // Face geometry (px) — tuned to fit two-line port cards under each jack.
-const PITCH = 84;
+const PITCH = 130;
 const EAR = 42;
 const FACE_H = 124;
 
@@ -40,6 +41,7 @@ export default function PatchPanelRenderer() {
   const addToast = useSchematicStore((s) => s.addToast);
 
   // Inline label-override editing: which chip is being edited.
+  const [entryFace, setEntryFace] = useState<"rear" | "front">("rear");
   const [editing, setEditing] = useState<{ edgeId: string; segIndex: number; value: string } | null>(null);
 
   const panels = useMemo(
@@ -89,7 +91,7 @@ export default function PatchPanelRenderer() {
 
   const tryAssign = (panelNodeId: string, portId: string) => {
     if (!patchAssignEdgeId || !assignEdge) return;
-    const hop = { panelNodeId, portId };
+    const hop = { panelNodeId, portId, entryFace };
     const mismatch = checkHopConnectors(
       assignEdge,
       nodes,
@@ -100,11 +102,10 @@ export default function PatchPanelRenderer() {
     if (mismatch) {
       const faceLabel = mismatch.face === "rear" ? "rear" : "front";
       addToast(
-        `Won't fit — this port's ${faceLabel} is ${connectorLabel(mismatch.panelConnector)}, ` +
-          `but ${mismatch.otherLabel} is ${connectorLabel(mismatch.otherConnector)}.`,
-        "error",
+        `Adapter required: this port's ${faceLabel} is ${connectorLabel(mismatch.panelConnector)}, ` +
+          `but ${mismatch.otherLabel} is ${connectorLabel(mismatch.otherConnector)}. Use an adapter with a direct plug attachment where needed.`,
+        "info",
       );
-      return;
     }
     const ok = addEdgePatchHop(patchAssignEdgeId, hop);
     if (!ok) addToast("That port is already occupied", "info");
@@ -118,7 +119,7 @@ export default function PatchPanelRenderer() {
   const renderChip = (
     display: PortDisplay,
     face: PortFaceDisplay | undefined,
-    arrow: "◀" | "▶",
+    faceName: "Rear" | "Front",
   ) => {
     if (!face) {
       return (
@@ -128,7 +129,7 @@ export default function PatchPanelRenderer() {
       );
     }
     const traced = patchTracedEdgeId === display.edgeId;
-    const editable = display.kind === "hop" && face.segIndex !== undefined;
+    const editable = display.kind === "hop" && face.segIndex !== undefined && !face.directAttach;
     const isEditing = editing && editing.edgeId === display.edgeId && editing.segIndex === face.segIndex;
     return (
       <div
@@ -158,12 +159,16 @@ export default function PatchPanelRenderer() {
           />
         ) : (
           <div className="font-mono font-bold text-[10px] truncate">
-            {arrow} {face.cableLabel}
+            {faceName}: {face.cableLabel || "Direct plug"}
             {face.overridden ? " ✏️" : ""}
           </div>
         )}
         <div className="text-neutral-500 text-[10px] truncate">{face.farLabel}</div>
         <div className="text-neutral-400 text-[9px] truncate">{face.farPortLabel}</div>
+        {display.kind === "hop" && face.segIndex !== undefined && !face.directAttach && <SupplierInput
+          value={edges.find(e => e.id === display.edgeId)?.data?.patchSegments?.[face.segIndex]?.supplier ?? edges.find(e => e.id === display.edgeId)?.data?.supplier ?? ""}
+          onChange={supplier => setPatchSegmentOverride(display.edgeId, face.segIndex!, { supplier })} />}
+
       </div>
     );
   };
@@ -174,6 +179,7 @@ export default function PatchPanelRenderer() {
       {assigning && (
         <div className="sticky top-0 z-10 flex items-center gap-3 bg-blue-600 text-white px-4 py-2 text-xs shadow">
           <span>
+            <select aria-label="Panel face toward previous station" className="bg-blue-700 rounded mr-2" value={entryFace} onChange={e => setEntryFace(e.target.value as "rear" | "front")}><option value="rear">Previous: Rear · Next: Front</option><option value="front">Previous: Front · Next: Rear</option></select>
             Patching <b className="font-mono">{assignEdge ? baseIdFor(assignEdge) : ""}</b> — click an open port.
             Click a second panel’s port to add another hop.
           </span>
@@ -281,8 +287,9 @@ export default function PatchPanelRenderer() {
                         onMouseEnter={() => { if (display) setPatchTracedEdge(display.edgeId); }}
                         onMouseLeave={() => { if (display) setPatchTracedEdge(null); }}
                       >
+                        <title>{port.label || `Position ${i + 1}`}</title>
                         <text x={cx} y={cy - 34} textAnchor="middle" fill="#b9bcc4" fontSize={11} fontWeight={600} fontFamily="ui-monospace, monospace">
-                          {String(i + 1).padStart(2, "0")}
+                          {port.label || String(i + 1).padStart(2, "0")}
                         </text>
                         <circle
                           cx={cx} cy={cy} r={21}
@@ -320,8 +327,17 @@ export default function PatchPanelRenderer() {
                       <div key={port.id} className="shrink-0 px-0.5 flex flex-col gap-1" style={{ width: PITCH }}>
                         {display ? (
                           <>
-                            {renderChip(display, display.rear, "◀")}
-                            {renderChip(display, display.front, "▶")}
+                            {renderChip(display, display.rear, "Rear")}
+                            {renderChip(display, display.front, "Front")}
+                            {display.kind === "hop" && (() => {
+                              const edge = edges.find(e => e.id === display.edgeId);
+                              const hop = edge?.data?.patchHops?.find(h => h.panelNodeId === panel.id && h.portId === port.id);
+                              const face = hop?.entryFace ?? "rear";
+                              return <button data-testid="flip-patch-face" className="text-blue-600 text-[10px] border rounded px-1 py-1" title="Swap the physical face toward the preceding station; independent of signal direction" onClick={() => {
+                                if (!edge?.data) return;
+                                useSchematicStore.getState().patchEdgeData(edge.id, { patchHops: edge.data.patchHops!.map(h => h === hop ? { ...h, entryFace: face === "rear" ? "front" : "rear" } : h) });
+                              }}>Previous: {face === "rear" ? "Rear" : "Front"} · Next: {face === "rear" ? "Front" : "Rear"} ⇄</button>;
+                            })()}
                           </>
                         ) : assigning ? (
                           <button

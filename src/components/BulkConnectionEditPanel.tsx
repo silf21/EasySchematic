@@ -1,3 +1,5 @@
+import SupplierInput from "./SupplierInput";
+import { supplierName } from "../suppliers";
 import { useState, useMemo } from "react";
 
 import { useSchematicStore } from "../store";
@@ -35,6 +37,7 @@ export default function BulkConnectionEditPanel({ onClose }: Props) {
     [selectionKey],
   );
 
+  const [supplier, setSupplier] = useState("");
   const [srcLabelInput, setSrcLabelInput] = useState("");
   const [midLabelInput, setMidLabelInput] = useState("");
   const [tgtLabelInput, setTgtLabelInput] = useState("");
@@ -240,6 +243,10 @@ export default function BulkConnectionEditPanel({ onClose }: Props) {
         </div>
       </section>
 
+      <section className="mb-3 text-xs">
+        <div className="mb-1">Supplier</div><SupplierInput value={supplier} onChange={setSupplier} />
+        <button className="text-blue-600 my-2" onClick={() => useSchematicStore.getState().batchPatchEdgeData(selectedEdges.map(e => ({ edgeId: e.id, patch: { supplier: supplierName(supplier) || undefined } })))}>Apply supplier to selected connections</button>
+      </section>
       {/* Labels */}
       <section className="mb-3">
         <div className="text-[10px] uppercase tracking-wide text-[var(--color-text-muted)] mb-1.5">

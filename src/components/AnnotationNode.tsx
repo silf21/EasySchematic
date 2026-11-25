@@ -84,6 +84,7 @@ function AnnotationNode({ id, data, selected }: NodeProps) {
       <NodeResizer isVisible={!!selected} minWidth={60} minHeight={40} />
       <div
         style={{
+          position: "relative",
           width: "100%",
           height: "100%",
           backgroundColor: bgColor,
@@ -101,7 +102,11 @@ function AnnotationNode({ id, data, selected }: NodeProps) {
         }}
         onDoubleClick={handleDoubleClick}
       >
-        {annotationData.label && <span>{annotationData.label}</span>}
+        {shape === "rectangle" && annotationData.backgroundImage && <img
+          data-testid="rectangle-background-image" src={annotationData.backgroundImage} alt="" draggable={false}
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: annotationData.backgroundImageFit ?? "contain", opacity: Math.max(0, Math.min(1, annotationData.backgroundImageOpacity ?? 1)), pointerEvents: "none" }}
+        />}
+        {annotationData.label && <span style={{ position: "relative" }}>{annotationData.label}</span>}
       </div>
     </>
   );

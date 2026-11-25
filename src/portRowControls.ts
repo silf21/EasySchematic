@@ -42,7 +42,7 @@ export const PORT_ROW_CONTROL_TITLES: Record<PortRowControlId, string> = {
   "channel-count": "Channel count",
   "multi-connect":
     "Multi-connect — allow multiple connections on this port (1:many), e.g. one Dante flow feeding many destinations",
-  "direct-attach": "Direct attach — plugs directly into device, no separate cable",
+  "direct-attach": "Direkt gesteckt – kein zusätzliches Kabel",
   section: "Set section group",
   notes: "Add note",
   flip: "Flip port to opposite side",

@@ -8,6 +8,7 @@
 // stub names is the one at the other end of the partner leg, never our own — or, when
 // that end is an inline adapter the canvas is hiding, the device beyond it (#348).
 
+import { findPortByHandle } from "./portHandles";
 import { resolvePortLabel } from "./packList";
 import { hopHiddenAdapters } from "./adapterVisibility";
 import { computePageGrid } from "./printPageGrid";
@@ -22,6 +23,8 @@ import type {
 } from "./types";
 
 export interface StubLabelContext {
+  /** Export can name the physical face without changing canvas label preferences. */
+  includePhysicalFace?: boolean;
   nodes: SchematicNode[];
   edges: ConnectionEdge[];
   /** 1-indexed printed page holding a canvas point, 0 when off-page. Omit outside
@@ -125,7 +128,14 @@ export function resolveStubLabelParts(
     ? nodes.find((n) => n.id === farDevice.parentId)
     : null;
   const farRoomLabel = ((farRoom?.data as Record<string, unknown>)?.label as string) ?? "";
-  const farPort = resolvePortLabel(farDevice, farHandleId);
+  let farPort = resolvePortLabel(farDevice, farHandleId);
+  if (ctx.includePhysicalFace && farDevice.type === "device" && farHandleId) {
+    const port = findPortByHandle(farDevice.data, farHandleId);
+    if (port?.direction === "passthrough") {
+      if (farHandleId === `${port.id}-front`) farPort += " / front";
+      if (farHandleId === `${port.id}-rear`) farPort += " / rear";
+    }
+  }
 
   // The device at this tag's OWN end, read past a hidden adapter the same way. When it
   // sits in the far device's room, the room name is noise on the tag (#297).

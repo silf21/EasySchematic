@@ -271,7 +271,7 @@ export default function ConnectionsPage() {
         <li>They're excluded from pack list cable counts</li>
         <li>
           Toggle direct-attach per port in the <strong>device editor</strong> — look for the
-          <strong> DA</strong> badge under each port row (only visible on adapter devices)
+          <strong> Direkt gesteckt</strong> control under each port row (only visible on adapter devices)
         </li>
       </ul>
 

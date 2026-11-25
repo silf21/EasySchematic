@@ -4,6 +4,9 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --legacy-peer-deps
 COPY . .
+ARG BUILD_NUMBER=local
+ARG BUILD_HASH=local
+ENV BUILD_NUMBER=$BUILD_NUMBER BUILD_HASH=$BUILD_HASH
 RUN npm run build
 
 # Production stage

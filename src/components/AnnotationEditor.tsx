@@ -68,10 +68,20 @@ export default function AnnotationEditor() {
   const [fillOpacity, setFillOpacity] = useState(15);
   const [borderColor, setBorderColor] = useState("#3b82f6");
 
+  const [backgroundImage, setBackgroundImage] = useState<string>();
+  const [imageFit, setImageFit] = useState<"contain" | "cover" | "fill">("contain");
+  const [imageOpacity, setImageOpacity] = useState(100);
+  const [imageError, setImageError] = useState("");
+  const [imageLoading, setImageLoading] = useState(false);
+
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!node) return;
     const d = node.data;
+    setBackgroundImage(d.backgroundImage);
+    setImageFit(d.backgroundImageFit ?? "contain");
+    setImageOpacity(Math.round((d.backgroundImageOpacity ?? 1) * 100));
+    setImageError("");
     setLabel(d.label ?? "");
     setShape(d.shape ?? "rectangle");
     setFontSize(d.fontSize ?? 12);
@@ -85,7 +95,7 @@ export default function AnnotationEditor() {
   const close = useCallback(() => setEditingNodeId(null), [setEditingNodeId]);
 
   const handleSave = useCallback(() => {
-    if (!editingNodeId) return;
+    if (!editingNodeId || imageLoading) return;
     const color = fillOpacity === 0 ? undefined : buildRgba(fillHex, fillOpacity);
     updateAnnotation(editingNodeId, {
       label: label.trim() || undefined,
@@ -93,9 +103,12 @@ export default function AnnotationEditor() {
       fontSize,
       color,
       borderColor,
+      backgroundImage,
+      backgroundImageFit: imageFit,
+      backgroundImageOpacity: imageOpacity / 100,
     });
     close();
-  }, [editingNodeId, label, shape, fontSize, fillHex, fillOpacity, borderColor, updateAnnotation, close]);
+  }, [editingNodeId, label, shape, fontSize, fillHex, fillOpacity, borderColor, backgroundImage, imageFit, imageOpacity, imageLoading, updateAnnotation, close]);
 
   if (!editingNodeId || !node) return null;
 
@@ -104,7 +117,7 @@ export default function AnnotationEditor() {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
       onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}
     >
-      <div className="bg-white border border-[var(--color-border)] rounded-lg shadow-2xl w-[340px] flex flex-col">
+      <div className="bg-white border border-[var(--color-border)] rounded-lg shadow-2xl w-[340px] max-h-[90vh] flex flex-col">
         <div className="px-4 py-3 border-b border-[var(--color-border)] flex items-center justify-between">
           <h2 className="text-sm font-semibold text-[var(--color-text-heading)]">Annotation Properties</h2>
           <button
@@ -115,7 +128,7 @@ export default function AnnotationEditor() {
           </button>
         </div>
 
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-4 overflow-y-auto">
           {/* Label */}
           <div>
             <label className="block text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] mb-1">
@@ -168,6 +181,44 @@ export default function AnnotationEditor() {
               ))}
             </div>
           </div>
+
+          {shape === "rectangle" && <div className="space-y-2 text-xs">
+            <div className="font-semibold">Background image</div>
+            <input aria-label="Background image" type="file" accept="image/png,image/jpeg,image/webp" disabled={imageLoading} onChange={async e => {
+              const file = e.target.files?.[0]; e.target.value = "";
+              if (!file) return;
+              setImageError("");
+              if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) { setImageError("Choose a PNG, JPEG or WebP image."); return; }
+              if (file.size > 10 * 1024 * 1024) { setImageError("Choose an image smaller than 10 MB."); return; }
+              setImageLoading(true);
+              const url = URL.createObjectURL(file);
+              try {
+                const image = new Image(); image.src = url; await image.decode();
+                const scale = Math.min(1, 4096 / Math.max(image.naturalWidth, image.naturalHeight));
+                const canvas = document.createElement("canvas");
+                canvas.width = Math.max(1, Math.round(image.naturalWidth * scale)); canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+                canvas.getContext("2d")!.drawImage(image, 0, 0, canvas.width, canvas.height);
+                let encoded = canvas.toDataURL("image/png");
+                while (encoded.length > 2 * 1024 * 1024 && canvas.width > 1 && canvas.height > 1) {
+                  canvas.width = Math.max(1, Math.floor(canvas.width * 0.75));
+                  canvas.height = Math.max(1, Math.floor(canvas.height * 0.75));
+                  canvas.getContext("2d")!.drawImage(image, 0, 0, canvas.width, canvas.height);
+                  encoded = canvas.toDataURL("image/png");
+                }
+                setBackgroundImage(encoded);
+              } catch { setImageError("The image could not be loaded."); }
+              finally { URL.revokeObjectURL(url); setImageLoading(false); }
+            }} />
+            {imageLoading && <p>Loading image…</p>}
+            {imageError && <p role="alert" className="text-red-500">{imageError}</p>}
+            {backgroundImage && <>
+              <img src={backgroundImage} alt="Background preview" className="w-full h-24 object-contain" />
+              <button type="button" onClick={() => setBackgroundImage(undefined)} className="underline">Remove image</button>
+              <label className="block">Image fit<select aria-label="Image fit" value={imageFit} onChange={e => setImageFit(e.target.value as typeof imageFit)} className="w-full border rounded p-1 bg-[var(--color-surface)]"><option value="contain">Fit inside</option><option value="cover">Fill and crop</option><option value="fill">Stretch</option></select></label>
+              <label className="block">Image opacity: {imageOpacity}%<input aria-label="Image opacity" className="w-full" type="range" min={0} max={100} value={imageOpacity} onChange={e => setImageOpacity(Number(e.target.value))} /></label>
+            </>}
+            <p className="text-[10px] text-[var(--color-text-muted)]">PNG, JPEG or WebP, up to 10 MB. Stored in the project; large images are resized to fit the project.</p>
+          </div>}
 
           {/* Fill Color */}
           <div>
@@ -256,6 +307,7 @@ export default function AnnotationEditor() {
           </button>
           <button
             onClick={handleSave}
+            disabled={imageLoading}
             className="px-3 py-1.5 text-xs rounded border border-blue-400 bg-blue-50 text-blue-700 hover:bg-blue-100 cursor-pointer transition-colors"
           >
             Save

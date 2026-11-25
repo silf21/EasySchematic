@@ -7,9 +7,12 @@ import StubLabelNodeComponent from "./components/StubLabelNode";
 import TextStubNodeComponent from "./components/TextStubNode";
 import WaypointNodeComponent from "./components/WaypointNode";
 import BundleJunctionNodeComponent from "./components/BundleJunctionNode";
+import PatchReferenceNode from "./components/PatchReferenceNode";
+import PatchReferenceEdge from "./components/PatchReferenceEdge";
 import OffsetEdgeComponent from "./components/OffsetEdge";
 
 export const nodeTypes: NodeTypes = {
+  "patch-reference": PatchReferenceNode,
   device: DeviceNodeComponent,
   room: RoomNodeComponent,
   note: NoteNodeComponent,
@@ -21,5 +24,6 @@ export const nodeTypes: NodeTypes = {
 };
 
 export const edgeTypes: EdgeTypes = {
+  "patch-reference-edge": PatchReferenceEdge,
   smoothstep: OffsetEdgeComponent,
 };

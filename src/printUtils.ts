@@ -6,6 +6,8 @@ import {
   TITLE_BLOCK_HEIGHT_IN,
 } from "./printConfig";
 
+import { suspendExportSelection } from "./exportSelection";
+
 const DPI = 96;
 const STYLE_ID = "print-page-style";
 
@@ -48,19 +50,15 @@ export function executePrint(
   const savedWidth = container.style.width;
   const savedHeight = container.style.height;
 
-  // Deselect everything for a clean print
   const nodes = reactFlowInstance.getNodes();
-  const edges = reactFlowInstance.getEdges();
-  const selectedNodeIds = nodes.filter((n) => n.selected).map((n) => n.id);
-  const selectedEdgeIds = edges.filter((e) => e.selected).map((e) => e.id);
-  reactFlowInstance.setNodes(nodes.map((n) => ({ ...n, selected: false })));
-  reactFlowInstance.setEdges(edges.map((e) => ({ ...e, selected: false })));
 
   // Get node bounds
   if (nodes.length === 0) {
     style.remove();
     return;
   }
+
+  const restoreSelection = suspendExportSelection();
 
   const bounds = reactFlowInstance.getNodesBounds(nodes);
 
@@ -87,13 +85,7 @@ export function executePrint(
     container.style.width = savedWidth;
     container.style.height = savedHeight;
     reactFlowInstance.setViewport(savedViewport, { duration: 0 });
-    // Restore selection
-    reactFlowInstance.setNodes((nds) =>
-      nds.map((n) => ({ ...n, selected: selectedNodeIds.includes(n.id) })),
-    );
-    reactFlowInstance.setEdges((eds) =>
-      eds.map((e) => ({ ...e, selected: selectedEdgeIds.includes(e.id) })),
-    );
+    restoreSelection();
     const s = document.getElementById(STYLE_ID);
     if (s) s.remove();
   };

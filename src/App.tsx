@@ -24,6 +24,7 @@ import { useShallow } from "zustand/react/shallow";
 import { normalizeShortcutKey } from "./keyUtils";
 import { warmupRoutingWorker } from "./routing/routingClient";
 import { useMcpBridge } from "./mcpBridge";
+import { patchReferenceEdges, patchReferenceNodes, canonicalPatchEdgeId, canonicalPatchEdgeChanges } from "./patchReferences";
 import { nodeTypes, edgeTypes } from "./nodeTypes";
 import SnapGuides from "./components/SnapGuides";
 import PageBoundaryOverlay from "./components/PageBoundaryOverlay";
@@ -648,15 +649,18 @@ function SchematicCanvas() {
   );
   // Digest of edge connectivity
   const edgeDigest = useSchematicStore((s) =>
-    s.edges.map((e) => `${e.id}:${e.source}:${e.sourceHandle}:${e.target}:${e.targetHandle}:${e.data?.manualWaypoints?.length ?? 0}:${e.data?.stubbed ? "s" : ""}:${e.data?.bundleId ?? ""}`).join("|"),
+    s.edges.map((e) => `${e.id}:${e.source}:${e.sourceHandle}:${e.target}:${e.targetHandle}:${e.data?.manualWaypoints?.length ?? 0}:${e.data?.stubbed ? "s" : ""}:${e.data?.bundleId ?? ""}:${e.data?.showPatchReferences === false ? "compact" : JSON.stringify(e.data?.patchHops)}`).join("|"),
   );
+
+  const diagramNodes = useMemo(() => patchReferenceNodes(nodes, edges), [nodes, edges]);
 
   // Filter out edges whose signal type is hidden (presentation-only — store edges stay complete)
   const visibleEdges = useMemo(() => {
-    if (!hiddenSignalTypesStr) return edges;
+    const diagramEdges = patchReferenceEdges(nodes, edges);
+    if (!hiddenSignalTypesStr) return diagramEdges;
     const hidden = new Set(hiddenSignalTypesStr.split(","));
-    return edges.filter((e) => !hidden.has(e.data?.signalType ?? ""));
-  }, [edges, hiddenSignalTypesStr]);
+    return diagramEdges.filter((e) => !hidden.has(e.data?.signalType ?? ""));
+  }, [nodes, edges, hiddenSignalTypesStr]);
 
   const autoRoute = useSchematicStore((s) => s.autoRoute);
   const edgeHitboxSize = useSchematicStore((s) => s.edgeHitboxSize);
@@ -1433,9 +1437,12 @@ function SchematicCanvas() {
       // Waypoint and bundle-junction nodes are simple router anchors: grid-snap, no
       // overlap or reparent logic. (The router grid-snaps the bundle spine column too,
       // so snapping the junction keeps the box aligned with the drawn trunk.)
-      if (draggedNode.type === "waypoint" || draggedNode.type === "bundle-junction") {
-        const sx = Math.round(draggedNode.position.x / GRID_SIZE) * GRID_SIZE;
-        const sy = Math.round(draggedNode.position.y / GRID_SIZE) * GRID_SIZE;
+      if ((draggedNode.type === "patch-reference" && draggedNodes.length <= 1) || draggedNode.type === "waypoint" || draggedNode.type === "bundle-junction") {
+        const offset = draggedNode.type === "patch-reference"
+          ? parentOffsetFromMap(draggedNode as SchematicNode, new Map(state.nodes.map(n => [n.id, n])))
+          : { dx: 0, dy: 0 };
+        const sx = Math.round((draggedNode.position.x + offset.dx) / GRID_SIZE) * GRID_SIZE - offset.dx;
+        const sy = Math.round((draggedNode.position.y + offset.dy) / GRID_SIZE) * GRID_SIZE - offset.dy;
         if (sx !== draggedNode.position.x || sy !== draggedNode.position.y) {
           const updated = state.nodes.map((n) =>
             n.id === draggedNode.id ? { ...n, position: { x: sx, y: sy } } : n,
@@ -1506,9 +1513,12 @@ function SchematicCanvas() {
       // Grid-snap the final position and bail; for waypoints store.onNodesChange syncs
       // manualWaypoints from the resting position, and for junctions the node-digest
       // reroute redraws the comb through the new break-in/out position.
-      if (draggedNode.type === "waypoint" || draggedNode.type === "bundle-junction") {
-        const sx = Math.round(draggedNode.position.x / GRID_SIZE) * GRID_SIZE;
-        const sy = Math.round(draggedNode.position.y / GRID_SIZE) * GRID_SIZE;
+      if ((draggedNode.type === "patch-reference" && draggedNodes.length <= 1) || draggedNode.type === "waypoint" || draggedNode.type === "bundle-junction") {
+        const offset = draggedNode.type === "patch-reference"
+          ? parentOffsetFromMap(draggedNode as SchematicNode, new Map(state.nodes.map(n => [n.id, n])))
+          : { dx: 0, dy: 0 };
+        const sx = Math.round((draggedNode.position.x + offset.dx) / GRID_SIZE) * GRID_SIZE - offset.dx;
+        const sy = Math.round((draggedNode.position.y + offset.dy) / GRID_SIZE) * GRID_SIZE - offset.dy;
         if (sx !== draggedNode.position.x || sy !== draggedNode.position.y) {
           const updated = state.nodes.map((n) =>
             n.id === draggedNode.id ? { ...n, position: { x: sx, y: sy } } : n,
@@ -1520,6 +1530,10 @@ function SchematicCanvas() {
           });
         } else {
           useSchematicStore.setState({ isDragging: false, overlapNodeId: null });
+        }
+        if (draggedNode.type === "patch-reference") {
+          reparentNode(draggedNode.id, { x: sx + offset.dx, y: sy + offset.dy }, { skipUndo: true });
+          useSchematicStore.getState().saveToLocalStorage();
         }
         flushPendingSnapshot();
         return;
@@ -1749,13 +1763,13 @@ function SchematicCanvas() {
         selectionDirection ? `selection-${selectionDirection}` : "",
         panMode === "pan-first" && !shiftHeld && !isMobile ? "pan-mode" : "",
       ].filter(Boolean).join(" ") || undefined}
-      nodes={nodes}
+      nodes={diagramNodes}
       edges={visibleEdges}
       onNodesChange={onNodesChange}
       onNodeDragStart={onNodeDragStart}
       onNodeDrag={onNodeDrag}
       onNodeDragStop={onNodeDragStop}
-      onEdgesChange={onEdgesChange}
+      onEdgesChange={changes => onEdgesChange(canonicalPatchEdgeChanges(changes, edges))}
       onConnect={(connection) => {
         // React Flow validated and accepted this one; the end handlers must not
         // re-check it once the port is occupied and re-enter the mismatch branch.
@@ -1853,7 +1867,8 @@ function SchematicCanvas() {
         const flowPos = screenToFlowPosition({ x: event.clientX, y: event.clientY });
         useSchematicStore.setState({
           edgeContextMenu: {
-            edgeId: edge.id,
+            edgeId: canonicalPatchEdgeId(edge.id, edges),
+            segmentIndex: edge.data?.patchReference?.segmentIndex,
             screenX: event.clientX,
             screenY: event.clientY,
             flowX: flowPos.x,

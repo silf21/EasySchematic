@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { computePackList } from "../packList";
+import { syncDeviceWithTemplate } from "../templateSync";
 import { templateIdentityPatch } from "../inventoryKey";
 import type { SchematicNode, DeviceData, DeviceTemplate } from "../types";
 
@@ -66,4 +67,14 @@ describe("pack list reflects user-template rename (#137)", () => {
     // A freshly-created user template carries no version, so drift tracking resets.
     expect(patch.templateVersion).toBeUndefined();
   });
+});
+
+
+it("updates report identity from a renamed template without changing the device name", () => {
+  const node = placedDevice({ label: "Bühnenbild M 1/2", model: "Old decoder", baseLabel: undefined });
+  const template = { id: "decoder", label: "New decoder", deviceType: "generic", ports: [], version: 2 } as DeviceTemplate;
+  const { updatedData } = syncDeviceWithTemplate(node.data as DeviceData, template, node.id, []);
+  expect(updatedData.label).toBe("Bühnenbild M 1/2");
+  expect(updatedData.model).toBe("New decoder");
+  expect(computePackList([{ ...node, data: updatedData } as SchematicNode], []).devices[0].model).toBe("New decoder");
 });
