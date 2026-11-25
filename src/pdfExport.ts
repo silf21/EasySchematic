@@ -769,6 +769,7 @@ export async function exportPdf(
       // Capture the viewport element
       const viewportEl = document.querySelector(".react-flow__viewport") as HTMLElement;
       if (!viewportEl) continue;
+      await Promise.all(Array.from(viewportEl.querySelectorAll("img")).map(image => image.decode().catch(() => undefined)));
 
       const captureState = useSchematicStore.getState();
       const references = collectPdfStubReferences(viewportEl, captureState.nodes, captureState.edges, pages, captureState.hiddenAdapterNodeIds, captureState.cableIdMap, page.index + 1);

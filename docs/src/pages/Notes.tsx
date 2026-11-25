@@ -48,6 +48,12 @@ export default function NotesPage() {
         shapes on the canvas. Add them from the <strong>Insert</strong> menu
         (Insert → Add Rectangle / Add Ellipse).
       </p>
+      <p>
+        Double-click a rectangle to upload a PNG, JPEG or WebP background image (up to 10 MB).
+        Choose Fit inside, Fill and crop, or Stretch, and adjust image opacity independently of the fill.
+        Replace the image by uploading another file, or choose Remove image. Images are embedded in
+        the project and included in PDF exports; large uploads are resized automatically.
+      </p>
       <ul>
         <li>Customizable <strong>fill color</strong>, <strong>border color</strong>, and optional <strong>text label</strong></li>
         <li>Resize by dragging the corner or edge handles</li>

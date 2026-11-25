@@ -150,7 +150,11 @@ export function buildPdfVectorScene(viewport: HTMLElement, container: HTMLElemen
       const coords = [[b.x, b.y, b.x + b.w, b.y], [b.x + b.w, b.y, b.x + b.w, b.y + b.h], [b.x, b.y + b.h, b.x + b.w, b.y + b.h], [b.x, b.y, b.x, b.y + b.h]][i];
       shape("line", { x1: coords[0], y1: coords[1], x2: coords[2], y2: coords[3], stroke: css[`border${side}Color`], "stroke-width": widths[i] }, group);
     });
-    if (el instanceof HTMLImageElement) { shape("image", { x: b.x, y: b.y, width: b.w, height: b.h, href: el.currentSrc || el.src }, group); return; }
+    if (el instanceof HTMLImageElement) {
+      const id = `pdf-image-clip-${counter++}`; const clip = shape("clipPath", { id }, defs);
+      shape("rect", { x: b.x, y: b.y, width: b.w, height: b.h }, clip);
+      group = shape("g", { "clip-path": `url(#${id})` }, group);
+      shape("image", { x: b.x, y: b.y, width: b.w, height: b.h, href: el.currentSrc || el.src, preserveAspectRatio: css.objectFit === "cover" ? "xMidYMid slice" : css.objectFit === "contain" ? "xMidYMid meet" : "none" }, group); return; }
     if ([css.overflow, css.overflowX, css.overflowY].some(value => value === "hidden" || value === "clip")) {
       const id = `pdf-clip-${counter++}`; const clip = shape("clipPath", { id }, defs);
       shape("rect", { x: b.x, y: b.y, width: b.w, height: b.h, rx: radius }, clip);

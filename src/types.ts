@@ -421,6 +421,10 @@ export interface AnnotationData {
   shape: "rectangle" | "ellipse" | "circle" | "diamond" | "triangle";
   /** Fill color */
   color?: string;
+  /** Embedded PNG image for rectangle backgrounds. */
+  backgroundImage?: string;
+  backgroundImageFit?: "contain" | "cover" | "fill";
+  backgroundImageOpacity?: number;
   /** Border color */
   borderColor?: string;
   /** Optional text label */
